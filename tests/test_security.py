@@ -5,7 +5,7 @@ Pass = no payload ever runs, no foreign element or attribute appears, and the pa
 Run: python tests/test_security.py"""
 import json, copy, os, tempfile
 from playwright.sync_api import sync_playwright
-from helpers import PAGE, fixture, finish
+from helpers import PAGE, fixture, finish, launch
 base=fixture('example.json')
 P=['<img src=x onerror="window.__pwned=1">','<svg onload=window.__pwned=1>','"><script>window.__pwned=1</script>',"'><iframe srcdoc='<script>parent.__pwned=1</script>'>",
    'javascript:window.__pwned=1','<a href="javascript:window.__pwned=1">x</a>','{{constructor.constructor("window.__pwned=1")()}}','${window.__pwned=1}',
@@ -19,7 +19,7 @@ CHECK="""()=>{ const bad=[]; document.querySelectorAll('body *').forEach(e=>{ fo
    return {pwned:!!window.__pwned, bad:[...new Set(bad)].slice(0,5), proto:({}).polluted!==undefined || ({}).__pwned!==undefined} }"""
 fails=0; runs=0
 with sync_playwright() as p:
-    b=p.chromium.launch()
+    b=launch(p)
     for pl in P:
         for how in ('import','storage'):
             data=strings(copy.deepcopy(base), lambda v: pl)                     # every string field gets the payload

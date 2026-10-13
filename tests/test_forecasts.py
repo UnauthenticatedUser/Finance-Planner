@@ -6,7 +6,7 @@ pensioners' tax-free amount, pension funds, 4% from investments with the growth 
 Run: python tests/test_forecasts.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys
-from helpers import PAGE, finish
+from helpers import PAGE, finish, launch
 from test_calculations import user
 def grow(start, monthly, r, months, g=0, until=None):
     rm=(1+r/100)**(1/12)-1; v=start; m=monthly; put=start
@@ -31,7 +31,7 @@ def bad(i,msg):
 def main():
     random.seed(11); N=int(sys.argv[1]) if len(sys.argv)>1 else 150
     with sync_playwright() as p:
-        b=p.chromium.launch(); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
+        b=launch(p); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
         pg.goto(PAGE); pg.wait_for_timeout(500)
         for i in range(N):
             s=user(); s.update(projGrowth=random.choice([0,0,2,3]), enableProjReal=random.random()<.3, projInflation=2.5, enableProjNet=random.random()<.3, invDeposits=random.choice([0,0,5000,20000]),

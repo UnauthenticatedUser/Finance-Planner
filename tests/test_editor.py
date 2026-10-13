@@ -2,7 +2,7 @@
 category sets it to once a year.
 Run: python tests/test_editor.py"""
 from playwright.sync_api import sync_playwright
-from helpers import PAGE, finish
+from helpers import PAGE, finish, launch
 
 # button id -> the list in the saved data it adds to
 ADD = {'addIncome': 'incomes', 'addExp': 'expenseItems', 'addAcct': 'accounts', 'addP2Fund': 'p2funds', 'addP3Fund': 'p3funds',
@@ -10,7 +10,7 @@ ADD = {'addIncome': 'incomes', 'addExp': 'expenseItems', 'addAcct': 'accounts', 
 
 problems = []
 with sync_playwright() as p:
-    b = p.chromium.launch()
+    b = launch(p)
     for lang, car_tax, yearly in (('en', 'Car tax', 'Once a year'), ('et', 'Automaks', 'Kord aastas')):
         pg = b.new_page(viewport={'width': 1360, 'height': 900}, reduced_motion='reduce'); errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)[:150]))

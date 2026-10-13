@@ -3,7 +3,7 @@ sideways, and never run code or render HTML that came from a name in the file.
 Run: python tests/test_broken_files.py [number of files] [seed]"""
 from playwright.sync_api import sync_playwright
 import json, random, os, tempfile, sys
-from helpers import PAGE, fixture, finish
+from helpers import PAGE, fixture, finish, launch
 random.seed(int(sys.argv[2]) if len(sys.argv)>2 else 3)
 XSS='<img src=x onerror="window.__xss=1"><script>window.__xss=1</script>"><b>x</b>'
 JUNK=[None, '', 'abc', '12abc', -5, -1e9, 1e300, float('nan') if False else 'NaN', 'Infinity', [], {}, True, '1e999', '0x10', ' 42 ', 3.14159]
@@ -28,7 +28,7 @@ BAD="""()=>{ const vis=[...document.querySelectorAll('body *')].filter(e=>e.chil
   return {vis:vis.slice(0,3), tips:tips.slice(0,2), xss:!!window.__xss, injected, sideways:document.documentElement.scrollWidth>innerWidth+1}; }"""
 N=int(sys.argv[1]) if len(sys.argv)>1 else 40; fails=0
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:160])); pg.on('dialog', lambda d: d.dismiss())
+    b=launch(p); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:160])); pg.on('dialog', lambda d: d.dismiss())
     pg.goto(PAGE); pg.wait_for_timeout(500)
     d=tempfile.mkdtemp()
     for i in range(N):

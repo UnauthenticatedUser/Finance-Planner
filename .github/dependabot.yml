@@ -1,0 +1,12 @@
+# Dependabot checks once a month for newer versions of the GitHub Actions in the workflow and of Playwright for the
+# tests, and opens a pull request for each. The tests run on it; merge it when they pass.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: pip
+    directory: /tests
+    schedule:
+      interval: monthly

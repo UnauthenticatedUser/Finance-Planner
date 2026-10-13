@@ -6,7 +6,7 @@ amount, the growth share of investment withdrawals, and huge numbers that must n
 Run: python tests/test_retirement.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys
-from helpers import PAGE, fixture, finish
+from helpers import PAGE, fixture, finish, launch
 def grow(start, monthly, rate, months, g):
     rm=max(0,1+rate/100)**(1/12)-1; v=start; m=monthly; put=start
     for i in range(1,months+1):
@@ -17,7 +17,7 @@ def pick(*a): return random.choice(a)
 def main():
     random.seed(int(sys.argv[2]) if len(sys.argv)>2 else 5); N=int(sys.argv[1]) if len(sys.argv)>1 else 200
     with sync_playwright() as p:
-        b=p.chromium.launch(); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
+        b=launch(p); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
         pg.goto(PAGE); pg.wait_for_timeout(300); pg.click('.viewtabs [data-view=progress]')
         base=fixture('example.json'); fails=0; shown_bad=0
         for i in range(N):

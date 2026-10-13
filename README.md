@@ -106,8 +106,10 @@ Rules last checked: **October 2026**.
 | State pension, if you don't enter your own forecast | €860 a month (national average from April 2026) | [ERR News](https://news.err.ee/1609943801/average-old-age-pension-rises-to-860-from-april) |
 | Tax-free pension income for pensioners | €776 a month | [Tax and Customs Board](https://emta.ee/en/private-client/taxes-and-payment/tax-incentives/basic-exemption-pensionable-age) |
 | Pension fund payouts | tax-free if spread over at least your remaining life expectancy, otherwise 10% | [Tax and Customs Board](https://www.emta.ee/en/private-client/taxes-and-payment/taxable-income/pension-and-insurance-indemnities) |
+| Pension fund payouts before pension age | 2nd and 3rd pillar payouts can start up to 5 years before the official pension age (3rd pillar savings started before 2021: from 55). Money taken out earlier is taxed 22%; the 3rd pillar's 10% rate also needs at least 5 years of saving | [Tax and Customs Board](https://www.emta.ee/eraklient/maksud-ja-tasumine/maksustatavad-tulud/pensionid-ja-kindlustushuvitised) (in Estonian) |
 | Remaining life expectancy at 65 | 19.3 years (2025) | [Statistics Estonia](https://stat.ee/en/news/life-expectancy-estonia-798-years-healthy-life-expectancy-573-years) |
 | Retirement age | 65 in 2026; from 2027 it follows life expectancy (65 years and 1 month in 2027) | [ERR News](https://news.err.ee/1609774161/estonia-s-retirement-age-to-rise-to-65-years-and-1-month-for-2027) |
+| Health insurance if you stop working before pension age | €272 a month (13% of last year's average gross wage) | [Health Insurance Fund](https://tervisekassa.ee/en/people/health-insurance/voluntary-health-insurance-01012026) |
 
 These are only defaults. Almost every assumption can be changed in the editor:
 
@@ -118,7 +120,7 @@ These are only defaults. Almost every assumption can be changed in the editor:
 - **Property & debts › Debts**: today's Euribor.
 - **Goals › Targets**: the withdrawal rate of each FIRE target.
 
-Fixed in the tool: the 10% tax on pension payouts that are a lump sum or shorter than your life expectancy, the 3rd pillar refund limits, the pensioners' €776 tax-free amount, and the 4% a year taken from investments in **Retirement**.
+Fixed in the tool: the 10% tax on pension payouts that are a lump sum or shorter than your life expectancy, the 3rd pillar refund limits, the pensioners' €776 tax-free amount, the €272 health insurance, and the 4% a year taken from investments in **Retirement**.
 
 How each part is calculated:
 
@@ -129,22 +131,23 @@ How each part is calculated:
 - **Retirement**: pension funds are paid out evenly over 20 years (you can change this) as monthly payments. They're tax-free when spread over at least your remaining life expectancy (about 19 years at 65); a shorter period is taxed 10%. From investments you take 4% a year, and the growth part of what you take out is taxed as income. The state pension is taxed above the €776 a month that's tax-free for pensioners.
 - **Savings interest**: worked out from each account's yearly interest rate, minus income tax. Interest earned inside an investment account is only taxed when you take out more than you put in.
 - **Loans**: the rate is fixed or Euribor plus your bank's margin (a negative Euribor counts as 0). Your monthly payment gives the payoff date and the interest still to pay.
-- **Targets**: dates use the same growth as the projection. The FIRE goal is your yearly spending divided by the withdrawal rate (4% by default).
+- **Targets**: dates use the same growth as the projection. The FIRE goal is your yearly spending divided by the withdrawal rate (4% by default). A FIRE target can include your own health insurance, which you pay yourself if you stop working before pension age; it's on for new FIRE targets.
 
 All of this is a simple model with smooth average returns. Real markets go up and down, so treat the results as a rough guide.
 
 ## How the numbers are checked
 
-The [`tests`](tests) folder checks the tool's results against calculations written separately in Python, from the rules above. They run automatically on every change, the badge at the top shows the latest result, and the online version is only updated when they all pass:
+The [`tests`](tests) folder checks the tool's results against calculations written separately in Python, from the rules above. They run automatically on every change, in Chromium, Firefox and Safari's engine (WebKit). The badge at the top shows the latest result, and the online version is only updated when they pass:
 
 - **Calculations**: take-home pay, taxes, the 3rd pillar refund, budget, net worth and the yearly summary, for 300 random people, to the cent.
 - **Forecasts**: projection, after-tax value, fund fees, loan payoff dates and target dates.
 - **Retirement**: state pension, pension fund payouts and investment withdrawals, with their taxes.
-- **Targets**: when each goal is reached, and that the suggested extra per month really reaches a deadline.
+- **Targets**: when each goal is reached (FIRE with or without health insurance), and that the suggested extra per month really reaches a deadline.
 - **Editor**: every "+ Add" button works in both languages, and car tax defaults to once a year.
-- **Backups**: Export, Import, Reset and Undo, and that backups from earlier versions still load unchanged.
+- **Accessibility**: every button and field has a name for screen readers, text has enough contrast, keyboard focus is visible, and there's a "Skip to content" link.
+- **Backups**: Export, Import, Reset and Undo, and that backups from earlier versions still load with nothing lost.
 - **Broken files and security**: damaged or hostile backup files can't crash the page or run code.
-- **Privacy**: the page makes no network requests.
+- **Privacy**: the page makes no network requests, and only its own scripts may run.
 
 To run them yourself, with Python 3 installed:
 
@@ -153,6 +156,8 @@ pip install -r tests/requirements.txt
 python -m playwright install chromium
 python tests/run_all.py
 ```
+
+To use Firefox or WebKit instead, install it the same way and start the tests with `BROWSER=firefox` or `BROWSER=webkit` in front.
 
 ## Feedback and security
 

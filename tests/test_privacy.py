@@ -1,17 +1,21 @@
-"""Privacy: the page never makes a network request, and its security rule (Content-Security-Policy) is in place.
+"""Privacy: the page never makes a network request, and its security rule (Content-Security-Policy) is in place: it
+blocks all network access and only lets the page's own scripts run, identified by their SHA-256 fingerprints.
 
 The tool is used the way a person would: the example is shown, numbers are typed in, both views and both languages
 are opened, a backup is exported and imported. Every request the browser tries to make is recorded; the only one
 allowed is loading index.html itself.
 Run: python tests/test_privacy.py"""
 from playwright.sync_api import sync_playwright
-from helpers import PAGE, finish
+import sys
+from helpers import PAGE, ROOT, finish, launch
+sys.path.insert(0, str(ROOT / 'tools'))
+from update_csp import fingerprints
 
 REQUIRED = ["default-src 'none'", "connect-src 'none'", "form-action 'none'", "base-uri 'none'"]
 
 problems = []
 with sync_playwright() as p:
-    b = p.chromium.launch()
+    b = launch(p)
     ctx = b.new_context(accept_downloads=True, viewport={'width': 1360, 'height': 900})
     pg = ctx.new_page(); requests = []; errs = []
     pg.on('request', lambda r: requests.append(r.url) if r.url != PAGE else None)
@@ -22,6 +26,13 @@ with sync_playwright() as p:
     for rule in REQUIRED:
         if rule not in csp: problems.append('security rule missing: ' + rule)
     if pg.evaluate("document.querySelector('meta[name=referrer]')?.content") != 'no-referrer': problems.append('referrer rule missing')
+    script_src = csp.split('script-src', 1)[1].split(';', 1)[0].split() if 'script-src' in csp else []
+    if "'unsafe-inline'" in script_src: problems.append("script-src still allows any inline script")
+    if script_src != fingerprints((ROOT / 'index.html').read_text(encoding='utf-8')):
+        problems.append('script fingerprints are out of date: run python tools/update_csp.py')
+    # a script that isn't one of the page's own must not run, even when something manages to put it into the page
+    pg.evaluate("()=>{ const s=document.createElement('script'); s.textContent='window.__injected=1'; document.body.appendChild(s); }"); pg.wait_for_timeout(100)
+    if pg.evaluate("!!window.__injected"): problems.append('an injected script ran')
 
     pg.click('#exampleBtn'); pg.wait_for_timeout(600)
     pg.click('#exampleBtn'); pg.wait_for_timeout(300)   # back to your own (empty) tool

@@ -6,7 +6,7 @@ noticeably less does not. Random mixes of debts, fees, inflation, deposit growth
 Run: python tests/test_targets.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, datetime
-from helpers import PAGE, fixture, finish
+from helpers import PAGE, fixture, finish, launch
 def months_to(start, monthly, rate, g, reached, cap=720):
     rm=max(0,1+rate/100)**(1/12)-1; v=start; m=monthly
     if reached(0,v): return 0
@@ -30,7 +30,7 @@ def pick(*a): return random.choice(a)
 def main():
     random.seed(int(sys.argv[2]) if len(sys.argv)>2 else 7); N=int(sys.argv[1]) if len(sys.argv)>1 else 120
     with sync_playwright() as p:
-        b=p.chromium.launch(); pg=b.new_page(); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
+        b=launch(p); pg=b.new_page(); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
         pg.goto(PAGE); pg.wait_for_timeout(300)
         base=fixture('example.json'); fails=0
         for k in range(N):
@@ -41,7 +41,7 @@ def main():
             s['debts']=[{'name':'d'+str(j), 'balance':pick(5000,150000,1e6 if big else 300000), 'rtype':pick('fixed','euribor'), 'rate':pick(0,3,8,25), 'margin':pick(0.5,2), 'payment':pick(0,100,950,3000), 'asset':pick(0,200000)} for j in range(random.randint(0,3))]
             if big: s['gross']=pick(1e5,1e7); s['etfMonthly']=pick(1e5,1e7)
             due=random.randint(6,400); dy=datetime.date.today().year+due//12+1
-            s['targets']=[{'name':'nw','kind':'networth','amount':pick(1e5,5e5,2e6,1e8 if big else 3e6)}, {'name':'fire','kind':'fire','amount':0,'rate':pick(4,3.5),'spend':pick(0,30000,60000)},
+            s['targets']=[{'name':'nw','kind':'networth','amount':pick(1e5,5e5,2e6,1e8 if big else 3e6)}, {'name':'fire','kind':'fire','amount':0,'rate':pick(4,3.5),'spend':pick(0,30000,60000),'health':pick('yes','no')},
                           {'name':'inv','kind':'invested','amount':pick(1e5,1e6)}, {'name':'cash','kind':'cash','amount':pick(5000,30000,200000)}]
             for t in s['targets']: t['dueMon']='06'; t['dueYear']=str(dy)
             r=pg.evaluate("""s=>{ state=normalize(s); refreshAll(); const c=compute(), R=projRate(c), pi=projInputs(c);
@@ -63,7 +63,7 @@ def main():
             got=r['st'][0]['eta']; got=math.inf if got is None or got>1e300 else got
             if not (want==got or (abs(want-got)<=1 and want<math.inf)): fails+=1; print(k,'networth eta', got,'want',want)
             # FIRE
-            t=s['targets'][1]; yearly=t['spend'] if t['spend']>0 else c['expenses']*12; goal=yearly/(t['rate']/100); acc=c['etfVal']+c['invValue']
+            t=s['targets'][1]; yearly=(t['spend'] if t['spend']>0 else c['expenses']*12)+(272*12 if t['health']=='yes' else 0); goal=yearly/(t['rate']/100); acc=c['etfVal']+c['invValue']   # health: own insurance before pension age, €272/mo in 2026
             mo=c['etfMonthly']+c['invMonthly']+(max(0,c['surplus'])/12 if st['enableProjSurplus'] else 0); infl=1+(st['projInflation'] if st['enableProjReal'] else 0)/100
             want=months_to(acc, mo, net, g, lambda i,v: v>=goal*infl**(i/12)) if goal>0 else None
             got=r['st'][1]['eta']; got=math.inf if got is not None and got>1e300 else got

@@ -6,7 +6,7 @@ cent, and every headline figure on screen must show the computed value.
 Run: python tests/test_calculations.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, sys
-from helpers import PAGE, finish
+from helpers import PAGE, finish, launch
 PY={'week':52,'month':12,'quarter':4,'year':1}
 def R(a,b,z=0.25): return 0 if random.random()<z else round(random.uniform(a,b))
 def user():
@@ -80,7 +80,7 @@ def main():
     random.seed(7)
     fails=0; checked=0
     with sync_playwright() as p:
-        b=p.chromium.launch(); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
+        b=launch(p); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
         pg.goto(PAGE); pg.wait_for_timeout(500)
         for i in range(N):
             s=user(); m=model(s)

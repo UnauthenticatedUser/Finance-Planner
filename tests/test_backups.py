@@ -2,18 +2,18 @@
 
 Export then Reset then Import gives back exactly the same data and the same numbers on screen; Undo after an import
 restores what was there; a broken file is refused without touching your data; and every backup format from v1.0.0
-on (tests/fixtures/backup-*.json) still loads, unchanged.
+on (tests/fixtures/backup-*.json) still loads with every value kept.
 Run: python tests/test_backups.py"""
 from playwright.sync_api import sync_playwright
 import json, os, tempfile
-from helpers import PAGE, FIXTURES, fixture, finish
+from helpers import PAGE, FIXTURES, fixture, finish, launch
 VIEW_IDS=['proj-big','proj-sub','tgt-note','ret-total','y-tag']
 def screen(pg):
     pg.evaluate("()=>{ for(const v of ['progress','overview']) document.querySelector('.viewtabs [data-view='+v+']').click(); }"); pg.wait_for_timeout(150)
     return pg.evaluate("""ids=>{ const c=compute(); return {nums:Object.fromEntries(Object.entries(c).filter(([k,v])=>typeof v==='number')), txt:ids.map(i=>{const e=document.getElementById(i); return e?e.textContent:''}),
        infl:[...document.querySelectorAll('.inflchip')].map(c=>c.textContent+c.getAttribute('aria-pressed')), field:document.querySelector('[data-key=projInflation]').value} }""", VIEW_IDS)
 with sync_playwright() as p:
-    b=p.chromium.launch(); fails=[]
+    b=launch(p); fails=[]
     rich=fixture('example.json')
     rich.update(enableProjReal=True, projInflation=3.7, birthYear=1990, enableIncome=True, enableProjNet=True, enableProjRange=True, projGrowth=2)
     rich['incomes']=[{'name':'Travel allowance','amount':1000,'freq':'once','tax':'free','rate':0},{'name':'Rent','amount':300,'freq':'month','tax':'custom','rate':14}]
@@ -59,8 +59,11 @@ with sync_playwright() as p:
             n0=len(errs); pg.set_input_files('#importFile', str(f)); pg.wait_for_timeout(250)
             if len(errs)>n0: fails.append((lang,'old file '+f.name+' error: '+errs[-1]))
             # (this month's net worth snapshot is kept up to date automatically, so it is left out of the comparison)
-            same=pg.evaluate("""file=>{ const m=thisMonth(), strip=s=>JSON.stringify({...s, history:(s.history||[]).filter(e=>e.m!==m)});
-                return strip(state)===strip(file) && JSON.stringify(normalize(file))===JSON.stringify(file); }""", json.loads(f.read_text(encoding='utf-8')))
+            # every value in the file is kept exactly; newer versions may only add settings it didn't have yet
+            same=pg.evaluate("""file=>{ const m=thisMonth(), kept=(a,b)=> Array.isArray(a) ? Array.isArray(b) && a.length===b.length && a.every((x,i)=>kept(x,b[i]))
+                : a && typeof a==='object' ? !!b && typeof b==='object' && Object.keys(a).every(k=>kept(a[k],b[k])) : a===b;
+              const drop=s=>({...s, history:(s.history||[]).filter(e=>e.m!==m)});
+              return kept(drop(file), drop(state)) && kept(file, normalize(file)); }""", json.loads(f.read_text(encoding='utf-8')))
             if not same: fails.append((lang,'old file '+f.name+' changed when loaded'))
         if errs: fails.append((lang,'page errors', errs[:2]))
         print(lang, 'export file name:', fname, '| page errors:', errs or 'none')
