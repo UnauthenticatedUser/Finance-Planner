@@ -127,11 +127,11 @@ How each part is calculated:
 - **Growth**: money grows month by month at the return you set, minus fund fees. The default return of 8% a year is before inflation (about 5.4% after it). That's a cautious long-run figure for a portfolio spread around the world; US stocks alone have averaged about 10%. You can set it to whatever you expect under **Settings › Projection**.
 - **Fund fees**: each fund's yearly fee, averaged by how much is in each fund plus a year of what you put in. Funds without a fee entered count as 0%, and the tool tells you which ones.
 - **Inflation** (2.5% a year, on by default): it is taken off so amounts are in today's money. Turn off **After inflation** to see future euros instead. Goals count as today's money, so they rise with prices.
-- **After tax**: income tax on investment gains above what you've put in, and 10% on a pension lump sum.
-- **Retirement**: pension funds are paid out evenly over 20 years (you can change this) as monthly payments. They're tax-free when spread over at least your remaining life expectancy (about 19 years at 65); a shorter period is taxed 10%. From investments you take 4% a year, and the growth part of what you take out is taxed as income. The state pension is taxed above the €776 a month that's tax-free for pensioners.
+- **After tax**: income tax on investment gains above what you've put in, and pension funds taxed the way Retirement pays them out (none when spread over at least your remaining life expectancy).
+- **Retirement**: pension funds are paid out evenly over 20 years (you can change this) as monthly payments. They're tax-free when spread over at least your remaining life expectancy (19.3 years at 65); a shorter period is taxed 10%, and payouts starting more than 5 years before pension age are taxed as income. From investments you take 4% a year, and the growth part of what you take out is taxed as income. The state pension starts at 65 and is taxed above the €776 a month that's tax-free for pensioners; retiring earlier, it isn't in the total. Loan payments still running at retirement count as spending.
 - **Savings interest**: worked out from each account's yearly interest rate, minus income tax. Interest earned inside an investment account is only taxed when you take out more than you put in.
 - **Loans**: the rate is fixed or Euribor plus your bank's margin (a negative Euribor counts as 0). Your monthly payment gives the payoff date and the interest still to pay.
-- **Targets**: dates use the same growth as the projection. The FIRE goal is your yearly spending divided by the withdrawal rate (4% by default). A FIRE target can include your own health insurance, which you pay yourself if you stop working before pension age; it's on for new FIRE targets.
+- **Targets**: dates use the same growth as the projection. A cash buffer grows by your yearly surplus, unless you invest it. The FIRE goal is your yearly spending divided by the withdrawal rate (4% by default). A FIRE target can include your own health insurance, which you pay yourself if you stop working before pension age; it's on for new FIRE targets.
 
 All of this is a simple model with smooth average returns. Real markets go up and down, so treat the results as a rough guide.
 
@@ -140,8 +140,8 @@ All of this is a simple model with smooth average returns. Real markets go up an
 The [`tests`](tests) folder checks the tool's results against calculations written separately in Python, from the rules above. They run automatically on every change, in Chromium, Firefox and Safari's engine (WebKit). The badge at the top shows the latest result, and the online version is only updated when they pass:
 
 - **Calculations**: take-home pay, taxes, the 3rd pillar refund, budget, net worth and the yearly summary, for 300 random people, to the cent.
-- **Forecasts**: projection, after-tax value, fund fees, loan payoff dates and target dates.
-- **Retirement**: state pension, pension fund payouts and investment withdrawals, with their taxes.
+- **Forecasts**: projection, after-tax value, fund fees and loan payoff dates.
+- **Retirement**: state pension (from 65), pension fund payouts and investment withdrawals, with their taxes, also when retiring early.
 - **Targets**: when each goal is reached (FIRE with or without health insurance), and that the suggested extra per month really reaches a deadline.
 - **Editor**: every "+ Add" button works in both languages, and car tax defaults to once a year.
 - **Accessibility**: every button and field has a name for screen readers, text has enough contrast, keyboard focus is visible, and there's a "Skip to content" link.

@@ -1,8 +1,8 @@
 """Take-home pay, taxes, budget, net worth and the yearly summary.
 
 Hundreds of random users are run through the tool and through an independent Python model of Estonia's 2026 rules
-(income tax, basic exemption, unemployment insurance, 2nd pillar, 3rd pillar tax refund). The two must agree to the
-cent, and every headline figure on screen must show the computed value.
+(income tax, basic exemption, unemployment insurance, 2nd pillar including on the bonus, 3rd pillar tax refund). The
+two must agree to the cent, and every headline figure on screen must show the computed value.
 Run: python tests/test_calculations.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, sys
@@ -55,7 +55,7 @@ def model(s):
     # bonus + yearly salary-like income: the year's take-home on all salary-like pay minus 12 monthly salaries (the exemption is yearly)
     year_extra=(aSal-aP2-aU-aTax)-12*net_of(gS)
     surplus=(net-exp-dM-(invested-p2))*12 + year_extra + yFree + (yC-yCT) + refund
-    return {'net':net,'expenses':exp,'p2':p2,'p2s':p2s,'invested':invested,'networth':assets-debt,'assets':assets,'debt':debt,'taxRefund':refund,'aGross':aGross,
+    return {'net':net,'expenses':exp,'p2':p2,'p2s':p2s,'penMonthly':t3+aSal*(p2r+p2sr)/100/12,'invested':invested,'networth':assets-debt,'assets':assets,'debt':debt,'taxRefund':refund,'aGross':aGross,
             'aNet':aGross-aP2-aU-aTax-aCT+refund,'surplus':surplus,'buffer':buffer,'pension':pension,'savings':invested/(net+p2)*100 if net+p2>0 else 0,
             'debtInterestYr':sum(d['balance']*rate(d)/100 for d in s['debts'])}
 RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementById(id); return e?e.textContent:null};
@@ -66,6 +66,9 @@ RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementBy
   chk('annual surplus tile', txt('out-surplus'), (c.surplus<0?'−':'')+eur(Math.abs(c.surplus)));
   chk('gross / year', txt('out-y-grosshead'), eur(c.aGross)); chk('net / year', txt('out-y-nethead'), eur(c.aNet));
   chk('take-home donut', txt('donut-center'), eur(c.net)); chk('pension total', txt('out-pension'), eur(c.pension));
+  // the yearly breakdown lists the 2nd pillar whenever the year has some (a bonus alone counts)
+  [['row-y-p2',c.aP2],['row-y-statep2',c.aStateP2]].forEach(([id,v])=>{ if((v>0)!==(document.getElementById(id).style.display!=='none')) out.push(id+' shown wrongly for '+v); });
+  if(c.aP2>0 && !(txt('out-p2')||'').includes(eur(c.p2Avg)+'/mo')) out.push('pensions card 2nd pillar: '+txt('out-p2')+' expected '+eur(c.p2Avg)+'/mo');
   const sum=sel=>[...document.querySelectorAll(sel)].filter(e=>e.getClientRects().length).map(e=>parseFloat(e.textContent)).filter(x=>!isNaN(x)).reduce((a,b)=>a+b,0);
   const bud=sum('#bd-expp, #bd-invp, #bd-leftp, #bd-debtp'); if(c.net>0 && bud!==100) out.push('budget % add up to '+bud);
   const bad=[...document.querySelectorAll('.main *')].filter(e=>e.children.length===0 && e.getClientRects().length && /NaN|undefined|Infinity|null\\b|\\[object/.test(e.textContent)).map(e=>e.textContent.slice(0,40));
@@ -84,7 +87,7 @@ def main():
         pg.goto(PAGE); pg.wait_for_timeout(500)
         for i in range(N):
             s=user(); m=model(s)
-            r=pg.evaluate("s=>{ state=normalize(JSON.parse(s)); save(); refreshAll(); const c=compute(); return {net:c.net,expenses:c.expenses,p2:c.p2,p2s:c.p2s,invested:c.invested,networth:c.networth,assets:c.assets,debt:c.debt,taxRefund:c.taxRefund,aGross:c.aGross,aNet:c.aNet,surplus:c.surplus,buffer:c.buffer,pension:c.pension,savings:c.savings,debtInterestYr:c.debtInterestYr}}", json.dumps(s))
+            r=pg.evaluate("s=>{ state=normalize(JSON.parse(s)); save(); refreshAll(); const c=compute(); return {net:c.net,expenses:c.expenses,p2:c.p2,p2s:c.p2s,penMonthly:c.penMonthly,invested:c.invested,networth:c.networth,assets:c.assets,debt:c.debt,taxRefund:c.taxRefund,aGross:c.aGross,aNet:c.aNet,surplus:c.surplus,buffer:c.buffer,pension:c.pension,savings:c.savings,debtInterestYr:c.debtInterestYr}}", json.dumps(s))
             diffs=[f"{k}: tool {r[k]:.4f} vs model {m[k]:.4f}" for k in m if abs(r[k]-m[k])>max(0.01, abs(m[k])*1e-9)]
             rec=pg.evaluate(RECON)
             checked+=1

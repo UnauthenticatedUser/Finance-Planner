@@ -2,6 +2,24 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.1.1] – 2026-10-13
+
+Fixes found in a full review of the calculations:
+
+- **Retiring before pension age.** The state pension now starts at 65, so retiring earlier no longer counts it from day one; Retirement says so and shows it as "from 65". Pension fund payouts that start more than 5 years before pension age are taxed as income (22%), as the law says.
+- **Pension payout tax.** Payouts count as tax-free only when spread over at least your remaining life expectancy, 19.3 years at 65, so 19 years is now taxed 10%. The after-tax projection now taxes pension funds the same way as Retirement, instead of always taking off 10%.
+- **2nd pillar on your bonus.** The 2nd pillar part of a bonus or yearly salary, and the state's top-up on it, now go into the projection, targets, retirement and the fund fee average. The yearly breakdown shows these rows even when the 2nd pillar comes only from a bonus.
+- **Cash targets.** The "+€X/mo would make it" suggestion was too low when you spend more than you earn each month. Cash now grows by your yearly surplus, the same as in the net worth target.
+- **Retirement spending** only counts loan payments still running at retirement.
+- **Loan advice** compares a loan's rate with your expected return after fund fees.
+- **Amounts just under €1M** show as €1M instead of €1000k.
+- **Settings** shows the same projection timeframe as the chart.
+- The language switch has an Estonian name for screen readers.
+- Tests: a shared model for growth and pension tax, checks for each fix above, and less overlap between tests.
+- The automated checks on GitHub use the current versions of their GitHub Actions, which run on Node 24.
+
+Saved data and backups from earlier versions keep working.
+
 ## [1.1.0] – 2026-10-13
 
 - **Health insurance in FIRE targets.** Stop working before pension age and you pay for your own health insurance (€272 a month in 2026, from the Health Insurance Fund). New FIRE targets add it to the yearly spending, and it can be switched off per target. FIRE targets you already had keep their numbers until you switch it on.
@@ -28,5 +46,6 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.1.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.1
 [1.1.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.0
 [1.0.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.0.0

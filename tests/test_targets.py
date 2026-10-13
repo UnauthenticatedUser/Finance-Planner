@@ -1,20 +1,13 @@
 """Target dates and the extra money a deadline needs, against an independent month-by-month model.
 
 Net worth goals (with loans paid down and freed payments), FIRE goals that rise with inflation, invested-total and
-cash goals, "put in" in today's money, and that the suggested extra EUR/month really reaches a deadline while
+cash goals (cash grows by the yearly surplus unless that is invested, and shrinks when it's negative), "put in" in today's money, and that the suggested extra EUR/month really reaches a deadline while
 noticeably less does not. Random mixes of debts, fees, inflation, deposit growth and big numbers.
 Run: python tests/test_targets.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, datetime
 from helpers import PAGE, fixture, finish, launch
-def months_to(start, monthly, rate, g, reached, cap=720):
-    rm=max(0,1+rate/100)**(1/12)-1; v=start; m=monthly
-    if reached(0,v): return 0
-    for i in range(1,cap+1):
-        v=v*(1+rm)+m
-        if reached(i,v): return i
-        if i%12==0: m*=1+g/100
-    return math.inf
+from model import months_to
 def debt_path(debts, months):
     # month by month: balance after interest and payment; once paid, the payment is freed as cash
     out=[0.0]*(months+1); state=[dict(b=d['B'], paid=False) for d in debts]
@@ -47,7 +40,7 @@ def main():
             r=pg.evaluate("""s=>{ state=normalize(s); refreshAll(); const c=compute(), R=projRate(c), pi=projInputs(c);
                 const st=state.targets.map(t=>{ const x=targetStatus(t,c), due=dueMonths(t); return {kind:t.kind, eta:x.eta, goal:x.goal, due, need: due>0 ? x.need(due) : null}; });
                 const sim=simulate(pi.start, pi.monthly, R.net, Math.max(1,Math.round(state.projYears||20)), state.projGrowth, state.enableProjReal?state.projInflation:0);
-                return {st, net:R.net, start:pi.start, monthly:pi.monthly, c:{buffer:c.buffer, leftover:c.net-c.expenses-c.debtMonthly-c.cashInvested, networth:c.networth, surplus:c.surplus, etfVal:c.etfVal, invValue:c.invValue, etfMonthly:c.etfMonthly, invMonthly:c.invMonthly, expenses:c.expenses},
+                return {st, net:R.net, start:pi.start, monthly:pi.monthly, c:{buffer:c.buffer, networth:c.networth, surplus:c.surplus, etfVal:c.etfVal, invValue:c.invValue, etfMonthly:c.etfMonthly, invMonthly:c.invMonthly, expenses:c.expenses},
                         debts:c.debtList.filter(d=>(+d.balance||0)>0).map(d=>({B:+d.balance, r:(+d.rate||0)/1200, P:Math.max(0,+d.payment||0)})), st8:{...state},
                         putR:sim.putR, put:sim.put, propsub:document.getElementById('proj-sub').textContent}; }""", s)
             st=r['st8']; net=r['net']; g=st['projGrowth']; c=r['c']
@@ -68,12 +61,17 @@ def main():
             want=months_to(acc, mo, net, g, lambda i,v: v>=goal*infl**(i/12)) if goal>0 else None
             got=r['st'][1]['eta']; got=math.inf if got is not None and got>1e300 else got
             if want!=got: fails+=1; print(k,'fire eta', got,'want',want)
-            # cash buffer: grows by the monthly leftover; the goal rises with inflation when that's on
-            A=s['targets'][3]['amount']; want=math.inf
+            # cash buffer: grows by the yearly surplus (only a negative one when the surplus is invested); the goal rises with inflation when that's on
+            A=s['targets'][3]['amount']; want=math.inf; cash_at=lambda i,extra=0: c['buffer']+(cashM+extra)*i
             for i in range(0,721):
-                if c['buffer']+(min(0,c['leftover']) if st['enableProjSurplus'] else c['leftover'])*i>=A*infl**(i/12): want=i; break   # surplus invested: a positive leftover isn't cash
+                if cash_at(i)>=A*infl**(i/12): want=i; break
             got=r['st'][3]['eta']; got=math.inf if got is None or got>1e300 else got
             if want!=got: fails+=1; print(k,'cash eta',got,'want',want)
+            x=r['st'][3]
+            if x['need'] is not None and x['due']>0:
+                n=x['need']; due=x['due']; goal_due=A*infl**(due/12)
+                if cash_at(due,n)<goal_due-0.01: fails+=1; print(k,'cash need',n,'does not make it')
+                if n>1 and cash_at(due,n*0.97)>=goal_due: fails+=1; print(k,'cash need',n,'is too high')
             # deadline: extra €/month really makes it, and noticeably less doesn't
             for x,(reach,start,monthly) in zip(r['st'], [(reach_nw(), r['start'], r['monthly']), (lambda i,v: v>=goal*infl**(i/12), acc, mo), (lambda i,v: v>=s['targets'][2]['amount']*infl**(i/12), r['start'], r['monthly'])]):
                 if x['need'] is None or x['due'] is None or x['due']<=0: continue

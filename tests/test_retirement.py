@@ -1,18 +1,15 @@
 """Retirement income per month, against an independent model.
 
-Covers birth year and retirement age (including already past it), payout periods shorter and longer than life
+Covers birth year and retirement age (including already past it, and before pension age: no state pension until 65,
+pension fund payouts taxed as income more than 5 years early), payout periods shorter and longer than life
 expectancy (19.3 years at 65, 0.8 fewer per later year), inflation on and off, the pensioners' EUR 776 tax-free
-amount, the growth share of investment withdrawals, and huge numbers that must never show NaN or Infinity.
+amount, the growth share of investment withdrawals, loan payments still running at retirement, and huge numbers that
+must never show NaN or Infinity.
 Run: python tests/test_retirement.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys
 from helpers import PAGE, fixture, finish, launch
-def grow(start, monthly, rate, months, g):
-    rm=max(0,1+rate/100)**(1/12)-1; v=start; m=monthly; put=start
-    for i in range(1,months+1):
-        v=v*(1+rm)+m; put+=m
-        if i%12==0: m*=1+g/100
-    return v, put
+from model import grow, life_left, payout_tax
 def pick(*a): return random.choice(a)
 def main():
     random.seed(int(sys.argv[2]) if len(sys.argv)>2 else 5); N=int(sys.argv[1]) if len(sys.argv)>1 else 200
@@ -36,7 +33,8 @@ def main():
                             if f in x: x[f]=pick(1e9,1e12,x[f])
             r=pg.evaluate("""s=>{ state=normalize(s); save(); refreshAll(); const c=compute(), r=retirement(c), R=projRate(c);
                 const txt=['ret-tag','ret-total','ret-sub','ret-state','ret-pen','ret-inv','ret-note'].map(id=>{const e=document.getElementById(id); return e?e.textContent:''}).join(' | ');
-                return {r, st:{...state}, c:{pension:c.pension,p2:c.p2,p2s:c.p2s,t3:c.t3,etfVal:c.etfVal,invValue:c.invValue,etfMonthly:c.etfMonthly,invMonthly:c.invMonthly,surplus:c.surplus,expenses:c.expenses,debtMonthly:c.debtMonthly}, net:R.net, now:new Date().getFullYear(), txt,
+                const runs=c.debtList.map(d=>{ const q=payoff(d.balance, d.rate, d.payment); return {P:+d.payment||0, n:q?q.months:0}; });
+                return {r, runs, st:{...state}, c:{pension:c.pension,penM:c.t3+(c.aP2+c.aStateP2)/12,etfVal:c.etfVal,invValue:c.invValue,etfMonthly:c.etfMonthly,invMonthly:c.invMonthly,surplus:c.surplus,expenses:c.expenses,debtMonthly:c.debtMonthly}, net:R.net, now:new Date().getFullYear(), txt,
                   visible:!document.getElementById('ret-body').hidden && !!document.getElementById('ret-body').getClientRects().length || document.getElementById('view-progress').hidden}; }""", s)
             st, c, got = r['st'], r['c'], r['r']
             by=st['birthYear']
@@ -44,21 +42,22 @@ def main():
                 if got is not None: fails+=1; print(i,'expected no retirement for birthYear',by, 'got', got and got['year'])
                 continue
             age=st['retireAge'] or 65; yrs=max(0,by+age-r['now']); m=yrs*12
-            pen=grow(c['pension'],c['p2']+c['p2s']+c['t3'],r['net'],m,st['projGrowth'])[0] if m else c['pension']
+            pen=grow(c['pension'],c['penM'],r['net'],m,st['projGrowth'])[0] if m else c['pension']   # 2nd pillar on the bonus too
             start=c['etfVal']+c['invValue']
             inv,put=grow(start,c['etfMonthly']+c['invMonthly']+(max(0,c['surplus'])/12 if st['enableProjSurplus'] else 0),r['net'],m,st['projGrowth']) if m else (start,start)
             defl=(1+(st['projInflation'] if st['enableProjReal'] else 0)/100)**yrs
             penAt=pen/defl; invAt=inv/defl
             tx=(st['taxRate'] or 0)/100
-            nom=1 if st['enableProjReal'] else (1+(st['projInflation'] or 0)/100)**yrs   # inflation off: today's pension figures in that year's euros
+            pay_age=max(age, r['now']-by)                          # payouts start at retirement age, or now if that's later
+            nom=1 if st['enableProjReal'] else (1+(st['projInflation'] or 0)/100)**max(yrs, by+65-r['now'])   # inflation off: the pension figures in the euros of the year it starts
             s1=(st['statePension'] if st['statePension']>0 else 860)*nom
             s1-=tx*max(0,s1-776*nom)                               # state pension: taxed above the pensioner's €776 a month
             dep=(st['invDeposits'] if st['invDeposits']>0 else start)+(put-start)
             gs=max(0,inv-dep)/inv if inv>0 else 0                  # share of a withdrawal that is growth (taxed)
             py=st['payoutYears'] or 20
-            tfy=max(1, math.floor((193-8*(max(age, r['now']-by)-65))/10+0.5))   # past retirement age: life expectancy at your age now       # remaining life expectancy: 19.3 at 65, 0.8 less per year (round half up)
-            penPart=penAt/(py*12)*(0.9 if py<tfy else 1)          # shorter payouts are taxed 10%
-            tot=s1+penPart+invAt*0.04/12*(1-tx*gs)
+            penPart=penAt/(py*12)*(1-payout_tax(pay_age, py, st['taxRate'] or 0)/100)
+            tot=(s1 if pay_age>=65 else 0)+penPart+invAt*0.04/12*(1-tx*gs)   # no state pension before 65
+            spend=c['expenses']+sum(d['P'] for d in r['runs'] if d['n']>m)  # loans still being paid at retirement
             if got is None: fails+=1; print(i,'no result'); continue
             if got['yrs']==0 and not r['txt'].startswith(('now','praegu')): shown_bad+=1; print(i,'past retirement age should say now:', r['txt'][:60])
             if not math.isfinite(tot):
@@ -66,6 +65,8 @@ def main():
             else:
                 ok= abs(got['total']-tot)<=max(0.01,abs(tot)*1e-9)
             if not ok: fails+=1; print(i,'total',got['total'],'want',tot, {k:st[k] for k in ['birthYear','retireAge','payoutYears','projInflation','projReturn','projGrowth']})
+            if abs(got['spend']-spend)>0.01: fails+=1; print(i,'spending',got['spend'],'want',spend)
+            if abs(got['lifeYears']-life_left(pay_age))>1e-9: fails+=1; print(i,'life expectancy',got['lifeYears'],'want',life_left(pay_age))
             if any(w in r['txt'] for w in ['NaN','undefined','Infinity','e+','null']) : shown_bad+=1; print(i,'shows:',r['txt'][:300])
         print('page errors:', errs[:3] or 'none')
         finish('retirement', fails or shown_bad or errs, f"{N} users: {fails} calculation differences, {shown_bad} display problems")
