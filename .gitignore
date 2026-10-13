@@ -1,11 +1,9 @@
-# Python
 __pycache__/
 *.pyc
 .venv/
 
-# Your own backups: never commit real numbers
-finance-planner-backup-*.json
+*.json
+!tests/fixtures/*.json
 
-# OS clutter
 .DS_Store
 Thumbs.db
