@@ -159,6 +159,8 @@ python tests/run_all.py
 
 To use Firefox or WebKit instead, install it the same way and start the tests with `BROWSER=firefox` or `BROWSER=webkit` in front.
 
+To leave out a slow test, add `--skip` and its name, for example `python tests/run_all.py --skip security`.
+
 ## Feedback and security
 
 Found a mistake in a rule or a number? Please [open an issue](https://github.com/UnauthenticatedUser/Finance-Planner/issues). To report a security problem privately, see [SECURITY.md](SECURITY.md). Changes in each version are listed in [CHANGELOG.md](CHANGELOG.md).
