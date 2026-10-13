@@ -1,0 +1,252 @@
+{
+ "gross": 3800,
+ "autoNet": true,
+ "bonus": 3000,
+ "expenses": 950,
+ "thirdPillar": 350,
+ "etfMonthly": 600,
+ "p2rate": 4,
+ "projReturn": 8,
+ "projYears": 25,
+ "cashOnHand": 200,
+ "creditLimit": 3000,
+ "accounts": [
+  {
+   "name": "Emergency fund",
+   "amount": 9500,
+   "yield": 2.4
+  },
+  {
+   "name": "Everyday account",
+   "amount": 2800,
+   "yield": 0
+  },
+  {
+   "name": "Holiday savings",
+   "amount": 1200,
+   "yield": 1.5
+  }
+ ],
+ "p2funds": [
+  {
+   "name": "Index pension fund",
+   "value": 24600,
+   "share": 100,
+   "fee": 0.29
+  },
+  {
+   "name": "Old pension fund",
+   "value": 3100,
+   "share": 0,
+   "fee": 0.8
+  }
+ ],
+ "p3funds": [
+  {
+   "name": "Voluntary pension fund",
+   "value": 11800,
+   "share": 100,
+   "fee": 0.3
+  }
+ ],
+ "etfs": [
+  {
+   "name": "Global equity",
+   "weight": 70,
+   "value": 15900,
+   "monthly": 0,
+   "fee": 0.19
+  },
+  {
+   "name": "Emerging markets",
+   "weight": 15,
+   "value": 2700,
+   "monthly": 0,
+   "fee": 0.18
+  },
+  {
+   "name": "Small caps",
+   "weight": 10,
+   "value": 2100,
+   "monthly": 0,
+   "fee": 0.35
+  },
+  {
+   "name": "Government bonds",
+   "weight": 5,
+   "value": 1100,
+   "monthly": 0,
+   "fee": 0.1
+  }
+ ],
+ "investments": [
+  {
+   "name": "Company shares",
+   "monthly": 0,
+   "value": 3400,
+   "fee": 0
+  },
+  {
+   "name": "Gold",
+   "monthly": 50,
+   "value": 1500,
+   "fee": 0.25
+  },
+  {
+   "name": "Crypto",
+   "monthly": 0,
+   "value": 900,
+   "fee": 0
+  }
+ ],
+ "physAssets": [
+  {
+   "name": "Car",
+   "value": 11000
+  },
+  {
+   "name": "Computer",
+   "value": 1800
+  }
+ ],
+ "debts": [
+  {
+   "name": "Home loan",
+   "balance": 96000,
+   "rtype": "euribor",
+   "rate": 0,
+   "margin": 1.6,
+   "payment": 610,
+   "asset": 148000
+  },
+  {
+   "name": "Car loan",
+   "balance": 5200,
+   "rtype": "fixed",
+   "rate": 5.9,
+   "margin": 0,
+   "payment": 240,
+   "asset": 0
+  }
+ ],
+ "enableDebtTargets": true,
+ "targets": [
+  {
+   "name": "Emergency fund",
+   "kind": "cash",
+   "amount": 16000,
+   "rate": 4,
+   "current": 0,
+   "spend": 0,
+   "dueMon": "12",
+   "dueYear": "2027"
+  },
+  {
+   "name": "150K net worth",
+   "kind": "networth",
+   "amount": 150000,
+   "rate": 4,
+   "current": 0,
+   "spend": 0,
+   "dueMon": "06",
+   "dueYear": "2029"
+  },
+  {
+   "name": "",
+   "kind": "fire",
+   "amount": 0,
+   "rate": 4,
+   "current": 0,
+   "spend": 30000,
+   "dueMon": "",
+   "dueYear": ""
+  }
+ ],
+ "history": [
+  {
+   "m": "2025-11",
+   "nw": 112800,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  },
+  {
+   "m": "2025-12",
+   "nw": 114100,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  },
+  {
+   "m": "2026-01",
+   "nw": 116900,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  },
+  {
+   "m": "2026-02",
+   "nw": 117600,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  },
+  {
+   "m": "2026-03",
+   "nw": 116200,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  },
+  {
+   "m": "2026-04",
+   "nw": 119800,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  },
+  {
+   "m": "2026-05",
+   "nw": 122900,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  },
+  {
+   "m": "2026-06",
+   "nw": 124600,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  },
+  {
+   "m": "2026-07",
+   "nw": 127700,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  },
+  {
+   "m": "2026-08",
+   "nw": 128900,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  },
+  {
+   "m": "2026-09",
+   "nw": 131600,
+   "assets": 0,
+   "debt": 0,
+   "auto": 0
+  }
+ ],
+ "birthYear": 1990,
+ "enableProjReal": true,
+ "projInflation": 2.5,
+ "enableProjRange": true,
+ "projRangeSpread": 2,
+ "text": {
+  "goalsHTML": "<li>Keep 6 months of spending as cash</li><li>Invest 20% of take-home pay</li><li>Pay off the car loan early</li>"
+ }
+}

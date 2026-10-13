@@ -1,0 +1,3 @@
+# Keep line endings the same on every computer, so the file served by GitHub Pages matches the release download.
+* text=auto eol=lf
+*.png binary
