@@ -30,7 +30,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YWpCvwiOi+GWmIGAqZ/B+7s1yfRtvDr+kM4LTDLg0Hw=' 'sha256-kJePC4XMior1mADN9ObgpZC00Qz2DRSYX25oUADznhU='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YWpCvwiOi+GWmIGAqZ/B+7s1yfRtvDr+kM4LTDLg0Hw=' 'sha256-aqrNKR6xTprEMmI4YhhupYHN45nScpG/+EUys1eS4fM='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
 <meta name="referrer" content="no-referrer">   <!-- links out (source code, license) don't tell the other site which page you came from -->
 <meta name="color-scheme" content="dark">   <!-- the page is already dark: stops browser auto-dark modes (and the darkreader-lock line, the Dark Reader extension) from recoloring it -->
 <meta name="darkreader-lock">
@@ -1124,7 +1124,7 @@
       </div>
     </details>
   </div>
-  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.1.1</span></footer>
+  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.1.2</span></footer>
   </div>
 
 </div>
@@ -3182,8 +3182,11 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   backedUp();
 });
 document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFile').click());
+const MAX_IMPORT_MB=5;   // a real backup is a few kilobytes; a huge file would only freeze the page
 document.getElementById('importFile').addEventListener('change', e=>{
   const f=e.target.files[0]; if(!f) return;
+  if(f.size>MAX_IMPORT_MB*1024*1024){ e.target.value='';
+    alert(L('That file is too large to be a backup from this tool (over '+MAX_IMPORT_MB+' MB), so nothing was changed.','See fail on selle tööriista varukoopia jaoks liiga suur (üle '+MAX_IMPORT_MB+' MB), seega midagi ei muudetud.')); return; }
   const rd=new FileReader();
   rd.onload=()=>{
     try{

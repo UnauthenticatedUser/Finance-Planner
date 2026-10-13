@@ -1,7 +1,7 @@
 """Backups: Export, Import, Reset and Undo, in English and Estonian.
 
 Export then Reset then Import gives back exactly the same data and the same numbers on screen; Undo after an import
-restores what was there; a broken file is refused without touching your data; and every backup format from v1.0.0
+restores what was there; a broken or oversized file is refused without touching your data; and every backup format from v1.0.0
 on (tests/fixtures/backup-*.json) still loads with every value kept.
 Run: python tests/test_backups.py"""
 from playwright.sync_api import sync_playwright
@@ -51,6 +51,11 @@ with sync_playwright() as p:
         bad=os.path.join(tempfile.mkdtemp(),'bad.json'); open(bad,'w').write('{not json')
         cur=pg.evaluate("JSON.stringify(state)"); pg.set_input_files('#importFile', bad); pg.wait_for_timeout(300)
         if pg.evaluate("JSON.stringify(state)")!=cur: fails.append((lang,'broken file changed data'))
+        # a file far bigger than any backup is refused before it's read, and says why
+        big=os.path.join(tempfile.mkdtemp(),'big.json'); json.dump({**exported, 'pad':'x'*(6*1024*1024)}, open(big,'w'))
+        said=[]; pg.once('dialog', lambda d: said.append(d.message))
+        pg.set_input_files('#importFile', big); pg.wait_for_timeout(300)
+        if pg.evaluate("JSON.stringify(state)")!=cur or not said or '5 MB' not in said[0]: fails.append((lang,'oversized file not refused clearly', said[:1]))
         # importing the same file twice in a row still works (file input resets)
         pg.set_input_files('#importFile', path); pg.wait_for_timeout(300); pg.set_input_files('#importFile', path); pg.wait_for_timeout(300)
         if pg.evaluate("JSON.stringify(state)")!=before_state: fails.append((lang,'re-import of same file failed'))

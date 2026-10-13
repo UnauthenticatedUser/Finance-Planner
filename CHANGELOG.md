@@ -2,6 +2,15 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.1.2] – 2026-10-14
+
+- **Import size limit.** A file over 5 MB is refused with a message before it's read. A real backup is a few kilobytes; a huge file could freeze the page.
+- **Every browser must pass.** The site now updates only when the tests pass in Chromium, Firefox and WebKit (Safari's engine), not just Chromium.
+- The tests use Playwright 1.63.
+- `tools/update_csp.py` finds the page's scripts with Python's HTML parser instead of a pattern, as GitHub's code scanning recommends, so letter case, attributes and comments can't trip it up.
+
+Saved data and backups from earlier versions keep working.
+
 ## [1.1.1] – 2026-10-13
 
 Fixes found in a full review of the calculations:
@@ -46,6 +55,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.1.2]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.2
 [1.1.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.1
 [1.1.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.0
 [1.0.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.0.0

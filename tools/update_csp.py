@@ -9,15 +9,29 @@ this after editing a script, from the repository folder:
 It rewrites the script-src part of the rule. With --check it changes nothing and fails if the rule is out of date
 (the tests do the same check)."""
 import base64, hashlib, re, sys
+from html.parser import HTMLParser
 from pathlib import Path
 
 PAGE = Path(__file__).resolve().parent.parent / 'index.html'
 
 
+class _Scripts(HTMLParser):
+    """Collects the text of every inline <script> the way a browser reads the page: any letter case, with or without
+    attributes, and never from inside an HTML comment."""
+    def __init__(self):
+        super().__init__(convert_charrefs=False); self.bodies = []; self._in = None
+    def handle_starttag(self, tag, attrs):
+        if tag == 'script' and not dict(attrs).get('src'): self._in = []
+    def handle_data(self, data):
+        if self._in is not None: self._in.append(data)
+    def handle_endtag(self, tag):
+        if tag == 'script' and self._in is not None: self.bodies.append(''.join(self._in)); self._in = None
+
+
 def fingerprints(html):
-    """The CSP fingerprint of every inline <script> block, in page order."""
-    return ["'sha256-" + base64.b64encode(hashlib.sha256(body.encode('utf-8')).digest()).decode() + "'"
-            for body in re.findall(r'<script>(.*?)</script>', html, re.S)]
+    """The CSP fingerprint of every inline script, in page order."""
+    parser = _Scripts(); parser.feed(html); parser.close()
+    return ["'sha256-" + base64.b64encode(hashlib.sha256(body.encode('utf-8')).digest()).decode() + "'" for body in parser.bodies]
 
 
 def script_src(html):

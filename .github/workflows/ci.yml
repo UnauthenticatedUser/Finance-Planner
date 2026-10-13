@@ -1,6 +1,6 @@
 # CI/CD for Estonian Finance Planner.
 #   test:   runs every test in tests/ on each push and pull request, in Chromium, Firefox and WebKit (Safari's engine).
-#           Chromium decides; Firefox and WebKit report problems without blocking yet.
+#           All three must pass.
 #   deploy: publishes index.html to GitHub Pages, only from main and only when the tests passed.
 # Actions are pinned to exact commits (the version is in the comment); Dependabot proposes updates as pull requests.
 name: Tests
@@ -18,7 +18,6 @@ jobs:
     name: test (${{ matrix.browser }})
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    continue-on-error: ${{ matrix.browser != 'chromium' }}
     strategy:
       fail-fast: false
       matrix:
