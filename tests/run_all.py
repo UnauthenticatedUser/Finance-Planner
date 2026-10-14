@@ -5,7 +5,7 @@ import subprocess, sys, time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-TESTS = ['test_calculations.py', 'test_forecasts.py', 'test_retirement.py', 'test_targets.py',
+TESTS = ['test_reference.py', 'test_calculations.py', 'test_forecasts.py', 'test_retirement.py', 'test_targets.py',
          'test_editor.py', 'test_accessibility.py', 'test_backups.py', 'test_broken_files.py', 'test_security.py', 'test_privacy.py']
 
 short = lambda name: name.removeprefix('test_').removesuffix('.py')

@@ -139,6 +139,7 @@ All of this is a simple model with smooth average returns. Real markets go up an
 
 The [`tests`](tests) folder checks the tool's results against calculations written separately in Python, from the rules above. They run automatically on every change, in Chromium, Firefox and Safari's engine (WebKit). The badge at the top shows the latest result, and the online version is only updated when they pass:
 
+- **Official examples**: the tool must give the same answers as worked examples published by the Tax and Customs Board, the Pension Centre and the Social Insurance Board: payslips, the 3rd pillar refund, the tax on a state pension and on pension fund payouts. Each test quotes its source, so a misread rule can't hide behind our own formulas.
 - **Calculations**: take-home pay, taxes, the 3rd pillar refund, budget, net worth and the yearly summary, for 300 random people, to the cent.
 - **Forecasts**: projection, after-tax value, fund fees and loan payoff dates.
 - **Retirement**: state pension (from 65), pension fund payouts and investment withdrawals, with their taxes, also when retiring early.
