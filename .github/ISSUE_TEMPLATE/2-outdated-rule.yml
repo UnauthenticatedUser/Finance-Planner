@@ -1,0 +1,48 @@
+name: A tax or pension rule is out of date
+description: A rate, limit or amount has changed, or the tool applies a rule wrongly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. You can write in English or Estonian.
+
+        The rules the tool uses, with their sources, are listed in the README under [How the numbers are worked out](https://github.com/UnauthenticatedUser/Finance-Planner#how-the-numbers-are-worked-out).
+  - type: input
+    id: rule
+    attributes:
+      label: Which rule?
+      placeholder: Basic exemption, 3rd pillar refund limit, average state pension …
+    validations:
+      required: true
+  - type: input
+    id: now
+    attributes:
+      label: What the tool uses now
+      placeholder: €700 a month
+    validations:
+      required: true
+  - type: input
+    id: should
+    attributes:
+      label: What it should be
+      placeholder: €… a month
+    validations:
+      required: true
+  - type: input
+    id: since
+    attributes:
+      label: Since when?
+      placeholder: January 1, 2027
+  - type: input
+    id: source
+    attributes:
+      label: Official source
+      description: A link to the Tax and Customs Board (emta.ee), the Pension Centre (pensionikeskus.ee), the Social Insurance Board (sotsiaalkindlustusamet.ee), Riigi Teataja or a similar official page.
+      placeholder: https://www.emta.ee/…
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else?

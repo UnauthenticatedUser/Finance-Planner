@@ -163,7 +163,7 @@ To leave out a slow test, add `--skip` and its name, for example `python tests/r
 
 ## Feedback and security
 
-Found a mistake in a rule or a number? Please [open an issue](https://github.com/UnauthenticatedUser/Finance-Planner/issues). To report a security problem privately, see [SECURITY.md](SECURITY.md). Changes in each version are listed in [CHANGELOG.md](CHANGELOG.md).
+Found a mistake in a rule or a number? Please [open an issue](https://github.com/UnauthenticatedUser/Finance-Planner/issues/new/choose); there's a short form for each. Issues are public, so use made-up numbers, never your own. To report a security problem privately, see [SECURITY.md](SECURITY.md). Changes in each version are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

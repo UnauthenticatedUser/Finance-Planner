@@ -2,6 +2,14 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.1.3] – 2026-10-14
+
+- **3rd pillar refund limit shown.** When your 3rd pillar contributions go over the tax refund limit (15% of your income or €6,000 a year, whichever is lower), the editor shows a note with how much gets the refund and how much doesn't, and the Pensions card says so in one line. Before, this was only in a tooltip.
+- **Easier to find.** The page now has a short description for search engines, in English and Estonian.
+- **Issue forms** on GitHub for a wrong number and for an out-of-date tax or pension rule. Both remind you that issues are public, so you never post your real numbers or backup file. Security problems are pointed to the private report.
+
+Saved data and backups from earlier versions keep working.
+
 ## [1.1.2] – 2026-10-14
 
 - **Import size limit.** A file over 5 MB is refused with a message before it's read. A real backup is a few kilobytes; a huge file could freeze the page.
@@ -55,6 +63,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.1.3]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.3
 [1.1.2]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.2
 [1.1.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.1
 [1.1.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.0

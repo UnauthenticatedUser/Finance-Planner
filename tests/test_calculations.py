@@ -50,13 +50,13 @@ def model(s):
     aSal=gS*12+s['bonus']+ySal; aP2=aSal*p2r/100; aU=aSal*U
     aTax=max(0,aSal-aP2-aU-E*12)*T; aCT=mCT*12+yCT
     taxedCust=sum(x['amount']*PY[x['freq']] for x in inc if x['tax']=='custom' and x['rate']>0)
-    ded=min(t3*12, min(6000,(aSal+taxedCust)*0.15)); refund=min(ded*T, aTax+aCT)
+    p3Limit=min(6000,(aSal+taxedCust)*0.15); ded=min(t3*12, p3Limit); refund=min(ded*T, aTax+aCT)
     aGross=g*12+s['bonus']+(mSal+mFree+mC)*12+ySal+yFree+yC
     # bonus + yearly salary-like income: the year's take-home on all salary-like pay minus 12 monthly salaries (the exemption is yearly)
     year_extra=(aSal-aP2-aU-aTax)-12*net_of(gS)
     surplus=(net-exp-dM-(invested-p2))*12 + year_extra + yFree + (yC-yCT) + refund
     return {'net':net,'expenses':exp,'p2':p2,'p2s':p2s,'penMonthly':t3+aSal*(p2r+p2sr)/100/12,'invested':invested,'networth':assets-debt,'assets':assets,'debt':debt,'taxRefund':refund,'aGross':aGross,
-            'aNet':aGross-aP2-aU-aTax-aCT+refund,'surplus':surplus,'buffer':buffer,'pension':pension,'savings':invested/(net+p2)*100 if net+p2>0 else 0,
+            'aNet':aGross-aP2-aU-aTax-aCT+refund,'surplus':surplus,'buffer':buffer,'pension':pension,'savings':invested/(net+p2)*100 if net+p2>0 else 0,'p3Limit':p3Limit,
             'debtInterestYr':sum(d['balance']*rate(d)/100 for d in s['debts'])}
 RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementById(id); return e?e.textContent:null};
   const chk=(lbl,shown,expect)=>{ if(shown!=null && shown!==expect) out.push(lbl+': shows '+shown+' expected '+expect); };
@@ -69,6 +69,9 @@ RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementBy
   // the yearly breakdown lists the 2nd pillar whenever the year has some (a bonus alone counts)
   [['row-y-p2',c.aP2],['row-y-statep2',c.aStateP2]].forEach(([id,v])=>{ if((v>0)!==(document.getElementById(id).style.display!=='none')) out.push(id+' shown wrongly for '+v); });
   if(c.aP2>0 && !(txt('out-p2')||'').includes(eur(c.p2Avg)+'/mo')) out.push('pensions card 2nd pillar: '+txt('out-p2')+' expected '+eur(c.p2Avg)+'/mo');
+  // over the 3rd pillar refund limit: the editor note and the pensions card both say so, with the limit
+  const over=c.t3*12>c.p3Limit;
+  ['w-p3limit','p3-limit'].forEach(id=>{ const e=document.getElementById(id); if(e.hidden===over || (over && !e.textContent.includes(eur(c.p3Limit)))) out.push(id+' wrong: '+(e.hidden?'hidden':e.textContent)+' for '+c.t3*12+' over '+c.p3Limit); });
   const sum=sel=>[...document.querySelectorAll(sel)].filter(e=>e.getClientRects().length).map(e=>parseFloat(e.textContent)).filter(x=>!isNaN(x)).reduce((a,b)=>a+b,0);
   const bud=sum('#bd-expp, #bd-invp, #bd-leftp, #bd-debtp'); if(c.net>0 && bud!==100) out.push('budget % add up to '+bud);
   const bad=[...document.querySelectorAll('.main *')].filter(e=>e.children.length===0 && e.getClientRects().length && /NaN|undefined|Infinity|null\\b|\\[object/.test(e.textContent)).map(e=>e.textContent.slice(0,40));
@@ -87,7 +90,7 @@ def main():
         pg.goto(PAGE); pg.wait_for_timeout(500)
         for i in range(N):
             s=user(); m=model(s)
-            r=pg.evaluate("s=>{ state=normalize(JSON.parse(s)); save(); refreshAll(); const c=compute(); return {net:c.net,expenses:c.expenses,p2:c.p2,p2s:c.p2s,penMonthly:c.penMonthly,invested:c.invested,networth:c.networth,assets:c.assets,debt:c.debt,taxRefund:c.taxRefund,aGross:c.aGross,aNet:c.aNet,surplus:c.surplus,buffer:c.buffer,pension:c.pension,savings:c.savings,debtInterestYr:c.debtInterestYr}}", json.dumps(s))
+            r=pg.evaluate("s=>{ state=normalize(JSON.parse(s)); save(); refreshAll(); const c=compute(); return {net:c.net,expenses:c.expenses,p2:c.p2,p2s:c.p2s,penMonthly:c.penMonthly,invested:c.invested,networth:c.networth,assets:c.assets,debt:c.debt,taxRefund:c.taxRefund,aGross:c.aGross,aNet:c.aNet,surplus:c.surplus,buffer:c.buffer,pension:c.pension,savings:c.savings,p3Limit:c.p3Limit,debtInterestYr:c.debtInterestYr}}", json.dumps(s))
             diffs=[f"{k}: tool {r[k]:.4f} vs model {m[k]:.4f}" for k in m if abs(r[k]-m[k])>max(0.01, abs(m[k])*1e-9)]
             rec=pg.evaluate(RECON)
             checked+=1
