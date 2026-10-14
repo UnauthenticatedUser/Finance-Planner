@@ -2,6 +2,25 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.1.6] – 2026-10-14
+
+- **Calmer cards.** Investments, Cash & savings, Debts and Targets show less small gray text:
+  - Investments: one line per fund (name, €/month and share, with the amount on the right). The target share is in the bar's hover text.
+  - Cash & savings: each account's rate and yearly interest sit beside its name, so the amounts line up on the right. Interest shows what you keep after tax; the before-tax amount is in its hover text.
+  - Debts: two lines per loan (rate and payment; payoff date and interest still to pay), plus the Euribor ±1% range for Euribor loans. The margin and equity are in the hover text on the loan's name.
+  - Targets: the share reached sits beside the name, and one line under the bar gives the expected date and, with a deadline, whether you're on track or what extra per month would make it. What counts toward a goal is in the hover text on its name.
+- **One rule for amounts.** Exact below €10,000, then €24.6k, €1.02M, €1.5B: in card rows, card headers, legends and the editor's section summaries. Headline numbers, monthly amounts and the yearly breakdown stay exact, and hover texts always show the exact amount.
+- **Emergency fund and invested surplus.** When "Also invest my yearly surplus" is on, a cash target says "your surplus is invested", with a link to that setting, so a missing date doesn't look like a fault.
+- **Shorter help in the editor.** Five long explanations are now one line each; the full text is in their hover text, and Tab or a screen reader reaches it too.
+- **Estonian months** are written out ("5 kuud"), so they aren't mistaken for thousands.
+- Switches show a focus ring when you reach them with the keyboard.
+- On phones, the "Back to dashboard" button now matches the rest of the look, and it goes away once you scroll back up to the card yourself.
+- **Better Estonian.** A full read-through made the Estonian more natural and fixed real mistakes: the loan advice now gives its two dates the right way round, "kinnipidamised" replaces the wrong tax term "mahaarvamised", the 3rd pillar refund no longer reads as "a year ago", and about 40 phrases use plainer, more common words.
+- **Edge cases:** amounts in millions round correctly (€1,005,000 is €1.01M), negative rates and margins show a real minus, an account with a negative rate shows it, the Euribor ±1% line is hidden when it would show the same date twice, funds without any target share show no 0%, and a number no longer keeps its glow after a quick edit.
+- Tests check the new card rows, the amount rule, the surplus link, the back button and the Estonian texts.
+
+Saved data and backups from earlier versions keep working.
+
 ## [1.1.5] – 2026-10-14
 
 - **Clearer import messages.** When a file can't be imported (it isn't a backup from this tool, or it's over 5 MB), the reason now shows in the tool's own note at the top of the screen, next to Import, instead of a browser popup. Screen readers announce it right away.
@@ -77,6 +96,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.1.6]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.6
 [1.1.5]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.5
 [1.1.4]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.4
 [1.1.3]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.3

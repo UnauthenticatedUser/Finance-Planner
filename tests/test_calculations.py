@@ -65,13 +65,27 @@ RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementBy
   chk('cash buffer tile', txt('out-buffer'), eur(c.buffer)); chk('invested tile', txt('out-invested'), eur(c.invested));
   chk('annual surplus tile', txt('out-surplus'), (c.surplus<0?'−':'')+eur(Math.abs(c.surplus)));
   chk('gross / year', txt('out-y-grosshead'), eur(c.aGross)); chk('net / year', txt('out-y-nethead'), eur(c.aNet));
-  chk('take-home donut', txt('donut-center'), eur(c.net)); chk('pension total', txt('out-pension'), eur(c.pension));
+  chk('take-home donut', txt('donut-center'), eur(c.net)); chk('pension total', txt('out-pension'), eurS(c.pension));
   // the yearly breakdown lists the 2nd pillar whenever the year has some (a bonus alone counts)
   [['row-y-p2',c.aP2],['row-y-statep2',c.aStateP2]].forEach(([id,v])=>{ if((v>0)!==(document.getElementById(id).style.display!=='none')) out.push(id+' shown wrongly for '+v); });
   if(c.aP2>0 && !(txt('out-p2')||'').includes(eur(c.p2Avg)+'/mo')) out.push('pensions card 2nd pillar: '+txt('out-p2')+' expected '+eur(c.p2Avg)+'/mo');
   // over the 3rd pillar refund limit: the editor note and the pensions card both say so, with the limit
   const over=c.t3*12>c.p3Limit;
   ['w-p3limit','p3-limit'].forEach(id=>{ const e=document.getElementById(id); if(e.hidden===over || (over && !e.textContent.includes(eur(c.p3Limit)))) out.push(id+' wrong: '+(e.hidden?'hidden':e.textContent)+' for '+c.t3*12+' over '+c.p3Limit); });
+  // card rows: amounts follow one rule (exact below EUR 10,000, then short), each on the right; a Euribor loan shows its range line
+  const rows=(sel,want)=>[...document.querySelectorAll(sel)].forEach((e,i)=>{ const w=want(i); if(e.textContent!==w) out.push(sel+' '+i+': shows '+e.textContent+' expected '+w); });
+  rows('#etf-legend .evalue', i=>c.etfVal>0 ? eurS(c.etfVals[i]||0) : '');
+  rows('#inv-legend .evalue', i=>+state.investments[i].value ? eurS(state.investments[i].value) : '');
+  rows('#cash-accounts .a-amt', i=>eurS(+state.accounts[i].amount||0));
+  rows('#debt-list .dbal', i=>eurS(+c.debtList[i].balance||0));
+  rows('#debt-list .dterms', i=>{ const d=c.debtList[i]; return num(d.rate)+'%'+(+d.payment ? ' · '+eur(+d.payment)+'/mo' : ''); });
+  rows('#cash-accounts .a-gain', i=>{ const a=state.accounts[i], y=+a.yield||0, amt=+a.amount||0; return y>0 && amt>0 ? '+'+eurS(amt*y/100)+'/yr' : ''; });
+  { const p=[...document.querySelectorAll('#etf-legend .ecalc')].map(e=>(e.textContent.match(/(\\d+)%$/)||[])[1]).filter(Boolean).map(Number);
+    if(p.length>1 && p.reduce((a,b)=>a+b,0)!==100) out.push('fund shares add up to '+p.reduce((a,b)=>a+b,0)); }
+  c.debtList.forEach((d,i)=>{ const b=+d.balance||0, P=+d.payment||0, po=payoff(b, d.rate, P), shown=!!document.querySelectorAll('#debt-list .drange')[i].textContent;
+    const when=e=>{ const q=payoff(b, debtRate(d, e), P); return q && q.months!==Infinity ? q.months : -1; }, e0=state.euribor||0;   // a range only when ±1% gives two different dates
+    const want=d.rtype==='euribor' && b>0 && !!po && po.months!==Infinity && monthYear(when(e0-1))!==monthYear(when(e0+1)) ;
+    if(shown!==want) out.push('debt '+i+' Euribor range shown='+shown); });
   const sum=sel=>[...document.querySelectorAll(sel)].filter(e=>e.getClientRects().length).map(e=>parseFloat(e.textContent)).filter(x=>!isNaN(x)).reduce((a,b)=>a+b,0);
   const bud=sum('#bd-expp, #bd-invp, #bd-leftp, #bd-debtp'); if(c.net>0 && bud!==100) out.push('budget % add up to '+bud);
   const bad=[...document.querySelectorAll('.main *')].filter(e=>e.children.length===0 && e.getClientRects().length && /NaN|undefined|Infinity|null\\b|\\[object/.test(e.textContent)).map(e=>e.textContent.slice(0,40));

@@ -30,7 +30,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-hypiSiGFWT28SzSOz/RjUNvfAI411iYYkocn63PuLUg='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-ymlkwyTR5UlVUjKBoUzotEiMXvrBLCfVV5I5J2MnSy8='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
 <meta name="referrer" content="no-referrer">   <!-- links out (source code, license) don't tell the other site which page you came from -->
 <meta name="color-scheme" content="dark">   <!-- the page is already dark: stops browser auto-dark modes (and the darkreader-lock line, the Dark Reader extension) from recoloring it -->
 <meta name="darkreader-lock">
@@ -54,9 +54,9 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
              --accent (interactive only), --danger (losses/debt), --c-exp --c-inv --c-left (budget donut).
      One rule per selector; rules are NOT grouped by component, so grep the selector. Main components:
        page/topbar: .wrap .layout .main .topbar (.tbctl: .tb-nav #moreBtn .tbmenu › .tb-data .btngroup · .tb-display; .compact) .btn   tiles: .topgrid .metric .mnet .msurplus .spanel .srow
-       cards: .card .hd .row .sect .drop   charts: .donut-svg .dseg .dhole .bleg .bar .legend .ecalc .yrbtns .projwrap
+       cards: .card .hd .row .sect .drop   charts: .donut-svg .dseg .dhole .bleg .bar .legend .ecalc .evalue .yrbtns .projwrap
        editor: .editor .esec .field .inwrap .switch .optitem .optbody .invedit .invtop .invsub .cselect .suggest .sopt
-       lists on cards: .acctrow .physrow .debtitem .dline   investments card: #funds-section #inv-section (.invsec)   goals: #goals-card ul.goals
+       lists on cards: .acctrow .physrow .debtitem .dline .dtag   investments card: #funds-section #inv-section (.invsec)   goals: #goals-card ul.goals
        views: .viewtabs .view (#view-overview, #view-progress)   progress: #history-card #hist-chart .hdot #targets-card .tgtitem .tbar .tfill
        tooltip: #tip   animation: .mtx (number scramble)
      Conventions: phone rules in @media(max-width:480px); donut cards stack via @container (card's inner width ≤300px, not screen); wide layout only as html.wide inside @media(min-width:1600px); the saved view and layout (html.progress, html.wide) are set by the small script in <head>, before the first paint;
@@ -103,9 +103,9 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .hd svg{width:18px; height:18px; flex:none}
   .row .k{color:var(--text2)}
   .row .v{color:var(--text); text-align:right}
-  .acctapy{color:#34D399}
   #cash-accounts .acctrow{align-items:baseline}
   #cash-accounts .acctrow .k{min-width:0; overflow-wrap:anywhere}
+  #cash-accounts .a-yld, #cash-accounts .a-gain{font-size:12px} #cash-accounts .a-yld{margin-left:8px} #cash-accounts .a-gain{color:#34D399} #cash-accounts .a-gain.neg{color:var(--danger)}   /* rate and yearly interest beside the name, so the amounts line up alone on the right */
   #cash-accounts .acctrow .v{white-space:nowrap; flex:none}
   .row.acctapytot{margin-top:2px}
   .row.acctapytot .k, .row.acctapytot .v{color:var(--text2); font-size:12px}
@@ -131,8 +131,11 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .legend{display:flex; flex-direction:column; gap:7px; font-size:13px}
   .legend > span{display:flex; align-items:center; gap:6px; color:var(--text2)}
   .ename{color:var(--text); font-weight:500}
-  .ecalc{color:var(--text2)}
-  .ecalc:not(:empty)::before{content:'— '}
+  /* Investments rows: dot, name, a short gray line (€/mo · share), and the amount alone on the right */
+  #etf-legend > span, #inv-legend > span{display:grid; grid-template-columns:auto minmax(0,1fr) auto; column-gap:8px; align-items:baseline}
+  .elab{min-width:0; display:flex; flex-wrap:wrap; align-items:baseline; column-gap:8px}   /* the gray line goes under the name, unindented, when they don't fit side by side */
+  .ecalc{font-size:12px; color:var(--text2); white-space:nowrap} .ecalc:empty{display:none}
+  .evalue{color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap}
   .card:has(.budrow){container-type:inline-size}
   /* a donut card that is narrow (phone, or squeezed beside the editor) puts the donut above a full-width legend */
   @container (max-width:300px){ .budrow{flex-direction:column; align-items:stretch} .budrow .donutwrap{align-self:center} }   /* only truly narrow cards stack */
@@ -257,7 +260,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   /* names and titles you type can be long without spaces: they wrap instead of pushing the layout sideways */
   .topbar > div:first-child{min-width:0; flex:1 1 300px}
   .topbar h1{overflow-wrap:break-word}   /* breaks a word only when it alone is wider than the line */
-  .hd .lbl, .pn, .row .k, .dname, .fn, .ename, .ecalc{overflow-wrap:anywhere; min-width:0}
+  .hd .lbl, .pn, .row .k, .dname, .fn, .ename{overflow-wrap:anywhere; min-width:0}
   .topbar .sub{font-size:13px; margin:2px 0 0; color:var(--text2)}
   .btn{font-size:13px; cursor:pointer; font-family:inherit; transition:background .15s,color .15s; white-space:nowrap; background:var(--surface); color:var(--text); border:none; border-radius:999px; padding:8px 16px; font-weight:500}
   .btn:hover{background:#1D2330; color:var(--text)}
@@ -285,7 +288,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .btngroup .btn:hover{background:#1D2330; color:var(--text)}
   #resetBtn:hover, #wipeBtn:hover, #wipeBtn.armed{color:var(--danger); background:rgba(255,122,122,0.08)}   /* destructive actions: red on hover (and while Delete waits for its second click) */
   #wideBtn{color:var(--text2)}   /* display option: as quiet as the rest of the bar */
-  button:focus-visible, summary:focus-visible, .btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  button:focus-visible, summary:focus-visible, .btn:focus-visible, .switch input:focus-visible + .track{outline:2px solid var(--accent); outline-offset:2px}   /* a switch's checkbox is invisible: its track shows the focus */
   .topgrid{display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); margin-bottom:var(--gap)}
   /* Net worth: "liquid glass", clearly alive but calm. Layers: soft blurred color blobs inside the dark box (::before, the "liquid")
      and a glossy highlight (::after). Scrolling moves the blobs and
@@ -377,10 +380,12 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .dline{display:flex; justify-content:space-between; align-items:baseline; gap:6px 14px; flex-wrap:wrap}
   .dline.main{font-size:14px; margin-bottom:5px}
   .dline.main .dname{color:var(--text)}
+  .dtag{font-size:12px; color:var(--text2); margin-right:auto}   /* a short gray line beside a name (a loan's rate and payment, a target's %), pushing the amount right */
   .dline.main .dbal{font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap}
   .dline.meta{font-size:12px; color:var(--text2); line-height:1.6}
   .dline.meta span:last-child{text-align:right; margin-left:auto}
   .dline.meta span:empty{display:none}
+  .dline.meta span.drange{margin-left:0; text-align:left}   /* a line of its own, under the payoff date */
   .debtitem.warn .dwhen, .debtitem.warn .dcost{color:var(--danger)}
   .debtedit .invtop, .physedit .invtop, .incedit .invtop, .expedit .invtop{position:relative}
   .expmo{margin-top:9px; font-size:12px; color:var(--text2)}
@@ -421,14 +426,11 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .tfill{height:100%; border-radius:999px; background:var(--accent); transition:width .6s cubic-bezier(.22,.8,.26,1)}
   .tgtitem.done .tfill{background:#34D399}
   .tgtitem.done .teta{color:#34D399}
-  .tgtitem .teta b{color:var(--text2); font-weight:400}   /* time to go: brighter than the date, not bold (the amounts are bold) */
-  .tgtitem .tdue{margin-top:2px}
-  .tgtitem .tdue .tdr{color:#34D399}
-  .tgtitem.late .tdue .tdr{color:#F59E6B}
+  .tgtitem .teta b{font-weight:400}   /* the date: not bold (the amounts are) */
+  .tgtitem .tdr{color:#34D399} .tgtitem.late .tdr{color:#F59E6B} .tgtitem.debtt .tdr{color:var(--text2)} .tgtitem .tdr.warn{color:var(--danger)}   /* deadline: on track, behind; a debt's date; a debt never paid off */
+  .tlink{background:none; border:0; padding:0; font:inherit; color:var(--accent); cursor:pointer} .tlink:hover{text-decoration:underline} .tlink[hidden]{display:none}   /* opens the setting it names */
   .tgtitem.debtt .tbar{display:none}
   .tgtitem.debtt .tval{color:var(--text2); font-weight:500}
-  .teta.warn{color:var(--danger)}
-  .tdue:has(.tdl:empty){display:none}
   .switch.hidsw{display:none}
   .optitem:has(> .switch.hidsw):not(:has(> .seg)):not(.on):not(.always){display:none}   /* e.g. Range: driven by a card chip; only its setting shows, when on */
   .notice{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:-8px 0 18px; padding:10px 14px; border-radius:14px;
@@ -455,8 +457,8 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .esec{scroll-margin-top:58px}
   .esec.flash{animation:secFlash 1.3s ease-out}
   @keyframes secFlash{0%,35%{box-shadow:inset 0 0 0 2px var(--accent)} 100%{box-shadow:inset 0 0 0 2px transparent}}   /* inside the box: the editor panel clips anything drawn outside */
-  .backpill{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 16px); transform:translateX(-50%); z-index:60; border:none; border-radius:999px;
-    padding:10px 18px; background:var(--sel); color:#fff; font:inherit; font-size:13px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,.5); cursor:pointer}
+  .backpill{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 16px); transform:translateX(-50%); z-index:60; border-radius:999px;
+    padding:10px 18px; color:var(--accent); font:inherit; font-size:13px; font-weight:500; cursor:pointer}   /* the floating look is shared with .toast */
   .backpill[hidden]{display:none}
   @media (prefers-reduced-motion: reduce){ .esec.flash{animation:none} }
   /* reorder arrows */
@@ -464,7 +466,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .iconbtn:disabled{opacity:.25; cursor:default}
   .histedit .iconbtn{flex:none; align-self:flex-end}
   .cselect:disabled{opacity:.55; cursor:default}
-  .tot, .tval, .v, .mv, .msub, .note, .tsub, .teta{overflow-wrap:anywhere}   /* last line of defense for very long text */
+  .tot, .tval, .v, .mv, .msub, .note, .teta{overflow-wrap:anywhere}   /* last line of defense for very long text */
   .card, .metric{min-width:0}
   #proj-chart{position:relative; touch-action:pan-y}
   .phov{position:absolute; inset:0; pointer-events:none}
@@ -495,7 +497,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .debtsum{border-top:0.5px solid var(--border); margin-top:4px; padding-top:6px}
   #debt-note{color:var(--text2); background:rgba(169,184,255,0.06); border-radius:12px; padding:10px 12px; margin-top:12px; line-height:1.55}
   #debt-note.strong{background:rgba(255,122,122,0.08); color:var(--text)}
-  .field label[data-tip], .swlabel[data-tip], .invsub label[data-tip], .bleg span[data-tip]{text-decoration:underline dotted rgba(255,255,255,0.22); text-underline-offset:3px; cursor:help}
+  .field label[data-tip], .swlabel[data-tip], .invsub label[data-tip], .bleg span[data-tip], .ehint span[data-tip], .dname[data-tip]{text-decoration:underline dotted rgba(255,255,255,0.22); text-underline-offset:3px; cursor:help}
   /* editor header stays pinned while scrolling the sections (desktop: inside the editor panel; smaller screens: to the top
      of the screen). Its box is unchanged, so the resting layout is identical; while pinned, flat shadows paint a 6px band of
      page color above and below it (breathing room without moving anything) plus a 1px divider line. */
@@ -533,7 +535,8 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
     html.wide .layout > .main{animation:none}
   }
   .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:900; display:flex; align-items:center; gap:14px; width:max-content; max-width:calc(100vw - 32px);
-    background:#0A0C10; border:1px solid var(--border2); border-radius:12px; padding:8px 8px 8px 16px; font-size:13px; color:var(--text); box-shadow:0 10px 28px rgba(0,0,0,0.5)}
+    border-radius:12px; padding:8px 8px 8px 16px; font-size:13px; color:var(--text)}
+  .toast, .backpill{background:#0A0C10; border:1px solid var(--border2); box-shadow:0 10px 28px rgba(0,0,0,0.5)}   /* things floating over the page */
   .toast[hidden]{display:none}
   /* things that appear get a short entrance instead of popping in (it plays whenever they go from hidden to shown) */
   @keyframes popIn{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none}}
@@ -541,9 +544,9 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   @keyframes popInT{from{opacity:0; transform:translate(-50%,-10px)} to{opacity:1; transform:translate(-50%,0)}}
   @keyframes fadeIn{from{opacity:0} to{opacity:1}}
   .fwarn:not([hidden]), .isempty > .emptyhint, .notice:not([hidden]), .topbar.compact.menu-open .tbmenu, .suggest:not([hidden]){animation:popIn .2s cubic-bezier(.22,.8,.26,1) both}
-  .toast:not([hidden]){animation:popInC .24s cubic-bezier(.22,.8,.26,1) both} .toast.problem:not([hidden]){animation-name:popInT}
+  .toast:not([hidden]), .backpill:not([hidden]){animation:popInC .24s cubic-bezier(.22,.8,.26,1) both} .toast.problem:not([hidden]){animation-name:popInT}
   #tip{animation:fadeIn .12s ease-out}
-  @media (prefers-reduced-motion: reduce){ .fwarn, .emptyhint, .notice, .tbmenu, .suggest, .toast, #tip{animation:none !important} .chev, .drop summary::before{transition:none} }
+  @media (prefers-reduced-motion: reduce){ .fwarn, .emptyhint, .notice, .tbmenu, .suggest, .toast, .backpill, #tip{animation:none !important} .chev, .drop summary::before{transition:none} }
   .toast > span{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}   /* a long name is cut short; Undo always fits */
   /* a refused file: at the top, next to Import, with the whole reason on two or three lines; it slides down instead of up */
   .toast.problem{top:22px; bottom:auto; max-width:min(460px, calc(100vw - 32px))} .toast.problem > span{white-space:normal}
@@ -551,9 +554,6 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   #tip{position:fixed; z-index:1000; display:none; color:#F2F4F8; font-size:12px; pointer-events:none; box-shadow:0 6px 18px rgba(0,0,0,0.45); max-width:min(280px, calc(100vw - 16px)); line-height:1.45; background:#0A0C10; border:1px solid var(--border2); border-radius:10px; padding:6px 10px}
   /* phones */
   @media (max-width:480px){
-    #etf-legend > span{display:grid; grid-template-columns:auto 1fr; column-gap:6px; align-items:baseline}
-    #etf-legend > span .ecalc{grid-column:2}
-    #etf-legend .ecalc:not(:empty)::before{content:none}
     .wrap{padding:18px 14px 48px}
     .donutwrap{width:120px; height:120px}
     .dhole{width:76px; height:76px}
@@ -742,7 +742,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
       </div>
       <div style="color:var(--text)">
         <div id="cash-accounts"></div>
-        <div class="row acctapytot" id="interest-row" style="display:none"><span class="k">Interest / yr</span><span class="v">≈ <span id="int-gross">€0</span> gross · <span id="int-net">€0</span> net</span></div>
+        <div class="row acctapytot" id="interest-row" style="display:none"><span class="k">Interest / yr</span><span class="v">≈ <span id="int-net">€0</span> after tax</span></div>
         <div id="cash-extra">
           <div class="row" id="row-phys"><span class="k">Physical cash</span><span class="v" id="out-phys">€0</span></div>
           <div class="row" id="row-credit"><span class="k"><span data-tip="Your card's credit limit, for reference. It isn't counted in any total.">Credit card limit</span></span><span class="v" id="out-credit">€0</span></div>
@@ -887,7 +887,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   <button type="button" class="backpill" id="backpill" hidden>↑ Back to dashboard</button>
   <div class="editor" id="editor">
     <div class="edhead"><h2>Edit your numbers</h2><button type="button" class="btn smallbtn" id="toggleAllBtn">Expand all</button></div>
-    <p class="ehint">Open a section, or tap ✎ on any card, to change its numbers. Leave anything you don't have empty. Card titles and your goals & notes are edited right on the dashboard. Your numbers are saved only in this browser.</p>
+    <p class="ehint"><span data-tip="Open a section, or tap ✎ on any card, to change its numbers. Leave anything you don't have empty. Card titles and your goals & notes are edited right on the dashboard. Your numbers are saved only in this browser.">Open a section, or tap ✎ on any card, to change its numbers.</span></p>
 
     <details class="esec" data-sec="income" open>
       <summary><span class="sico" data-icon="titleSalary" style="color:#F2C14E" aria-hidden="true"></span>Income<span class="esum" id="sum-salary"></span><span class="chev"></span></summary>
@@ -910,7 +910,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
         <div class="partbox"><div class="parth"><span class="pdot" style="background:#F59E6B"></span>Other income</div>
         <div class="optitem nosw" style="border-top:none; padding-top:2px">
           <div class="optbody optwide">
-            <p class="ehint" style="margin:10px 0">Pick how each one is taxed. “Taxed like salary” is for a second job: it shares your one €700 monthly exemption with your main job, and unemployment insurance and your 2nd pillar are taken off too. For rent, freelance or other income, use “Own rate”. Interest on your savings is already counted from their APY, so don't add it here.</p>
+            <p class="ehint" style="margin:10px 0"><span data-tip="Pick how each one is taxed. “Taxed like salary” is for a second job: it shares your one €700 monthly exemption with your main job, and unemployment insurance and your 2nd pillar are taken off too. For rent, freelance or other income, use “Own rate”. Interest on your savings is already counted from their APY, so don't add it here.">Pick how each one is taxed.</span></p>
             <div class="rows" id="income-rows"></div>
             <div class="etfactions"><button type="button" class="btn addbtn" id="addIncome">+ Add income</button></div>
           </div>
@@ -955,7 +955,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
         </div>
         </div>
         <div class="partbox"><div class="parth" data-part="pensions"><span class="pdot" style="background:#6E8BFF"></span>Pensions</div>
-        <p class="ehint" style="margin:0 2px 10px">Add each pension fund you hold, with its value, contribution and yearly fee. Your pension total and fees come from these. An old fund you no longer pay into gets 0% contribution.</p>
+        <p class="ehint" style="margin:0 2px 10px"><span data-tip="Add each pension fund you hold, with its value, contribution and yearly fee. Your pension total and fees come from these. An old fund you no longer pay into gets 0% contribution.">Add each pension fund you hold, with its value, contribution and yearly fee.</span></p>
         <div class="pgroup"><div class="subh">2nd pillar</div>
         <div class="seg" id="p2seg" role="group" data-tip="Your contribution, a share of gross salary. The state adds its own top-up on top (Settings › Taxes)."><button type="button" data-r="0">Not joined</button><button type="button" data-r="2">2%</button><button type="button" data-r="4">4%</button><button type="button" data-r="6">6%</button></div>
         <div class="rows" id="p2fund-rows"></div>
@@ -1024,7 +1024,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
         <div class="partbox"><div class="parth first" data-part="phys"><span class="pdot" style="background:#F2C14E"></span>Physical assets</div>
         <div class="optitem nosw" style="border-top:none; padding-top:2px">
           <div class="optbody optwide">
-            <p class="ehint" style="margin:10px 0">Use what each would sell for today, not what you paid. Still paying something off, like a home or car? Add it under Debts instead and put its value in the “Worth” field there, so it's only counted once.</p>
+            <p class="ehint" style="margin:10px 0"><span data-tip="Use what each would sell for today, not what you paid. Still paying something off, like a home or car? Add it under Debts instead and put its value in the “Worth” field there, so it's only counted once.">Use what each would sell for today. Bought on a loan? Add it under Debts.</span></p>
             <div class="rows" id="phys-rows"></div>
             <div class="etfactions"><button type="button" class="btn addbtn" id="addPhys">+ Add asset</button></div>
           </div>
@@ -1050,7 +1050,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
       <div class="esecbody">
         
         <div class="partbox"><div class="parth first" data-part="targets"><span class="pdot" style="background:#34D399"></span>Targets</div>
-        <p class="ehint" style="margin:0 0 10px">Pick a type for each target. Each shows how far along you are and roughly when you'll get there; add a deadline to see if you're on track. Use the arrows to reorder.</p>
+        <p class="ehint" style="margin:0 0 10px"><span data-tip="Pick a type for each target. Each shows how far along you are and roughly when you'll get there; add a deadline to see if you're on track. Use the arrows to reorder.">Pick a type for each target and add a deadline to see if you're on track.</span></p>
         <div class="rows" id="tgt-rows"></div>
         <div class="etfactions"><button type="button" class="btn addbtn" id="addTarget">+ Add target</button></div>
         </div>
@@ -1138,7 +1138,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
       </div>
     </details>
   </div>
-  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.1.5</span></footer>
+  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.1.6</span></footer>
   </div>
 
 </div>
@@ -1147,7 +1147,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
 // MAP of this script (top to bottom):
 //  state      DEFAULTS · SHAPES/ENUMS · normalize() cleans any loaded data (storage, undo copy, imports): defaults, list shapes, ±€1T cap ·
 //             load/save (localStorage 'strategy_state_v4'; undo copy 'strategy_backup_v2'; display prefs 'strategy_ui_v1'; reminder dates 'strategy_meta_v1') via readJSON/writeJSON
-//  format     sign eur eurK eurC num · setMatrix/set/animFrom = every dynamic number animates
+//  format     sign eur eurS (short: exact below €10,000, then €24.6k · €1.02M · €1.5B) eurC (compact: donut center, projection) num · setMatrix/set/animFrom = every dynamic number animates
 //  motion     animHeight smoothDetails animShowHide removeRow · donuts: drawDonut donutRing (keyed slices, edge-to-edge)
 //  helpers    payoff (loan amortization) · monthYear · ensureRows/tagRows (card rows updated in place)
 //  math      compute() — the ONLY place numbers are calculated; returns everything the UI shows
@@ -1248,7 +1248,7 @@ function fitTopbar(){
 })();
 // ===== Language: English is the source; Estonian comes from this table (exact English text → Estonian). =====
 // The choice is a display preference (KEY_UI), not part of your data. t() translates; unknown text stays as it is.
-const ET={"Language": "Keel", " · quarterly": " · iga kvartal", " · weekly": " · iga nädal", " · yearly": " · kord aastas", "%/yr": "%/a", "+ Add 2nd pillar fund": "+ Lisa II samba fond", "+ Add 3rd pillar fund": "+ Lisa III samba fond", "+ Add account": "+ Lisa konto", "+ Add asset": "+ Lisa vara", "+ Add debt": "+ Lisa laen", "+ Add expense": "+ Lisa kulu", "+ Add fund": "+ Lisa fond", "+ Add holding": "+ Lisa investeering", "+ Add income": "+ Lisa tulu", "+ Add past month": "+ Lisa varasem kuu", "+ Add target": "+ Lisa eesmärk", "/mo": "/kuus", "10y": "10a", "20y": "20a", "22% income tax back on contributions up to 15% of gross income, capped at €6,000 a year. Paid after you file your tax return.": "Saad tagasi 22% tulumaksu sissemaksetelt, mis on kuni 15% brutotulust ja kuni €6,000 aastas. Raha makstakse välja pärast tuludeklaratsiooni esitamist.", "2nd pillar": "II sammas", "2nd pillar state top-up": "II samba riigipoolne sissemakse", "2nd pillar, your": "II sammas, sinu", "30y": "30a", "3rd pillar": "III sammas", "3rd-pillar tax refund": "III samba tulumaksutagastus", "40y": "40a", "6-month Euribor today": "Praegune 6 kuu Euribor", "65 in 2026. From 2027 it follows life expectancy, so it may be later for you.": "2026. aastal on see 65. Alates 2027. aastast seotakse pensioniiga keskmise elueaga, nii et sinu puhul võib see olla hilisem.", "APY (optional)": "Intressimäär (valikuline)", "Account name (e.g. Emergency fund)": "Konto nimi (nt rahapuhver)", "Accounts": "Kontod", "Add each pension fund you hold, with its value, contribution and yearly fee. Your pension total and fees come from these. An old fund you no longer pay into gets 0% contribution.": "Lisa kõik oma pensionifondid koos väärtuse, sissemakse ja aastatasuga. Nende põhjal arvutatakse pensioni kogusumma ja tasud. Vanale fondile, kuhu sa enam sissemakseid ei tee, märgi sissemakseks 0%.", "Add what you have invested or put in each month (under Savings & investments) to see where it could grow.": "Lisa jaotises Säästud ja investeeringud, kui palju sul on investeeritud või kui palju igal kuul juurde paned, et näha, milleni see võib kasvada.", "Add your salary or other income under Income in the editor to see your yearly income.": "Lisa oma palk või muu tulu jaotises Tulu, et näha oma aastatulu.", "Add your take-home pay under Income in the editor to see where your money goes each month.": "Lisa oma netopalk jaotises Tulu, et näha, kuhu sinu raha igal kuul läheb.", "Add your year of birth under Settings › Retirement to see what you'd live on when you retire.": "Lisa oma sünniaasta jaotises Seaded › Pension, et näha, kui suur oleks sinu sissetulek pensionil.", "Adds your annual surplus (leftover cash, bonus and tax refund) to what you invest each year.": "Liidab aastase ülejäägi (üle jääva raha, preemia ja tulumaksutagastuse) igal aastal investeeritavale summale.", "Advanced": "Täpsemalt", "After inflation": "Inflatsioon", "After tax": "Pärast makse", "Also invest my yearly surplus": "Investeeri ka aastane ülejääk", "Amount": "Summa", "Amount per fund": "Fondipõhiselt", "Annual bonus": "Aastapreemia", "Annual percentage yield: the yearly interest rate the account pays, including compounding. Used to estimate your interest per year.": "Efektiivne aastaintress: konto aastane intressimäär koos intressi kapitaliseerimisega. Selle järgi hinnatakse, kui palju intressi aastas saad.", "Annual surplus": "Aastane ülejääk", "Any yearly fund or platform fee on this holding. Leave empty for plain stocks.": "Selle investeeringu aastane fondi- või platvormitasu. Tavaliste aktsiate puhul jäta tühjaks.", "Art": "Kunst", "Auto-estimate from gross": "Arvuta brutost", "Back to the standard layout, centered on the page.": "Tagasi tavapaigutusse, kus sisu on lehe keskel.", "Balance owed": "Laenujääk", "Balance × interest rate: roughly what the debts cost you over the next year. It falls as balances shrink.": "Jääk × intressimäär: umbes nii palju maksad järgmise aasta jooksul laenuintressi. Summa väheneb koos laenujäägiga.", "Base salary (12 × monthly)": "Põhipalk (12 × kuupalk)", "Basic exemption / month": "Maksuvaba tulu / kuus", "Bonus (net)": "Preemia (neto)", "Break down into categories": "Jaga kategooriatesse", "Bring back your data from before the last reset or import.": "Taasta andmed, mis olid enne viimast lähtestamist või importimist.", "By category": "Kategooriate kaupa", "By when (optional)": "Tähtaeg (valikuline)", "Calculated from the total and target share": "Arvutatud kogusumma ja sihtosakaalu järgi", "Car": "Auto", "Car loan": "Autolaen", "Car tax": "Automaks", "Cash": "Raha", "Cash & savings": "Raha ja säästud", "Cash buffer": "Rahapuhver", "Cash left after expenses, loan payments and investing.": "Raha, mis jääb alles pärast kulusid, laenumakseid ja investeerimist.", "Child benefit": "Lastetoetus", "Childcare": "Lastehoid", "Choose how often each one is paid. Yearly costs like insurance or car tax are spread over the months.": "Vali, kui tihti iga kulu makstakse. Aastased kulud, nagu kindlustus või automaks, jaotatakse kuude peale.", "Click again to delete everything": "Klõpsa uuesti, et kõik kustutada", "Collapse all": "Sulge kõik", "Collectibles": "Kogumisesemed", "Computer": "Arvuti", "Contribution": "Sissemakse", "Contribution / month": "Sissemakse / kuus", "Contribution / month (empty if none)": "Sissemakse / kuus (tühi, kui sissemakseid ei tee)", "Credit card balance": "Krediitkaardi võlg", "Credit card limit": "Krediitkaardi limiit", "Current net worth": "Praegune netovara", "Current value": "Praegune väärtus", "Custom goal": "Oma eesmärk", "Debt": "Laen", "Debt payments": "Laenumaksed", "Debts": "Laenud", "Deductions": "Mahaarvamised", "Delete all my data": "Kustuta kõik minu andmed", "Deletes everything this tool has saved in this browser, including the copy Undo uses, and starts fresh. Files you've exported aren't affected.": "Kustutab kõik, mis see tööriist on selles brauseris salvestanud, ka „Võta tagasi” jaoks hoitud koopia, ja alustab tühjalt lehelt. Eksporditud faile see ei puuduta.", "Display": "Kuvamine", "Dividends": "Dividendid", "ETFs": "ETF-id", "Eating out": "Väljas söömine", "Edit cash & savings": "Muuda raha ja sääste", "Edit debts": "Muuda laene", "Edit history": "Muuda ajalugu", "Edit investments": "Muuda investeeringuid", "Edit pensions": "Muuda pensione", "Edit physical assets": "Muuda vara", "Edit retirement": "Muuda pensioni", "Edit targets": "Muuda eesmärke", "Edit the projection": "Muuda prognoosi", "Edit your income": "Muuda tulu", "Edit your numbers": "Sinu andmed", "Edit your spending": "Muuda kulutusi", "Emergency fund": "Rahapuhver", "Enter my own": "Sisestan ise", "Enter one total and split it by target": "Sisesta kogusumma ja jaga see sihtjaotuse järgi", "Estimate from gross": "Arvuta brutost", "Euribor + margin": "Euribor + marginaal", "Every month": "Iga kuu", "Every quarter": "Iga kvartal", "Every week": "Iga nädal", "Everyday account": "Igapäevakonto", "Everything you spend in a typical month, including yearly costs like car tax divided by 12. Loan payments go under Debts, so leave them out here.": "Kõik, mis sa tavaliselt kuus kulutad, sh aastased kulud, nagu automaks, jagatuna 12-ga. Laenumaksed lisa jaotisse Laenud, mitte siia.", "Expand all": "Ava kõik", "Expenses": "Kulud", "Export": "Ekspordi", "Export now": "Ekspordi kohe", "Fee": "Tasu", "Financial independence (FIRE)": "Rahaline sõltumatus (FIRE)", "Fixed": "Fikseeritud", "Follow a target split": "Järgi sihtjaotust", "For reference only; it isn't counted in any total.": "Ainult teadmiseks; seda ei arvestata üheski kogusummas.", "Freelance work": "Vabakutseline töö", "Full yearly income breakdown": "Aastatulu üksikasjalik jaotus", "Fund name": "Fondi nimi", "Funds (ETFs)": "Fondid (ETF-id)", "Furniture": "Mööbel", "Gifts": "Kingitused", "Goals": "Eesmärgid", "Goals & notes": "Plaanid ja märkmed", "Groceries": "Toidukaubad", "Gross / year": "Bruto / aastas", "Gross amount, taxed the same way as your salary. Leave empty if you don't get one.": "Brutosumma, mida maksustatakse samamoodi nagu palka. Jäta tühjaks, kui sa preemiat ei saa.", "Gross income": "Brutotulu", "Gross salary / month": "Brutopalk / kuus", "Gross total": "Bruto kokku", "Gym": "Spordiklubi", "Health": "Tervis", "Health insurance": "Ravikindlustus", "History": "Ajalugu", "Holidays": "Puhkused", "Home": "Kodu", "How it's worked out": "Kuidas see arvutatakse", "How many years ahead to project. The 10/20/30/40 buttons on the card are quick picks.": "Mitu aastat ette prognoosida. Kaardil olevad nupud 10/20/30/40 on kiirvalikud.", "How many years your pension funds are paid out over. Payouts spread over at least your remaining life expectancy (19.3 years at 65, so 20 years or more) are tax-free; a shorter period is taxed 10%. Payouts starting more than 5 years before pension age are taxed as income.": "Mitme aasta jooksul pensionifondide raha välja makstakse. Väljamaksed, mis jaotatakse vähemalt sinu eeldatavale järelejäänud elueale (65-aastaselt 19.3 aastat, seega 20 aastat või rohkem), on maksuvabad; lühema perioodi korral on maks 10%. Rohkem kui 5 aastat enne pensioniiga algavad väljamaksed maksustatakse tulumaksuga.", "How much of this pillar's contributions goes into this fund. Use 0 for an old fund you no longer pay into.": "Kui suur osa selle samba sissemaksetest läheb sellesse fondi. Vanale fondile, kuhu sa enam ei maksa, märgi 0.", "How much of your 3rd pillar contributions goes into this fund. Use 0 for an old fund you no longer pay into.": "Kui suur osa sinu III samba sissemaksetest läheb sellesse fondi. Vanale fondile, kuhu sa enam ei maksa, märgi 0.", "How much your monthly deposits rise each year, for example with pay raises. 3 means each year you put in 3% more per month than the year before; 0 keeps them flat.": "Kui palju sinu igakuised sissemaksed igal aastal kasvavad, näiteks palgatõusuga. 3 tähendab, et igal aastal paned kuus 3% rohkem kui eelmisel aastal; 0 jätab need samaks.", "How often": "Kui tihti", "Ignore the fees entered on your funds and use one yearly fee for everything, e.g. to compare cheap and expensive funds.": "Ära arvesta fondidele sisestatud tasusid ja kasuta kõigele ühte aastatasu, näiteks odavate ja kallite fondide võrdlemiseks.", "Import": "Impordi", "Income": "Tulu", "Income per month that isn't taxed: €700 for everyone in 2026.": "Tulu, mida ei maksustata: 2026. aastal kõigile €700 kuus.", "Income tax": "Tulumaks", "Income tax (": "Tulumaks (", "Inflation per year": "Inflatsioon aastas", "Insurance": "Kindlustus", "Interest": "Intress", "Interest / yr": "Intress / aastas", "Interest over the next year": "Intress järgmise aasta jooksul", "Invest each month": "Investeeri iga kuu", "Invested / month": "Investeeritud / kuus", "Invested total": "Investeeritud kokku", "Investing": "Investeerimine", "Investment": "Investeering", "Investment account: net deposits (optional)": "Investeerimiskonto: sissemaksete jääk (valikuline)", "Investments": "Investeeringud", "Investments (4% a year)": "Investeeringud (4% aastas)", "Jewelry": "Ehted", "Keeps one snapshot per month. This month's snapshot follows your numbers as you change them; earlier months stay as they were.": "Salvestab igast kuust ühe hetkeseisu. Selle kuu hetkeseis muutub koos sinu numbritega, varasemad kuud jäävad samaks.", "Know your net worth from earlier months? Add them here to fill in the chart.": "Tead oma varasemate kuude netovara? Lisa need siia, et graafik täituks.", "Later": "Hiljem", "Leasing": "Liising", "Leftover": "Üle jääb", "Leftover ×12": "Ülejääk ×12", "Loan payments are counted separately, so leave them out of your monthly expenses.": "Laenumakseid arvestatakse eraldi, seega ära lisa neid igakuistesse kuludesse.", "Margin": "Marginaal", "Month": "Kuu", "Monthly": "Iga kuu", "Monthly budget": "Kuueelarve", "Monthly contribution": "Igakuine sissemakse", "Monthly expenses": "Igakuised kulud", "Monthly loan payments as a share of take-home pay. Lenders look at a ratio like this when deciding how much they'll lend you.": "Igakuised laenumaksed protsendina netopalgast. Laenuandjad vaatavad seda suhet, kui otsustavad, kui palju sulle laenu anda.", "Monthly payment": "Igakuine makse", "Monthly payments": "Igakuised maksed", "More": "Veel", "Mortgage": "Kodulaen", "Most Estonian home loans follow Euribor: the rate is Euribor plus your bank's margin and is usually reset every 6 months.": "Enamik Eesti kodulaene on seotud Euriboriga: intress on Euribor pluss panga marginaal ja see muutub tavaliselt iga 6 kuu tagant.", "Move down": "Liiguta alla", "Move up": "Liiguta üles", "My numbers": "Minu numbrid", "Name (e.g. stocks, gold, crypto)": "Nimi (nt aktsiad, kuld, krüpto)", "Name (optional)": "Nimi (valikuline)", "Net / year": "Neto / aastas", "Net incl. refund": "Neto koos tagastusega", "Net income / month": "Netopalk / kuus", "Net worth": "Netovara", "Net worth goal": "Netovara eesmärk", "Net worth over time": "Netovara muutus ajas", "New account": "Uus konto", "New fund": "Uus fond", "New here? See what the tool does with example numbers.": "Esimest korda siin? Vaata tööriista näidisnumbritega.", "New holding": "Uus investeering", "No assets entered yet.": "Vara pole veel sisestatud.", "No targets yet — add one under Goals in the editor: an emergency fund, a net worth goal, financial independence or your own goal.": "Eesmärke veel pole. Lisa need jaotises Eesmärgid: rahapuhver, netovara eesmärk, rahaline sõltumatus või oma eesmärk.", "Not joined": "Ei ole liitunud", "Not sure what your car tax is? Look it up by registration number in the": "Ei tea oma automaksu suurust? Vaata seda registreerimisnumbri järgi", "Nothing here yet — add funds or other investments under Savings & investments in the editor.": "Siin pole veel midagi. Lisa fonde või muid investeeringuid jaotises Säästud ja investeeringud.", "Numbers live in the editor. Click a card title to rename it.": "Numbrid sisestad andmepaneelis. Kaardi ümbernimetamiseks klõpsa selle pealkirjal.", "Once a year": "Kord aastas", "One time": "Ühekordne", "One total": "Üks summa", "Open a section, or tap ✎ on any card, to change its numbers. Leave anything you don't have empty. Card titles and your goals & notes are edited right on the dashboard. Your numbers are saved only in this browser.": "Numbrite muutmiseks ava jaotis või vajuta kaardil ✎. Jäta tühjaks kõik, mida sul pole. Kaartide pealkirju ning plaane ja märkmeid muudad otse ülevaatel. Sinu numbrid salvestatakse ainult selles brauseris.", "Other income": "Muu tulu", "Other income (yearly, net)": "Muu tulu (aastas, neto)", "Other investments": "Muud investeeringud", "Overview": "Ülevaade", "Own rate": "Oma määr", "Paid by the state from social tax, not from your salary.": "Riik maksab selle sotsiaalmaksust, mitte sinu palgast.", "Pension": "Pension", "Pension funds (II + III pillar)": "Pensionifondid (II + III sammas)", "Pension payout period": "Pensioni väljamakseperiood", "Pensions": "Pensionid", "Personal loan": "Väikelaen", "Pets": "Lemmikloomad", "Phone": "Telefon", "Phone & internet": "Telefon ja internet", "Physical assets": "Vara", "Physical cash": "Sularaha", "Pick a type for each target. Each shows how far along you are and roughly when you'll get there; add a deadline to see if you're on track. Use the arrows to reorder.": "Vali igale eesmärgile tüüp. Iga eesmärk näitab, kui kaugel sa oled ja millal umbes kohale jõuad. Lisa tähtaeg, et näha, kas oled graafikus. Järjekorda saad muuta nooltega.", "Pick how each one is taxed. “Taxed like salary” is for a second job: it shares your one €700 monthly exemption with your main job, and unemployment insurance and your 2nd pillar are taken off too. For rent, freelance or other income, use “Own rate”. Interest on your savings is already counted from their APY, so don't add it here.": "Vali iga tulu maksustamise viis. „Maksustatud nagu palk” on teise töökoha jaoks: see kasutab sama €700 kuist maksuvaba tulu kui sinu põhitöö ning maha arvatakse ka töötuskindlustusmakse ja II samba sissemakse. Üüri-, vabakutselise või muu tulu jaoks vali „Oma määr”. Säästude intressi arvestatakse juba konto intressimäära järgi, nii et seda siia ära lisa.", "Portfolio allocation": "Portfelli jaotus", "Private: nothing you enter ever leaves this browser.": "Privaatne: sinu sisestatud andmed ei lahku sellest brauserist.", "Progress": "Areng", "Projection": "Prognoos", "Property & debts": "Vara ja laenud", "Range": "Vahemik", "Range: return ± per year": "Vahemik: tootlus ± aastas", "Rate": "Intressi liik", "Record a snapshot each month": "Salvesta igal kuul hetkeseis", "Refunds & top-ups": "Tagastused ja riigi sissemaksed", "Remove account": "Eemalda konto", "Remove asset": "Eemalda vara", "Remove debt": "Eemalda laen", "Remove expense": "Eemalda kulu", "Remove fund": "Eemalda fond", "Remove holding": "Eemalda investeering", "Remove income": "Eemalda tulu", "Remove target": "Eemalda eesmärk", "Remove this month": "Eemalda see kuu", "Rent": "Üür", "Rental income": "Üüritulu", "Reset": "Lähtesta", "Retirement": "Pension", "Retirement age": "Pensioniiga", "Return rate": "Tootlus", "Royalties": "Litsentsitasud", "Salary": "Palk", "Saved so far": "Seni kogutud", "Savings & investments": "Säästud ja investeeringud", "Savings rate": "Säästumäär", "Scale to 100%": "Skaleeri 100%-le", "Second job": "Teine töö", "Set a deadline to see whether you are on track and how much more per month would get you there in time.": "Määra tähtaeg, et näha, kas oled graafikus ja kui palju peaksid kuus rohkem panema, et õigeks ajaks jõuda.", "Set in the editor under Settings › Projection, together with fees, timeframe and other options.": "Määratakse jaotises Seaded › Prognoos koos tasude, ajavahemiku ja muude valikutega.", "Settings": "Seaded", "Shade the outcome for a lower and a higher return. The width is set under Settings › Projection.": "Näita varjutatult tulemust madalama ja kõrgema tootluse korral. Vahemiku laiuse saad määrata jaotises Seaded › Prognoos.", "Share of take-home pay": "Osa netopalgast", "Show a range": "Näita vahemikku", "Show an example": "Näita näidet", "Show what you'd keep after tax on withdrawals: income tax on investment gains above your deposits, and 10% on pension payouts (a lump sum at retirement age).": "Näita, mis jääks sulle alles pärast väljavõtete maksustamist: tulumaks investeeringute kasvult (üle sissemaksete) ja 10% pensionifondi väljamaksetelt (ühekordne väljamakse pensioniealisena).", "Show when your debts will be paid off, next to your goals.": "Näita eesmärkide kõrval, millal sinu laenud tagasi makstud on.", "Shows what future amounts would be worth in today's prices. For example, with 2.5% inflation a year, €100,000 in 20 years buys about what €61,000 buys today. Change the inflation rate under Settings › Projection.": "Näitab, kui palju oleksid tulevased summad väärt tänastes hindades. Näiteks 2.5% aastase inflatsiooni korral saab €100,000 eest 20 aasta pärast osta umbes sama palju kui täna €61,000 eest. Inflatsioonimäära saad muuta jaotises Seaded › Prognoos.", "Side business": "Kõrvaläri", "Skip to content": "Liigu sisu juurde", "Source code": "Lähtekood", "Spending": "Kulutused", "Split by target %": "Sihtjaotus", "Standard layout": "Tavapaigutus", "Start over with a fresh, empty tool. Only your tax rates stay. Undo brings everything back.": "Alusta uuesti tühjalt lehelt. Alles jäävad ainult maksumäärad. „Võta tagasi” toob kõik tagasi.", "Start with my own numbers": "Alusta oma numbritega", "Starting amount": "Algsumma", "State pension (I pillar)": "Riiklik pension (I sammas)", "State pension forecast (optional)": "Riikliku pensioni prognoos (valikuline)", "State top-up to 2nd pillar (": "Riigi sissemakse II sambasse (", "Stocks, crypto or anything else you hold. Fill in whichever fields apply.": "Aktsiad, krüpto või muu, mis sul on. Täida need väljad, mis sobivad.", "Student loan": "Õppelaen", "Subscriptions": "Tellimused", "Sum of your categories, per month": "Kategooriate summa kuus", "Sum of your per-fund monthly amounts": "Fondide kuusummade summa", "Take-home pay": "Netopalk", "Take-home pay minus expenses, loan payments and investing: money without a plan yet.": "Netopalk miinus kulud, laenumaksed ja investeeringud: raha, millel pole veel kindlat plaani.", "Target": "Eesmärk", "Target share": "Sihtosakaal", "Targets": "Eesmärgid", "Tax": "Maks", "Tax and Customs Board's calculator": "Maksu- ja Tolliameti kalkulaatorist", "Tax on other income (your rates)": "Muu tulu maks (oma määrad)", "Tax rate": "Maksumäär", "Tax refund": "Tulumaksutagastus", "Tax-free": "Maksuvaba", "Taxed like salary": "Maksustatud nagu palk", "Taxes": "Maksud", "The 6-month Euribor your Euribor loans follow. It changes daily, so update it now and then. A negative Euribor counts as 0.": "6 kuu Euribor, mida sinu Euribori-põhised laenud järgivad. See muutub iga päev, nii et uuenda seda aeg-ajalt. Negatiivset Euribori arvestatakse nullina.", "The employee's share (1.6% in 2026), deducted from gross before income tax.": "Töötaja osa (2026. aastal 1.6%), mis arvatakse brutopalgast maha enne tulumaksu.", "The fund's ongoing charge (TER), e.g. 0.19 for 0.19% a year. Used to take fees off the projection.": "Fondi jooksvad tasud (TER), nt 0.19 tähendab 0.19% aastas. Need arvatakse prognoosist maha.", "The fund's yearly management fee, e.g. 0.3 for 0.3%.": "Fondi aastane valitsemistasu, nt 0.3 tähendab 0.3%.", "The long-run average yearly return to assume, before inflation and fees. US stocks have averaged about 10% a year (about 7% after inflation); a portfolio spread around the world, with some bonds, has usually earned less, so the default is 8%. Returns swing a lot from year to year, so treat the result as a rough guide.": "Eeldatav pikaajaline keskmine aastatootlus enne inflatsiooni ja tasusid. USA aktsiad on teeninud keskmiselt umbes 10% aastas (inflatsiooni arvestades umbes 7%); üle maailma hajutatud portfell, kus on ka võlakirju, on tavaliselt teeninud vähem, seega on vaikimisi 8%. Tootlus kõigub aastati palju, seega pea tulemust umbkaudseks.", "The share of your investments you would spend each year. 4% is a common rule of thumb; your FIRE number is yearly spending ÷ this rate.": "Kui suure osa investeeringutest igal aastal ära kulutaksid. 4% on levinud rusikareegel; sinu FIRE-summa on aastased kulutused ÷ see määr.", "The tax refund covers contributions up to 15% of gross income or €6,000 a year, whichever is lower.": "Tulumaksu saad tagasi sissemaksetelt kuni 15% brutotulust, kuid mitte rohkem kui €6,000 aastas.", "Timeframe": "Ajavahemik", "Total ETF value": "ETF-ide koguväärtus", "Transport": "Transport", "Travel allowance": "Sõidukompensatsioon", "Try other numbers": "Proovi teisi numbreid", "Type one total and each fund's value is worked out from its target share. Handy for trying out numbers. Your own per-fund values are kept and come back when you switch this off.": "Sisesta üks kogusumma ja iga fondi väärtus arvutatakse selle sihtosakaalu järgi. Mugav numbritega katsetamiseks. Sinu fondipõhised väärtused jäävad alles ja tulevad tagasi, kui selle välja lülitad.", "Undo": "Võta tagasi", "Unemployment insurance": "Töötuskindlustusmakse", "Unemployment insurance (": "Töötuskindlustusmakse (", "Until pension age, health insurance comes from the social tax paid on your work. If you stop working earlier, you can buy it yourself from the Health Insurance Fund. This adds it to your yearly spending, which keeps the goal on the safe side: from pension age the state covers it again.": "Kuni pensionieani tuleb ravikindlustus sinu töölt makstavast sotsiaalmaksust. Kui lõpetad töötamise varem, saad selle ise Tervisekassalt osta. See lisab selle sinu aastastele kulutustele, mis hoiab eesmärgi pigem ettevaatlikuna: pensionieast katab selle jälle riik.", "Use my own starting amount and monthly": "Kasuta oma algsummat ja kuumakset", "Use one fee for everything": "Kasuta kõigele ühte tasu", "Use the whole screen: cards flow into columns so everything fits without scrolling.": "Kasuta kogu ekraani: kaardid paigutuvad veergudesse, nii et kõik mahub ilma kerimata.", "Use what each would sell for today, not what you paid. Still paying something off, like a home or car? Add it under Debts instead and put its value in the “Worth” field there, so it's only counted once.": "Kasuta summat, mille eest selle täna müüksid, mitte ostuhinda. Maksad millegi eest veel laenu, näiteks kodu või auto? Lisa see hoopis jaotisse Laenud ja kirjuta selle väärtus sealsesse välja „Väärtus”, et seda ei arvestataks kaks korda.", "Used by the After inflation buttons on the Projection and Targets cards. 0 means off: amounts are shown in future euros.": "Seda kasutavad prognoosi ja eesmärkide kaardil olevad nupud „Inflatsioon”. 0 tähendab väljas: summad on tulevastes eurodes.", "Used for net pay and the yearly breakdown. Defaults follow Estonian 2026 rules, and Reset leaves them alone.": "Kasutatakse netopalga ja aastajaotuse arvutamiseks. Vaikeväärtused järgivad Eesti 2026. aasta reegleid ja lähtestamine neid ei muuda.", "Uses the type if empty": "Kui tühi, kasutatakse tüübi nime", "Utilities": "Kommunaalkulud", "Value today": "Väärtus täna", "Valued at what they'd sell for today.": "Väärtus selle järgi, mille eest need täna müüksid.", "View": "Vaade", "Watch": "Kell", "What the home, car or other thing the loan is for is worth today. It counts as an asset, so your net worth shows your equity.": "Kui palju on kodu, auto või muu laenuga ostetud asi täna väärt. See arvestatakse varaks, nii et netovara näitab sinu omakapitali.", "What you invest out of take-home pay.": "Kui palju sa netopalgast investeerid.", "What you pay each month, interest included.": "Kui palju maksad igal kuul, koos intressiga.", "What you put into ETFs each month in total. With “Split by target %” it is divided by each fund's target share; with “Amount per fund” it becomes the sum of your per-fund amounts.": "Kui palju paned kokku igal kuul ETF-idesse. Valikuga „Sihtjaotus” jagatakse see fondide sihtosakaalude järgi, valikuga „Fondipõhiselt” on see sinu fondide kuusummade summa.", "What you put into this fund each month. Leave empty if you don't buy it regularly.": "Kui palju paned igal kuul sellesse fondi. Jäta tühjaks, kui sa seda regulaarselt ei osta.", "What you would spend per year once financially independent. Leave empty to use your current expenses × 12.": "Kui palju kulutaksid aastas rahaliselt sõltumatuna. Jäta tühjaks, et kasutada praeguseid kulusid × 12.", "What you've paid into your investment account minus what you've taken out. Your bank or broker shows it in the account report. Withdrawals up to this amount are tax-free; anything above it is taxed as income when you take it out.": "Mida oled investeerimiskontole sisse maksnud, miinus see, mille oled välja võtnud. Pank või maakler näitab seda konto aruandes. Kuni selle summani on väljavõtted maksuvabad; sellest suurem osa maksustatakse väljavõtmisel tuluna.", "Wide layout": "Lai paigutus", "Withdrawal rate": "Väljavõtumäär", "Worth (optional)": "Väärtus (valikuline)", "Year": "Aasta", "Year of birth": "Sünniaasta", "Yearly deposit increase": "Sissemaksete aastane kasv", "Yearly fee (optional)": "Aastatasu (valikuline)", "Yearly income": "Aastatulu", "Yearly spending": "Aastased kulutused", "You choose 2%, 4% or 6% of gross salary. The state adds 4% from social tax, which doesn't come out of your pay.": "Sina valid 2%, 4% või 6% brutopalgast. Riik lisab 4% sotsiaalmaksust, mis ei tule sinu palgast.", "You're looking at example numbers. Nothing you change here is saved.": "Need on näidisnumbrid. Siin tehtud muudatusi ei salvestata.", "Your bank's fixed margin on top of Euribor, from your loan contract.": "Panga fikseeritud marginaal Euribori peale. Selle leiad laenulepingust.", "Your card's credit limit, for reference. It isn't counted in any total.": "Sinu krediitkaardi limiit, ainult teadmiseks. Seda ei arvestata üheski kogusummas.", "Your contribution, a share of gross salary. The state adds its own top-up on top (Settings › Taxes).": "Sinu sissemakse protsendina brutopalgast. Riik lisab omalt poolt veel sissemakse (Seaded › Maksud).", "Your data": "Sinu andmed", "Your funds": "Sinu fondid", "Your goals and notes": "Sinu plaanid ja märkmed", "Your goals or notes — click to add": "Sinu plaanid või märkmed — klõpsa, et lisada", "Your investments at retirement, taking 4% a year: a common rule of thumb for withdrawals that should last. After tax: the growth part of each withdrawal is taxed as income, what you put in isn't.": "Sinu investeeringud pensionile jäädes, kui võtad välja 4% aastas: levinud rusikareegel, et raha jätkuks kauaks. Pärast makse: iga väljavõtte kasvuosa maksustatakse tuluna, sissemakstud osa mitte.", "Your pension funds at retirement, paid out evenly over the payout period you set. Tax-free when spread over at least your remaining life expectancy, otherwise taxed 10%; starting more than 5 years before pension age, taxed as income.": "Sinu pensionifondid pensionile jäädes, välja makstuna ühtlaselt sinu valitud perioodi jooksul. Maksuvabad, kui need on jaotatud vähemalt sinu eeldatavale järelejäänud elueale, muidu maksustatakse 10%-ga; rohkem kui 5 aastat enne pensioniiga alustades maksustatakse need tulumaksuga.", "Your personal state pension forecast. You'll find it on eesti.ee under pensions. Leave empty to use the national average (€860 a month in 2026).": "Sinu isiklik riikliku pensioni prognoos. Leiad selle eesti.ee-st pensionide alt. Jäta tühjaks, et kasutada riigi keskmist (2026. aastal €860 kuus).", "Your state pension (I pillar) from 65, after tax: income tax applies above €776 a month, the tax-free amount for pensioners in 2026. Enter your own forecast from eesti.ee under Settings › Retirement; until then this is the national average.": "Sinu riiklik pension (I sammas) alates 65. eluaastast, pärast makse: tulumaksu makstakse osalt, mis ületab €776 kuus (pensionäride maksuvaba tulu 2026. aastal). Sisesta oma prognoos eesti.ee-st jaotises Seaded › Pension; seni on see riigi keskmine.", "Your take-home pay per month. It's estimated from your gross salary; choose “Enter my own” below to type your real figure.": "Sinu netopalk kuus. See arvutatakse brutopalgast; vali allpool „Sisestan ise”, et sisestada tegelik summa.", "assets": "vara", "before tax": "enne makse", "debt": "laen", "e.g. Car, computer, coins": "nt auto, arvuti, mündid", "e.g. Freelance, rent, allowance": "nt vabakutseline töö, üür, toetus", "e.g. Mortgage, car loan": "nt kodulaen, autolaen", "e.g. Rent, groceries, subscriptions": "nt üür, toidukaubad, tellimused", "gross ·": "bruto ·", "locked until retirement": "lukus kuni pensionini", "net": "neto", "net / mo": "neto / kuus", "own rate": "oma määr", "projected value": "prognoositud väärtus", "tax-free": "maksuvaba", "taxed like salary": "maksustatud nagu palk", "total assets": "vara kokku", "unassigned / year": "jaotamata / aastas", "years": "aastat", "↑ Back to dashboard": "↑ Tagasi ülevaatele"};
+const ET={"Language": "Keel", " · quarterly": " · iga kvartal", " · weekly": " · iga nädal", " · yearly": " · kord aastas", "%/yr": "%/a", "+ Add 2nd pillar fund": "+ Lisa II samba fond", "+ Add 3rd pillar fund": "+ Lisa III samba fond", "+ Add account": "+ Lisa konto", "+ Add asset": "+ Lisa vara", "+ Add debt": "+ Lisa laen", "+ Add expense": "+ Lisa kulu", "+ Add fund": "+ Lisa fond", "+ Add holding": "+ Lisa investeering", "+ Add income": "+ Lisa tulu", "+ Add past month": "+ Lisa varasem kuu", "+ Add target": "+ Lisa eesmärk", "/mo": "/kuus", "10y": "10a", "20y": "20a", "22% income tax back on contributions up to 15% of gross income, capped at €6,000 a year. Paid after you file your tax return.": "Saad tagasi 22% tulumaksu sissemaksetelt, mis on kuni 15% brutotulust ja kuni €6,000 aastas. Raha makstakse välja pärast tuludeklaratsiooni esitamist.", "2nd pillar": "II sammas", "2nd pillar state top-up": "II samba riigipoolne sissemakse", "2nd pillar, your": "II sammas, sinu", "30y": "30a", "3rd pillar": "III sammas", "3rd-pillar tax refund": "III samba tulumaksutagastus", "40y": "40a", "6-month Euribor today": "Praegune 6 kuu Euribor", "65 in 2026. From 2027 it follows life expectancy, so it may be later for you.": "2026. aastal on see 65. Alates 2027. aastast seotakse pensioniiga keskmise elueaga, nii et sinu puhul võib see olla hilisem.", "APY (optional)": "Intressimäär (valikuline)", "Account name (e.g. Emergency fund)": "Konto nimi (nt rahapuhver)", "Accounts": "Kontod", "Add each pension fund you hold, with its value, contribution and yearly fee. Your pension total and fees come from these. An old fund you no longer pay into gets 0% contribution.": "Lisa kõik oma pensionifondid koos väärtuse, sissemakse ja aastatasuga. Nende põhjal arvutatakse pensioni kogusumma ja tasud. Vanale fondile, kuhu sa enam sissemakseid ei tee, märgi sissemakseks 0%.", "Add what you have invested or put in each month (under Savings & investments) to see where it could grow.": "Lisa jaotises Säästud ja investeeringud, kui palju sul on investeeritud või kui palju igal kuul juurde paned, et näha, milleni see võib kasvada.", "Add your salary or other income under Income in the editor to see your yearly income.": "Lisa oma palk või muu tulu jaotises Tulu, et näha oma aastatulu.", "Add your take-home pay under Income in the editor to see where your money goes each month.": "Lisa oma netopalk jaotises Tulu, et näha, kuhu sinu raha igal kuul läheb.", "Add your year of birth under Settings › Retirement to see what you'd live on when you retire.": "Lisa oma sünniaasta jaotises Seaded › Pension, et näha, kui suur oleks sinu sissetulek pensionil.", "Adds your annual surplus (leftover cash, bonus and tax refund) to what you invest each year.": "Liidab aastase ülejäägi (üle jääva raha, preemia ja tulumaksutagastuse) igal aastal investeeritavale summale.", "Advanced": "Täpsemalt", "After inflation": "Pärast inflatsiooni", "After tax": "Pärast makse", "Also invest my yearly surplus": "Investeeri ka aastane ülejääk", "Amount": "Summa", "Amount per fund": "Iga fond eraldi", "Annual bonus": "Aastapreemia", "Annual percentage yield: the yearly interest rate the account pays, including compounding. Used to estimate your interest per year.": "Efektiivne aastaintress: konto aastane intressimäär koos intressi kapitaliseerimisega. Selle järgi hinnatakse, kui palju intressi aastas saad.", "Annual surplus": "Aastane ülejääk", "Any yearly fund or platform fee on this holding. Leave empty for plain stocks.": "Selle investeeringu aastane fondi- või platvormitasu. Tavaliste aktsiate puhul jäta tühjaks.", "Art": "Kunst", "Auto-estimate from gross": "Arvuta brutopalgast", "Back to the standard layout, centered on the page.": "Tagasi tavapaigutusse, kus sisu on lehe keskel.", "Balance owed": "Laenujääk", "Balance × interest rate: roughly what the debts cost you over the next year. It falls as balances shrink.": "Jääk × intressimäär: umbes nii palju maksad järgmise aasta jooksul laenuintressi. Summa väheneb koos laenujäägiga.", "Base salary (12 × monthly)": "Põhipalk (12 × kuupalk)", "Basic exemption / month": "Maksuvaba tulu / kuus", "Bonus (net)": "Preemia (neto)", "Break down into categories": "Jaga kategooriatesse", "Bring back your data from before the last reset or import.": "Taasta andmed, mis olid enne viimast lähtestamist või importimist.", "By category": "Kategooriate kaupa", "By when (optional)": "Tähtaeg (valikuline)", "Calculated from the total and target share": "Arvutatud kogusumma ja sihtosakaalu järgi", "Car": "Auto", "Car loan": "Autolaen", "Car tax": "Automaks", "Cash": "Raha", "Cash & savings": "Raha ja säästud", "Cash buffer": "Rahapuhver", "Cash left after expenses, loan payments and investing.": "Raha, mis jääb alles pärast kulusid, laenumakseid ja investeerimist.", "Child benefit": "Lastetoetus", "Childcare": "Lastehoid", "Choose how often each one is paid. Yearly costs like insurance or car tax are spread over the months.": "Vali, kui tihti iga kulu makstakse. Aastased kulud, nagu kindlustus või automaks, jaotatakse kuude peale.", "Click again to delete everything": "Klõpsa uuesti, et kõik kustutada", "Collapse all": "Sulge kõik", "Collectibles": "Kogumisesemed", "Computer": "Arvuti", "Contribution": "Sissemakse", "Contribution / month": "Sissemakse / kuus", "Contribution / month (empty if none)": "Sissemakse / kuus (tühi, kui sissemakseid ei tee)", "Credit card balance": "Krediitkaardi võlg", "Credit card limit": "Krediitkaardi limiit", "Current net worth": "Praegune netovara", "Current value": "Praegune väärtus", "Custom goal": "Oma eesmärk", "Debt": "Laen", "Debt payments": "Laenumaksed", "Debts": "Laenud", "Deductions": "Kinnipidamised", "Delete all my data": "Kustuta kõik minu andmed", "Deletes everything this tool has saved in this browser, including the copy Undo uses, and starts fresh. Files you've exported aren't affected.": "Kustutab kõik, mis see tööriist on selles brauseris salvestanud, ka „Võta tagasi” jaoks hoitud koopia, ja alustab tühjalt lehelt. Eksporditud faile see ei puuduta.", "Display": "Kuvamine", "Dividends": "Dividendid", "ETFs": "ETF-id", "Eating out": "Väljas söömine", "Edit cash & savings": "Muuda raha ja sääste", "Edit debts": "Muuda laene", "Edit history": "Muuda ajalugu", "Edit investments": "Muuda investeeringuid", "Edit pensions": "Muuda pensionifonde", "Edit physical assets": "Muuda vara", "Edit retirement": "Muuda pensioni seadeid", "Edit targets": "Muuda eesmärke", "Edit the projection": "Muuda prognoosi", "Edit your income": "Muuda tulu", "Edit your numbers": "Sinu andmed", "Edit your spending": "Muuda kulutusi", "Emergency fund": "Rahapuhver", "Enter my own": "Sisestan ise", "Enter one total and split it by target": "Sisesta kogusumma ja jaga see sihtjaotuse järgi", "Estimate from gross": "Arvuta brutopalgast", "Euribor + margin": "Euribor + marginaal", "Every month": "Iga kuu", "Every quarter": "Iga kvartal", "Every week": "Iga nädal", "Everyday account": "Igapäevakonto", "Everything you spend in a typical month, including yearly costs like car tax divided by 12. Loan payments go under Debts, so leave them out here.": "Kõik, mis sa tavaliselt kuus kulutad, sh aastased kulud, nagu automaks, jagatuna 12-ga. Laenumaksed lisa jaotisse Laenud, mitte siia.", "Expand all": "Ava kõik", "Expenses": "Kulud", "Export": "Ekspordi", "Export now": "Ekspordi kohe", "Fee": "Tasu", "Financial independence (FIRE)": "Rahaline sõltumatus (FIRE)", "Fixed": "Fikseeritud", "Follow a target split": "Järgi sihtjaotust", "For reference only; it isn't counted in any total.": "Ainult teadmiseks; seda ei arvestata üheski kogusummas.", "Freelance work": "Vabakutseline töö", "Full yearly income breakdown": "Aastatulu üksikasjalik jaotus", "Fund name": "Fondi nimi", "Funds (ETFs)": "Fondid (ETF-id)", "Furniture": "Mööbel", "Gifts": "Kingitused", "Goals": "Eesmärgid", "Goals & notes": "Plaanid ja märkmed", "Groceries": "Toidukaubad", "Gross / year": "Bruto / aastas", "Gross amount, taxed the same way as your salary. Leave empty if you don't get one.": "Brutosumma, mida maksustatakse samamoodi nagu palka. Jäta tühjaks, kui sa preemiat ei saa.", "Gross income": "Brutotulu", "Gross salary / month": "Brutopalk / kuus", "Gross total": "Bruto kokku", "Gym": "Spordiklubi", "Health": "Tervis", "Health insurance": "Ravikindlustus", "History": "Ajalugu", "Holidays": "Puhkus ja reisid", "Home": "Kodu", "How it's worked out": "Kuidas see arvutatakse", "How many years ahead to project. The 10/20/30/40 buttons on the card are quick picks.": "Mitu aastat ette prognoosida. Kaardil olevad nupud 10/20/30/40 on kiirvalikud.", "How many years your pension funds are paid out over. Payouts spread over at least your remaining life expectancy (19.3 years at 65, so 20 years or more) are tax-free; a shorter period is taxed 10%. Payouts starting more than 5 years before pension age are taxed as income.": "Mitme aasta jooksul pensionifondide raha välja makstakse. Väljamaksed, mis kestavad vähemalt sinu eeldatava järelejäänud eluea (65-aastaselt 19.3 aastat, seega 20 aastat või rohkem), on maksuvabad; lühema perioodi korral on maks 10%. Rohkem kui 5 aastat enne pensioniiga algavad väljamaksed maksustatakse tulumaksuga.", "How much of this pillar's contributions goes into this fund. Use 0 for an old fund you no longer pay into.": "Kui suur osa selle samba sissemaksetest läheb sellesse fondi. Vanale fondile, kuhu sa enam ei maksa, märgi 0.", "How much of your 3rd pillar contributions goes into this fund. Use 0 for an old fund you no longer pay into.": "Kui suur osa sinu III samba sissemaksetest läheb sellesse fondi. Vanale fondile, kuhu sa enam ei maksa, märgi 0.", "How much your monthly deposits rise each year, for example with pay raises. 3 means each year you put in 3% more per month than the year before; 0 keeps them flat.": "Kui palju sinu igakuised sissemaksed igal aastal kasvavad, näiteks palgatõusuga. 3 tähendab, et igal aastal paned kuus 3% rohkem kui eelmisel aastal; 0 jätab need samaks.", "How often": "Kui tihti", "Ignore the fees entered on your funds and use one yearly fee for everything, e.g. to compare cheap and expensive funds.": "Ära arvesta fondidele sisestatud tasusid ja kasuta kõigele ühte aastatasu, näiteks odavate ja kallite fondide võrdlemiseks.", "Import": "Impordi", "Income": "Tulu", "Income per month that isn't taxed: €700 for everyone in 2026.": "Tulu, mida ei maksustata: 2026. aastal kõigile €700 kuus.", "Income tax": "Tulumaks", "Income tax (": "Tulumaks (", "Inflation per year": "Inflatsioon aastas", "Insurance": "Kindlustus", "Interest": "Intress", "Interest / yr": "Intress / aastas", "after tax": "pärast makse", "Interest over the next year": "Intress järgmise aasta jooksul", "Invest each month": "Investeeri iga kuu", "Invested / month": "Investeeritud / kuus", "Invested total": "Investeeritud kokku", "Investing": "Investeerimine", "Investment": "Investeering", "Investment account: net deposits (optional)": "Investeerimiskonto: sissemaksed miinus väljavõtted (valikuline)", "Investments": "Investeeringud", "Investments (4% a year)": "Investeeringud (4% aastas)", "Jewelry": "Ehted", "Keeps one snapshot per month. This month's snapshot follows your numbers as you change them; earlier months stay as they were.": "Salvestab igast kuust ühe hetkeseisu. Selle kuu hetkeseis muutub koos sinu numbritega, varasemad kuud jäävad samaks.", "Know your net worth from earlier months? Add them here to fill in the chart.": "Tead oma varasemate kuude netovara? Lisa need siia, et graafik täituks.", "Later": "Hiljem", "Leasing": "Liising", "Leftover": "Üle jääb", "Leftover ×12": "Ülejääk ×12", "Loan payments are counted separately, so leave them out of your monthly expenses.": "Laenumakseid arvestatakse eraldi, seega ära lisa neid igakuistesse kuludesse.", "Margin": "Marginaal", "Month": "Kuu", "Monthly": "Iga kuu", "Monthly budget": "Kuueelarve", "Monthly contribution": "Igakuine sissemakse", "Monthly expenses": "Igakuised kulud", "Monthly loan payments as a share of take-home pay. Lenders look at a ratio like this when deciding how much they'll lend you.": "Igakuised laenumaksed protsendina netopalgast. Laenuandjad vaatavad seda suhet, kui otsustavad, kui palju sulle laenu anda.", "Monthly payment": "Igakuine makse", "Monthly payments": "Igakuised maksed", "More": "Veel", "Mortgage": "Kodulaen", "Most Estonian home loans follow Euribor: the rate is Euribor plus your bank's margin and is usually reset every 6 months.": "Enamik Eesti kodulaene on seotud Euriboriga: intress on Euribor pluss panga marginaal ja see muutub tavaliselt iga 6 kuu tagant.", "Move down": "Liiguta alla", "Move up": "Liiguta üles", "My numbers": "Minu numbrid", "Name (e.g. stocks, gold, crypto)": "Nimi (nt aktsiad, kuld, krüpto)", "Name (optional)": "Nimi (valikuline)", "Net / year": "Neto / aastas", "Net incl. refund": "Neto koos tagastusega", "Net income / month": "Netopalk / kuus", "Net worth": "Netovara", "Net worth goal": "Netovara eesmärk", "Net worth over time": "Netovara muutus ajas", "New account": "Uus konto", "New fund": "Uus fond", "New here? See what the tool does with example numbers.": "Esimest korda siin? Vaata, kuidas tööriist näidisnumbritega töötab.", "New holding": "Uus investeering", "No assets entered yet.": "Vara pole veel sisestatud.", "No targets yet — add one under Goals in the editor: an emergency fund, a net worth goal, financial independence or your own goal.": "Eesmärke veel pole. Lisa eesmärk jaotises Eesmärgid: rahapuhver, netovara eesmärk, rahaline sõltumatus või oma eesmärk.", "Not joined": "Ei ole liitunud", "Not sure what your car tax is? Look it up by registration number in the": "Ei tea oma automaksu suurust? Vaata seda registreerimisnumbri järgi", "Nothing here yet — add funds or other investments under Savings & investments in the editor.": "Siin pole veel midagi. Lisa fonde või muid investeeringuid jaotises Säästud ja investeeringud.", "Numbers live in the editor. Click a card title to rename it.": "Numbrid sisestad jaotises „Sinu andmed”. Kaardi ümbernimetamiseks klõpsa selle pealkirjal.", "Once a year": "Kord aastas", "One time": "Ühekordne", "One total": "Üks summa", "Open a section, or tap ✎ on any card, to change its numbers. Leave anything you don't have empty. Card titles and your goals & notes are edited right on the dashboard. Your numbers are saved only in this browser.": "Numbrite muutmiseks ava jaotis või vajuta kaardil ✎. Jäta tühjaks kõik, mida sul pole. Kaartide pealkirju ning plaane ja märkmeid muudad otse ülevaatel. Sinu numbrid salvestatakse ainult selles brauseris.", "Other income": "Muu tulu", "Other income (yearly, net)": "Muu tulu (aastas, neto)", "Other investments": "Muud investeeringud", "Overview": "Ülevaade", "Own rate": "Oma määr", "Paid by the state from social tax, not from your salary.": "Riik maksab selle sotsiaalmaksust, mitte sinu palgast.", "Pension": "Pension", "Pension funds (II + III pillar)": "Pensionifondid (II + III sammas)", "Pension payout period": "Pensioni väljamakseperiood", "Pensions": "Pensionid", "Personal loan": "Väikelaen", "Pets": "Lemmikloomad", "Phone": "Telefon", "Phone & internet": "Telefon ja internet", "Physical assets": "Vara", "Physical cash": "Sularaha", "Pick a type for each target. Each shows how far along you are and roughly when you'll get there; add a deadline to see if you're on track. Use the arrows to reorder.": "Vali igale eesmärgile tüüp. Iga eesmärk näitab, kui kaugel sa oled ja millal selle umbes saavutad. Lisa tähtaeg, et näha, kas oled graafikus. Järjekorda saad muuta nooltega.", "Pick how each one is taxed. “Taxed like salary” is for a second job: it shares your one €700 monthly exemption with your main job, and unemployment insurance and your 2nd pillar are taken off too. For rent, freelance or other income, use “Own rate”. Interest on your savings is already counted from their APY, so don't add it here.": "Vali iga tulu maksustamise viis. „Maksustatud nagu palk” on teise töökoha jaoks: see kasutab sama €700 maksuvaba tulu kuus kui sinu põhitöö ning maha arvatakse ka töötuskindlustusmakse ja II samba sissemakse. Üüri-, vabakutselise või muu tulu jaoks vali „Oma määr”. Säästude intressi arvestatakse juba konto intressimäära järgi, nii et seda siia ära lisa.", "Portfolio allocation": "Portfelli jaotus", "Private: nothing you enter ever leaves this browser.": "Privaatne: sinu sisestatud andmed ei lahku sellest brauserist.", "Progress": "Areng", "Projection": "Prognoos", "Property & debts": "Vara ja laenud", "Range": "Vahemik", "Range: return ± per year": "Vahemik: tootlus ± aastas", "Rate": "Intressi liik", "Record a snapshot each month": "Salvesta igal kuul hetkeseis", "Refunds & top-ups": "Tagastused ja riigi sissemaksed", "Remove account": "Eemalda konto", "Remove asset": "Eemalda vara", "Remove debt": "Eemalda laen", "Remove expense": "Eemalda kulu", "Remove fund": "Eemalda fond", "Remove holding": "Eemalda investeering", "Remove income": "Eemalda tulu", "Remove target": "Eemalda eesmärk", "Remove this month": "Eemalda see kuu", "Rent": "Üür", "Rental income": "Üüritulu", "Reset": "Lähtesta", "Retirement": "Pension", "Retirement age": "Pensioniiga", "Return rate": "Tootlus", "Royalties": "Autoritasud", "Salary": "Palk", "Saved so far": "Seni kogutud", "Savings & investments": "Säästud ja investeeringud", "Savings rate": "Säästumäär", "Scale to 100%": "Skaleeri 100%-le", "Second job": "Teine töö", "Set a deadline to see whether you are on track and how much more per month would get you there in time.": "Määra tähtaeg, et näha, kas oled graafikus ja kui palju peaksid kuus rohkem panema, et õigeks ajaks jõuda.", "Set in the editor under Settings › Projection, together with fees, timeframe and other options.": "Määratakse jaotises Seaded › Prognoos koos tasude, ajavahemiku ja muude valikutega.", "Settings": "Seaded", "Shade the outcome for a lower and a higher return. The width is set under Settings › Projection.": "Näita varjutatud alana tulemust madalama ja kõrgema tootluse korral. Vahemiku laiuse saad määrata jaotises Seaded › Prognoos.", "Share of take-home pay": "Osa netopalgast", "Show a range": "Näita vahemikku", "Show an example": "Vaata näidet", "Show what you'd keep after tax on withdrawals: income tax on investment gains above your deposits, and 10% on pension payouts (a lump sum at retirement age).": "Näita, mis jääks sulle alles pärast väljavõtete maksustamist: tulumaks investeeringute kasvult (üle sissemaksete) ja 10% pensionifondi väljamaksetelt (ühekordne väljamakse pensioniealisena).", "Show when your debts will be paid off, next to your goals.": "Näita eesmärkide kõrval, millal sinu laenud tagasi makstud on.", "Shows what future amounts would be worth in today's prices. For example, with 2.5% inflation a year, €100,000 in 20 years buys about what €61,000 buys today. Change the inflation rate under Settings › Projection.": "Näitab, kui palju oleksid tulevased summad väärt tänastes hindades. Näiteks 2.5% aastase inflatsiooni korral saab €100,000 eest 20 aasta pärast osta umbes sama palju kui täna €61,000 eest. Inflatsioonimäära saad muuta jaotises Seaded › Prognoos.", "Side business": "Kõrvaläri", "Skip to content": "Liigu sisu juurde", "Source code": "Lähtekood", "Spending": "Kulutused", "Split by target %": "Sihtjaotuse järgi", "Standard layout": "Tavapaigutus", "Start over with a fresh, empty tool. Only your tax rates stay. Undo brings everything back.": "Alusta uuesti tühjalt lehelt. Alles jäävad ainult maksumäärad. „Võta tagasi” toob kõik tagasi.", "Start with my own numbers": "Alusta oma numbritega", "Starting amount": "Algsumma", "State pension (I pillar)": "Riiklik pension (I sammas)", "State pension forecast (optional)": "Riikliku pensioni prognoos (valikuline)", "State top-up to 2nd pillar (": "Riigi sissemakse II sambasse (", "Stocks, crypto or anything else you hold. Fill in whichever fields apply.": "Aktsiad, krüpto või muu, mis sul on. Täida need väljad, mis sobivad.", "Student loan": "Õppelaen", "Subscriptions": "Tellimused ja kuutasud", "Sum of your categories, per month": "Kategooriate summa kuus", "Sum of your per-fund monthly amounts": "Fondide kuusummade summa", "Take-home pay": "Netopalk", "Take-home pay minus expenses, loan payments and investing: money without a plan yet.": "Netopalk miinus kulud, laenumaksed ja investeerimine: raha, millel pole veel kindlat plaani.", "Target": "Eesmärk", "Target share": "Sihtosakaal", "Targets": "Eesmärgid", "Tax": "Maks", "Tax and Customs Board's calculator": "Maksu- ja Tolliameti kalkulaatorist", "Tax on other income (your rates)": "Muu tulu maks (oma määrad)", "Tax rate": "Maksumäär", "Tax refund": "Tulumaksutagastus", "Tax-free": "Maksuvaba", "Taxed like salary": "Maksustatud nagu palk", "Taxes": "Maksud", "The 6-month Euribor your Euribor loans follow. It changes daily, so update it now and then. A negative Euribor counts as 0.": "6 kuu Euribor, mida sinu Euribori-põhised laenud järgivad. See muutub iga päev, nii et uuenda seda aeg-ajalt. Negatiivset Euribori arvestatakse nullina.", "The employee's share (1.6% in 2026), deducted from gross before income tax.": "Töötaja osa (2026. aastal 1.6%), mis arvatakse brutopalgast maha enne tulumaksu.", "The fund's ongoing charge (TER), e.g. 0.19 for 0.19% a year. Used to take fees off the projection.": "Fondi jooksvad tasud (TER), nt 0.19 tähendab 0.19% aastas. Need arvatakse prognoosist maha.", "The fund's yearly management fee, e.g. 0.3 for 0.3%.": "Fondi aastane valitsemistasu, nt 0.3 tähendab 0.3%.", "The long-run average yearly return to assume, before inflation and fees. US stocks have averaged about 10% a year (about 7% after inflation); a portfolio spread around the world, with some bonds, has usually earned less, so the default is 8%. Returns swing a lot from year to year, so treat the result as a rough guide.": "Eeldatav pikaajaline keskmine aastatootlus enne inflatsiooni ja tasusid. USA aktsiad on teeninud keskmiselt umbes 10% aastas (inflatsiooni arvestades umbes 7%); üle maailma hajutatud portfell, kus on ka võlakirju, on tavaliselt teeninud vähem, seega on vaikimisi 8%. Tootlus kõigub aastati palju, seega pea tulemust umbkaudseks.", "The share of your investments you would spend each year. 4% is a common rule of thumb; your FIRE number is yearly spending ÷ this rate.": "Kui suure osa investeeringutest igal aastal ära kulutaksid. 4% on levinud rusikareegel; sinu FIRE-summa on aastased kulutused ÷ see määr.", "The tax refund covers contributions up to 15% of gross income or €6,000 a year, whichever is lower.": "Tulumaksu saad tagasi sissemaksetelt kuni 15% brutotulust, kuid mitte rohkem kui €6,000 aastas.", "Timeframe": "Ajavahemik", "Total ETF value": "ETF-ide koguväärtus", "Transport": "Transport", "Travel allowance": "Sõidukompensatsioon", "Try other numbers": "Proovi teisi numbreid", "Type one total and each fund's value is worked out from its target share. Handy for trying out numbers. Your own per-fund values are kept and come back when you switch this off.": "Sisesta üks kogusumma ja iga fondi väärtus arvutatakse selle sihtosakaalu järgi. Mugav numbritega katsetamiseks. Sinu fondipõhised väärtused jäävad alles ja tulevad tagasi, kui selle välja lülitad.", "Undo": "Võta tagasi", "Unemployment insurance": "Töötuskindlustusmakse", "Unemployment insurance (": "Töötuskindlustusmakse (", "Until pension age, health insurance comes from the social tax paid on your work. If you stop working earlier, you can buy it yourself from the Health Insurance Fund. This adds it to your yearly spending, which keeps the goal on the safe side: from pension age the state covers it again.": "Kuni pensionieani tuleb ravikindlustus sinu töölt makstavast sotsiaalmaksust. Kui lõpetad töötamise varem, saad selle ise Tervisekassalt osta. Selle valikuga lisatakse makse sinu aastastele kulutustele, nii et eesmärk on pigem ettevaatlik: pensionieas katab ravikindlustuse jälle riik.", "Use my own starting amount and monthly": "Kasuta oma algsummat ja igakuist sissemakset", "Use one fee for everything": "Kasuta kõigele ühte tasu", "Use the whole screen: cards flow into columns so everything fits without scrolling.": "Kasuta kogu ekraani: kaardid paigutuvad veergudesse, nii et kõik mahub ilma kerimata.", "Use what each would sell for today, not what you paid. Still paying something off, like a home or car? Add it under Debts instead and put its value in the “Worth” field there, so it's only counted once.": "Kasuta summat, mille eest selle täna müüksid, mitte ostuhinda. Maksad millegi eest veel laenu, näiteks kodu või auto? Lisa see hoopis jaotisse Laenud ja kirjuta selle väärtus sealsesse välja „Väärtus”, et seda ei arvestataks kaks korda.", "Used by the After inflation buttons on the Projection and Targets cards. 0 means off: amounts are shown in future euros.": "Seda kasutavad prognoosi ja eesmärkide kaardil olevad nupud „Pärast inflatsiooni”. 0 lülitab selle välja: summad on tulevastes eurodes.", "Used for net pay and the yearly breakdown. Defaults follow Estonian 2026 rules, and Reset leaves them alone.": "Kasutatakse netopalga ja aastajaotuse arvutamiseks. Vaikeväärtused järgivad Eesti 2026. aasta reegleid ja lähtestamine neid ei muuda.", "Uses the type if empty": "Kui tühi, kasutatakse tüübi nime", "Utilities": "Kommunaalkulud", "Value today": "Väärtus täna", "Valued at what they'd sell for today.": "Väärtus selle järgi, mille eest need täna müüksid.", "View": "Vaade", "Watch": "Kell", "What the home, car or other thing the loan is for is worth today. It counts as an asset, so your net worth shows your equity.": "Kui palju on kodu, auto või muu laenuga ostetud asi täna väärt. See arvestatakse varaks, nii et netovara näitab sinu omakapitali.", "What you invest out of take-home pay.": "Kui palju sa netopalgast investeerid.", "What you pay each month, interest included.": "Kui palju maksad igal kuul, koos intressiga.", "What you put into ETFs each month in total. With “Split by target %” it is divided by each fund's target share; with “Amount per fund” it becomes the sum of your per-fund amounts.": "Kui palju paned kokku igal kuul ETF-idesse. Valikuga „Sihtjaotuse järgi” jagatakse see fondide sihtosakaalude järgi, valikuga „Iga fond eraldi” on see sinu fondide kuusummade summa.", "What you put into this fund each month. Leave empty if you don't buy it regularly.": "Kui palju paned igal kuul sellesse fondi. Jäta tühjaks, kui sa seda regulaarselt ei osta.", "What you would spend per year once financially independent. Leave empty to use your current expenses × 12.": "Kui palju kulutaksid aastas rahaliselt sõltumatuna. Jäta tühjaks, et kasutada praeguseid kulusid × 12.", "What you've paid into your investment account minus what you've taken out. Your bank or broker shows it in the account report. Withdrawals up to this amount are tax-free; anything above it is taxed as income when you take it out.": "Kui palju oled investeerimiskontole sisse maksnud, miinus see, mis oled välja võtnud. Pank või maakler näitab seda konto aruandes. Kuni selle summani on väljavõtted maksuvabad; sellest suurem osa maksustatakse väljavõtmisel tuluna.", "Wide layout": "Lai paigutus", "Withdrawal rate": "Väljavõtumäär", "Worth (optional)": "Väärtus (valikuline)", "Year": "Aasta", "Year of birth": "Sünniaasta", "Yearly deposit increase": "Sissemaksete aastane kasv", "Yearly fee (optional)": "Aastatasu (valikuline)", "Yearly income": "Aastatulu", "Yearly spending": "Aastased kulutused", "You choose 2%, 4% or 6% of gross salary. The state adds 4% from social tax, which doesn't come out of your pay.": "Sina valid 2%, 4% või 6% brutopalgast. Riik lisab 4% sotsiaalmaksust, mis ei tule sinu palgast.", "You're looking at example numbers. Nothing you change here is saved.": "Need on näidisnumbrid. Siin tehtud muudatusi ei salvestata.", "Your bank's fixed margin on top of Euribor, from your loan contract.": "Panga fikseeritud marginaal lisaks Euriborile. Selle leiad laenulepingust.", "Your card's credit limit, for reference. It isn't counted in any total.": "Sinu krediitkaardi limiit, ainult teadmiseks. Seda ei arvestata üheski kogusummas.", "Your contribution, a share of gross salary. The state adds its own top-up on top (Settings › Taxes).": "Sinu sissemakse protsendina brutopalgast. Riik lisab omalt poolt veel sissemakse (Seaded › Maksud).", "Your data": "Sinu andmed", "Your funds": "Sinu fondid", "Your goals and notes": "Sinu plaanid ja märkmed", "Your goals or notes — click to add": "Sinu plaanid või märkmed — klõpsa, et lisada", "Your investments at retirement, taking 4% a year: a common rule of thumb for withdrawals that should last. After tax: the growth part of each withdrawal is taxed as income, what you put in isn't.": "Sinu investeeringud pensionile jäädes, kui võtad välja 4% aastas: levinud rusikareegel, et raha jätkuks kauaks. Pärast makse: iga väljavõtte kasvuosa maksustatakse tuluna, sissemakstud osa mitte.", "Your pension funds at retirement, paid out evenly over the payout period you set. Tax-free when spread over at least your remaining life expectancy, otherwise taxed 10%; starting more than 5 years before pension age, taxed as income.": "Sinu pensionifondid pensionile jäädes, välja makstuna ühtlaselt sinu valitud perioodi jooksul. Maksuvabad, kui väljamaksed kestavad vähemalt sinu eeldatava järelejäänud eluea, muidu maksustatakse 10%-ga; rohkem kui 5 aastat enne pensioniiga alustades maksustatakse need tulumaksuga.", "Your personal state pension forecast. You'll find it on eesti.ee under pensions. Leave empty to use the national average (€860 a month in 2026).": "Sinu isiklik riikliku pensioni prognoos. Leiad selle eesti.ee-st pensionide alt. Jäta tühjaks, et kasutada riigi keskmist (2026. aastal €860 kuus).", "Your state pension (I pillar) from 65, after tax: income tax applies above €776 a month, the tax-free amount for pensioners in 2026. Enter your own forecast from eesti.ee under Settings › Retirement; until then this is the national average.": "Sinu riiklik pension (I sammas) alates 65. eluaastast, pärast makse: tulumaksu makstakse osalt, mis ületab €776 kuus (pensionäride maksuvaba tulu 2026. aastal). Sisesta oma prognoos eesti.ee-st jaotises Seaded › Pension; seni on see riigi keskmine.", "Your take-home pay per month. It's estimated from your gross salary; choose “Enter my own” below to type your real figure.": "Sinu netopalk kuus. See arvutatakse brutopalgast; vali allpool „Sisestan ise”, et sisestada tegelik summa.", "assets": "vara", "before tax": "enne makse", "debt": "laen", "e.g. Car, computer, coins": "nt auto, arvuti, mündid", "e.g. Freelance, rent, allowance": "nt vabakutseline töö, üür, toetus", "e.g. Mortgage, car loan": "nt kodulaen, autolaen", "e.g. Rent, groceries, subscriptions": "nt üür, toidukaubad, tellimused ja kuutasud", "locked until retirement": "lukus kuni pensionini", "net / mo": "neto / kuus", "own rate": "oma määr", "projected value": "prognoositud väärtus", "tax-free": "maksuvaba", "taxed like salary": "maksustatud nagu palk", "total assets": "vara kokku", "unassigned / year": "jaotamata / aastas", "years": "aastat", "↑ Back to dashboard": "↑ Tagasi ülevaatele", "Open a section, or tap ✎ on any card, to change its numbers.": "Numbrite muutmiseks ava jaotis või vajuta kaardil ✎.", "Pick how each one is taxed.": "Vali iga tulu maksustamise viis.", "Add each pension fund you hold, with its value, contribution and yearly fee.": "Lisa kõik oma pensionifondid koos väärtuse, sissemakse ja aastatasuga.", "Use what each would sell for today. Bought on a loan? Add it under Debts.": "Kasuta summat, mille eest selle täna müüksid. Ostetud laenuga? Lisa see jaotisse Laenud.", "Pick a type for each target and add a deadline to see if you're on track.": "Vali igale eesmärgile tüüp ja lisa tähtaeg, et näha, kas oled graafikus."};
 
 
 
@@ -1354,18 +1354,18 @@ function readNum(input, key){
 const isET=()=>LANG==='et';
 const money=(sgn, x)=> sgn+'€'+x;
 const grp=a=> a.toLocaleString('en-US');      // 34,481
-const big = a => a>=1e15 ? '999T+' : a>=999.995e9 ? (a/1e12).toFixed(2).replace(/\.?0+$/,'')+'T' : (a/1e9).toFixed(2).replace(/\.?0+$/,'')+'B';
+const r2 = (a, unit) => String(Math.round(a/(unit/100))/100);   // a in units with up to 2 decimals, rounded half up: €1,005,000 → 1.01 (M)
+const big = a => a>=1e15 ? '999T+' : a>=999.995e9 ? r2(a,1e12)+'T' : r2(a,1e9)+'B';
 const eur  = n => { n=Math.round(n||0); const a=Math.abs(n); return money(sign(n), a>=1e9 ? big(a) : grp(a)); };
-const eurK = n => { n=Math.round(n||0); const a=Math.abs(n); return (a>=1000 && a<1e9 && a%1000===0) ? money(sign(n), (a/1000)+'k') : eur(n); };   // exact thousands only: €12k, else €34,169
 const eurS = n => { n=Math.round(n||0); const a=Math.abs(n); return a<10000 ? eur(n) : a<999950 ? money(sign(n), (Math.round(a/100)/10).toString().replace(/\.0$/,'')+'k') : eurC(n); };   // short: €4,232 · €23.3k · €1.02M
-const eurC = n => { n=Math.round(n||0); const a=Math.abs(n); return money(sign(n), a>=999.995e6 ? big(a) : a>=999.5e3 ? (a/1e6).toFixed(2).replace(/\.?0+$/,'')+'M' : a>=1000 ? Math.round(a/1000)+'k' : a); };
-const num = n => String(Math.round((n||0)*10)/10);
+const eurC = n => { n=Math.round(n||0); const a=Math.abs(n); return money(sign(n), a>=999.995e6 ? big(a) : a>=999.5e3 ? r2(a,1e6)+'M' : a>=1000 ? Math.round(a/1000)+'k' : a); };
+const num = n => { const v=Math.round((n||0)*10)/10; return (v<0?'−':'')+Math.abs(v); };
 // Whole percentages that add up to exactly 100: the largest remainders get the rounding (37/46/17, not 37/46/18),
 // so a 0 stays 0. Nothing to split → all 0.
 function pct100(vals){ const v=vals.map(x=>Math.max(0,+x||0)), tot=v.reduce((a,x)=>a+x,0); if(!(tot>0)) return v.map(()=>0);
   const raw=v.map(x=>x/tot*100), out=raw.map(Math.floor); let left=100-out.reduce((a,b)=>a+b,0);
   raw.map((r,i)=>[r-out[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{ if(left>0 && v[i]>0){ out[i]++; left--; } }); return out; }
-const num2 = n => (n||0).toFixed(2);   // fees and APYs: always two decimals (0.20%, 2.43%)
+const num2 = n => (n<0?'−':'')+Math.abs(n||0).toFixed(2);   // fees and APYs: always two decimals (0.20%, 2.43%)
 // "Matrix" number scramble for headline figures
 const REDUCE_MOTION = (typeof matchMedia==='function') && matchMedia('(prefers-reduced-motion: reduce)').matches;
 // "Matrix" scramble: digits flicker briefly, then settle on the new value.
@@ -1377,7 +1377,7 @@ function setMatrix(el, text){
   const put = v => { if(isInput) el.value=v; else el.textContent=v; };
   text = String(text);
   if(get() === text) return;
-  if(REDUCE_MOTION || !/\d/.test(text)){ clearInterval(el._mtx); put(text); return; }
+  if(REDUCE_MOTION || !/\d/.test(text)){ clearInterval(el._mtx); el.classList.remove('mtx'); put(text); return; }
   clearInterval(el._mtx);
   const digits = '0123456789';
   let frame = 0; const frames = 7;
@@ -1411,6 +1411,16 @@ function animFrom(el, key, text){
 }
 const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
 const showHide = (id,on)=>{const e=document.getElementById(id); if(e) e.style.display = on ? '' : 'none';};
+// A fund or holding on the Investments card: dot, name with a short gray line after it (it moves under the name when there's
+// no room), and the amount on the right. The gray line and the amount animate when they change, like every number.
+function legendRow(leg, key, color, name, calc, value){
+  const sp=document.createElement('span'), dot=document.createElement('span'), lab=document.createElement('span'), nm=document.createElement('span'), cl=document.createElement('span'), vv=document.createElement('span');
+  dot.className='dot'; dot.style.background=color; lab.className='elab'; nm.className='ename'; cl.className='ecalc'; vv.className='evalue';
+  nm.textContent=name; animFrom(cl, key, calc); animFrom(vv, key+'v', value);
+  lab.append(nm, cl); sp.append(dot, lab, vv); leg.appendChild(sp);
+}
+// details that only show on hover: also reachable with Tab (which shows the tip) and read out by screen readers
+const setTip=(el, text)=>{ if(text){ el.setAttribute('data-tip', text); el.setAttribute('aria-description', text); el.tabIndex=0; } else ['data-tip','aria-description','tabindex'].forEach(a=>el.removeAttribute(a)); };
 
 // ---- motion helpers ----
 function animHeight(el, opening, done, edge=0){   // edge: top margin when shut (negative pulls up the gap above it)
@@ -1566,7 +1576,7 @@ function donutRing(sel, slices){
   const total=slices.reduce((a,s)=>a+(s.value>0?s.value:0),0);
   const target=slices.map(s=>{
     const pct= total>0 && s.value>0 ? s.value/total*100 : 0;
-    return {key:s.key||s.label, pct, color:s.color, tip: pct>0 ? t(s.label)+' — '+eurK(s.value)+' · '+Math.round(pct)+'%' : ''};
+    return {key:s.key||s.label, pct, color:s.color, tip: pct>0 ? t(s.label)+' — '+eur(s.value)+' · '+Math.round(pct)+'%' : ''};
   });
   let svg=el.querySelector('svg');
   if(!svg){ el.innerHTML='<svg viewBox="0 0 42 42"></svg>'; svg=el.querySelector('svg'); }
@@ -1603,7 +1613,8 @@ function payoff(balance, ratePct, payment){
 const neverPaid=po=> po.slow ? L('Takes over 100 years at this payment','Selle maksega kulub üle 100 aasta') : L('The payment doesn’t cover the interest','Makse ei kata intressi');
 const listJoin=a=> a.length<2 ? (a[0]||'') : a.slice(0,-1).join(', ')+(isET()?' ja ':' and ')+a[a.length-1];
 const L=(en, et)=> isET() ? et : en;   // a sentence built in code, in both languages
-const monthsLabel=m=>{ const y=Math.floor(m/12), mo=m%12, [Y,M]=isET()?['a','k']:['y','m']; return [y?y+Y:'', mo?mo+M:''].filter(Boolean).join(' ')||'0'+M; };   // 1y 2m / 1a 2k
+const monthsLabel=m=>{ const y=Math.floor(m/12), mo=m%12, et=isET(), M=n=>et ? n+(n===1?' kuu':' kuud') : n+'m';   // 1y 2m / 1a 2 kuud ("k" alone would read as thousands)
+  return [y?y+(et?'a':'y'):'', mo?M(mo):''].filter(Boolean).join(' ')||M(0); };
 const MONTHS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], MONTHS_ET=['jaan','veebr','märts','apr','mai','juuni','juuli','aug','sept','okt','nov','dets'];
 const monthNames=()=> isET() ? MONTHS_ET : MONTHS_EN;
 const ym=d=> d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');   // a date's month as "2026-10" (local time)
@@ -1616,14 +1627,15 @@ function ensureRows(box, n, cls, html){
   box.innerHTML='';
   for(let i=0;i<n;i++){ const r=document.createElement('div'); r.className=cls; r.innerHTML=html; box.appendChild(r); }
 }
-// "name  small-tag  value" rows (physical assets, financed items, other income in the breakdown).
-function tagRows(box, list, nameOf, tagOf, valOf){
+// "name  small-tag  value" rows (physical assets, financed items, other income in the breakdown). Amounts are short
+// (eurS) on cards and exact in the breakdown, whose rows add up to its exact totals.
+function tagRows(box, list, nameOf, tagOf, valOf, fmt=eurS){
   if(!box) return;
   ensureRows(box, list.length, 'row physrow', '<span class="k"><span class="pn"></span><span class="ptag"></span></span><span class="v"></span>');
   list.forEach((x,i)=>{
     const r=box.children[i], t=tagOf(x), g=r.querySelector('.ptag');
     r.querySelector('.pn').textContent=nameOf(x); g.textContent=t; g.style.display=t?'':'none';
-    setMatrix(r.querySelector('.v'), eur(valOf(x)));
+    setMatrix(r.querySelector('.v'), fmt(valOf(x)));
   });
 }
 
@@ -1749,7 +1761,7 @@ function renderCalc(){
   showHide('invested-nopen', hasPen); set('invested-nopen', eur(c.investedNoPen)+L(' excl. pensions',' ilma pensionideta'));
   showHide('savings-nopen', hasPen); set('savings-nopen', num(c.savingsNoPen)+L('% excl. pensions','% ilma pensionideta'));
   set('out-buffer', eur(c.buffer));
-  set('out-buffer2', eurK(c.buffer)+L(' total',' kokku'));
+  set('out-buffer2', eurS(c.buffer)+L(' total',' kokku'));
 
   // debt sub-line inside net worth card
   const hasDebt = c.debt>0;
@@ -1757,29 +1769,28 @@ function renderCalc(){
   set('nw-assets', hasDebt ? eur(c.assets)+L(' assets',' vara') : L('total assets','vara kokku'));
   set('nw-debt', eur(c.debt));
 
-  set('out-phys', eurK(state.cashOnHand));
-  set('out-credit', eurK(state.creditLimit));
+  set('out-phys', eurS(state.cashOnHand));
+  set('out-credit', eurS(state.creditLimit));
 
   // dynamic cash account rows on the card
   const ca=document.getElementById('cash-accounts');
   if(ca){
     const accts=state.accounts;
-    ensureRows(ca, accts.length, 'row acctrow', '<span class="k"></span><span class="v"><span class="a-amt"></span><span class="a-yld"></span><span class="a-apy"> · <span class="acctapy"></span></span></span>');
+    ensureRows(ca, accts.length, 'row acctrow', '<span class="k"><span class="a-name"></span><span class="a-yld"></span><span class="a-gain"></span></span><span class="v a-amt"></span>');
     let interestYr=0;
     accts.forEach((a,i)=>{
       const amt=+a.amount||0, y=+a.yield||0, ry=amt*y/100; interestYr+=ry;
       const r=ca.children[i];
-      r.querySelector('.k').textContent=a.name||L('Account','Konto');
-      setMatrix(r.querySelector('.a-amt'), eurK(amt));
-      setMatrix(r.querySelector('.a-yld'), y>0?' · '+num2(y)+L('% APY','% intress'):'');   // APYs are quoted to 2 decimals
-      r.querySelector('.a-apy').style.display=(y>0&&amt>0)?'':'none';
-      setMatrix(r.querySelector('.acctapy'), '+'+eur(ry)+'/yr');
+      r.querySelector('.a-name').textContent=a.name||L('Account','Konto');
+      setMatrix(r.querySelector('.a-amt'), eurS(amt));
+      setMatrix(r.querySelector('.a-yld'), y ? num2(y)+L('% APY','% intress')+(amt>0?' · ':'') : '');   // APYs are quoted to 2 decimals
+      setMatrix(r.querySelector('.a-gain'), y && amt>0 ? (ry>0?'+':'')+eurS(ry)+'/yr' : ''); r.querySelector('.a-gain').classList.toggle('neg', ry<0);
     });
     const ir=document.getElementById('interest-row');
     if(ir){
       ir.style.display=interestYr>0?'':'none';
-      set('int-gross', eur(interestYr)); set('int-net', eur(interestYr*(1-(state.taxRate||0)/100)));
-      ir.setAttribute('data-tip', L('Net assumes '+num(state.taxRate)+'% income tax. Interest earned inside an Estonian investment account is only taxed when you withdraw more than you deposited.','Neto eeldab '+num(state.taxRate)+'% tulumaksu. Investeerimiskontol teenitud intressi maksustatakse alles siis, kui võtad välja rohkem, kui sisse maksid.'));
+      set('int-net', eurS(interestYr*(1-(state.taxRate||0)/100)));
+      setTip(ir, L(eur(interestYr)+' a year before tax. After tax assumes '+num(state.taxRate)+'% income tax. Interest earned inside an Estonian investment account is only taxed when you withdraw more than you deposited.',eur(interestYr)+' aastas enne makse. Pärast makse arvestatakse '+num(state.taxRate)+'% tulumaksuga. Investeerimiskontol teenitud intressi maksustatakse alles siis, kui võtad välja rohkem, kui sisse maksid.'));
     }
   }
 
@@ -1789,8 +1800,8 @@ function renderCalc(){
   const financed=c.debtList.filter(d=>(+d.asset||0)>0);
   animShowHide('phys-card', physAll.length>0 || financed.length>0);
   tagRows(pl, physAll, a=>a.name||L('Asset','Vara'), ()=>'', a=>+a.value||0);
-  tagRows(document.getElementById('phys-financed'), financed, d=>d.name||L('Debt','Laen'), d=>L('on loan · '+eur(+d.balance||0)+' owed','laenuga · '+eur(+d.balance||0)+' võlgu'), d=>+d.asset||0);
-  set('phys-total', eur(c.physVal+c.debtAssets));
+  tagRows(document.getElementById('phys-financed'), financed, d=>d.name||L('Debt','Laen'), d=>L('on loan · '+eurS(+d.balance||0)+' owed','laenuga · '+eurS(+d.balance||0)+' võlgu'), d=>+d.asset||0);
+  set('phys-total', eurS(c.physVal+c.debtAssets));
 
   // debts card: one tidy block per debt, then totals, then a payoff suggestion when it clearly pays
   const dl=document.getElementById('debt-list');
@@ -1800,32 +1811,35 @@ function renderCalc(){
   // the Physical assets + Debts row drops its spacing when neither card is shown (otherwise the gap below it doubles)
 
   if(dl){
-    ensureRows(dl, debtsAll.length, 'debtitem', '<div class="dline main"><span class="dname"></span><span class="dbal"></span></div>'
-      +'<div class="dline meta"><span class="dterms"></span><span class="dwhen"></span></div>'
-      +'<div class="dline meta"><span class="dcost"></span><span class="dequity"></span></div>');
+    ensureRows(dl, debtsAll.length, 'debtitem', '<div class="dline main"><span class="dname"></span><span class="dtag dterms"></span><span class="dbal"></span></div>'
+      +'<div class="dline meta"><span class="dwhen"></span><span class="dcost"></span></div><div class="dline meta"><span class="drange"></span></div>');
     debtsAll.forEach((d,i)=>{
       const r=dl.children[i], bal=+d.balance||0, rate=+d.rate||0, pay=+d.payment||0, asset=+d.asset||0;
       r.querySelector('.dname').textContent=d.name||L('Debt','Laen');
-      setMatrix(r.querySelector('.dbal'), eur(bal));
+      setMatrix(r.querySelector('.dbal'), eurS(bal));
       const eur6=d.rtype==='euribor';
-      setMatrix(r.querySelector('.dterms'), (eur6 ? 'Euribor '+num(Math.max(0,state.euribor||0))+'% + '+num(+d.margin||0)+L('% margin','% marginaal') : num(rate)+L('% interest','% intress'))+(pay?' · '+eur(pay)+'/mo':''));
+      setMatrix(r.querySelector('.dterms'), num(rate)+'%'+(pay?' · '+eur(pay)+'/mo':''));
+      const tip=[eur6 ? 'Euribor '+num(Math.max(0,state.euribor||0))+'%'+((state.euribor||0)<0 ? L(' (below 0 counts as 0)',' (alla 0 arvestatakse 0-na)') : '')+' + '+num(+d.margin||0)+L('% margin','% marginaal') : ''];   // the details behind the row, in its hover
+      let rng='';
       const po=payoff(bal,rate,pay), when=r.querySelector('.dwhen'), cost=r.querySelector('.dcost');
       const grows=!!po && po.months===Infinity;
       r.classList.toggle('warn', grows);
       if(bal<=0){ setMatrix(when,L('Paid off','Tasutud')); setMatrix(cost,''); }
-      else if(!po){ setMatrix(when,L('Add a monthly payment','Lisa igakuine makse')); setMatrix(cost,L('to see when it’s paid off','et näha, millal see tasutud on')); }
-      else if(grows){ setMatrix(when,L('Never paid off','Ei saa kunagi tasutud')); setMatrix(cost,neverPaid(po)); }
+      else if(!po){ setMatrix(when,L('Add a monthly payment to see when it’s paid off','Lisa igakuine makse, et näha, millal see tasutud on')); setMatrix(cost,''); }
+      else if(grows){ setMatrix(when,L('Never paid off','Jääb tasumata')); setMatrix(cost,neverPaid(po)); }
       else { setMatrix(when,L('Paid off ','Tasutud ')+monthYear(po.months)+' · '+monthsLabel(po.months));
         // Euribor loans: the payoff date if Euribor moves 1 percentage point either way
-        let rng=''; if(eur6){ const at=e=>payoff(bal, debtRate(d, e), pay), lo=at((state.euribor||0)-1), hi=at((state.euribor||0)+1);
-          rng=' · Euribor ±1%: '+(lo&&lo.months!==Infinity?monthYear(lo.months):'—')+' – '+(hi&&hi.months!==Infinity?monthYear(hi.months):L('never','mitte kunagi')); }
-        setMatrix(cost, eur(po.interest)+L(' interest to go',' intressi veel maksta')+rng); }
-      const eq=r.querySelector('.dequity'); eq.style.display=asset>0?'':'none';
-      if(asset>0) setMatrix(eq, L('Equity ','Omakapital ')+(asset-bal<0?'−':'')+eur(Math.abs(asset-bal))+L(' of ',' / ')+eur(asset));
+        if(eur6){ const at=e=>payoff(bal, debtRate(d, e), pay), lo=at((state.euribor||0)-1), hi=at((state.euribor||0)+1);
+          const a=lo&&lo.months!==Infinity?monthYear(lo.months):'—', b=hi&&hi.months!==Infinity?monthYear(hi.months):L('never','mitte kunagi');
+          if(a!==b) rng='Euribor ±1%: '+L('paid off ','tasutud ')+a+' – '+b; }   // the same date twice: Euribor is so low that ±1% changes nothing
+        setMatrix(cost, eurS(po.interest)+L(' interest to go',' intressi veel maksta')); }
+      setMatrix(r.querySelector('.drange'), rng);
+      if(asset>0) tip.push(L('Equity ','Omakapital ')+(asset-bal<0?'−':'')+eur(Math.abs(asset-bal))+L(' of ',' / ')+eur(asset));
+      const tt=tip.filter(Boolean).join('. '); setTip(r.querySelector('.dname'), tt ? tt+'.' : '');
     });
-    set('debt-total', eur(c.debt)+L(' owed',' võlgu'));
+    set('debt-total', eurS(c.debt)+L(' owed',' võlgu'));
     set('debt-monthly', eur(c.debtMonthly));
-    set('debt-interest', '≈ '+eur(c.debtInterestYr));
+    set('debt-interest', '≈ '+eurS(c.debtInterestYr));
     set('debt-dti', c.net>0 ? num(c.debtMonthly/c.net*100)+'%' : '—');
 
     // Pay down before investing? Only when the math clearly favors it.
@@ -1844,32 +1858,32 @@ function renderCalc(){
       if(rate>ret && rate>0){
         strong=true;
         const now=payoff(top.balance, rate, top.payment), fast=extra>0 ? payoff(top.balance, rate, (+top.payment||0)+extra) : null;
-        msg=L(nm+' costs '+num(rate)+'% a year, more than the '+num(ret)+'% you expect from investing after fees, so paying it off is a guaranteed '+num(rate)+'% return.',
-              nm+' maksab '+num(rate)+'% aastas, rohkem kui '+num(ret)+'%, mida investeerimiselt pärast tasusid ootad, seega selle tasumine on kindel '+num(rate)+'% tootlus.');
+        msg=L(cap(nm)+' costs '+num(rate)+'% a year, more than the '+num(ret)+'% you expect from investing after fees, so paying it off is a guaranteed '+num(rate)+'% return.',
+              cap(nm)+': intress '+num(rate)+'% aastas on suurem kui '+num(ret)+'%, mida investeerimiselt pärast tasusid ootad, nii et laenu tagasimaksmine annab sulle kindla '+num(rate)+'% tootluse.');
         if(fast && fast.months!==Infinity){
-          msg+=L(' Moving your '+eur(extra)+'/mo of investing to it clears it by '+monthYear(fast.months), ' Kui suunad sinna oma '+eur(extra)+' kuus investeerimisest, saad selle tasutud '+monthYear(fast.months));
-          if(now && now.months!==Infinity) msg+=L(' instead of '+monthYear(now.months)+', saving about '+eur(now.interest-fast.interest)+' in interest', ' asemel '+monthYear(now.months)+' ja säästad umbes '+eur(now.interest-fast.interest)+' intressi');
+          msg+=L(' Moving your '+eur(extra)+'/mo of investing to it clears it by '+monthYear(fast.months), ' Kui suunad oma '+eur(extra)+' kuus investeerimise asemel selle laenu tagasimaksmiseks, on see tasutud '+monthYear(fast.months));
+          if(now && now.months!==Infinity) msg+=L(' instead of '+monthYear(now.months)+', saving about '+eur(now.interest-fast.interest)+' in interest', ' (praeguse maksega '+monthYear(now.months)+') ja säästad umbes '+eur(now.interest-fast.interest)+' intressi');
           msg+='.';
         }
         const perks=[]; if(c.taxRefund>0) perks.push(L('tax refund','tulumaksutagastus')); if(c.aStateP2>0) perks.push(L('state top-up','riigi sissemakse'));
-        if(perks.length) msg+=L(' Keep your pension contributions: their '+listJoin(perks)+(perks.length>1?' beat':' beats')+' almost any loan rate.', ' Jätka pensionisissemakseid: nende '+listJoin(perks)+' on parem kui peaaegu iga laenuintress.');
-        if(bufMonths<3) msg+=L(' First, build your cash buffer to about 3 months of outgoings.', ' Kõigepealt kogu rahapuhver umbes 3 kuu väljaminekute jagu.');
+        if(perks.length) msg+=L(' Keep your pension contributions: their '+listJoin(perks)+(perks.length>1?' beat':' beats')+' almost any loan rate.', ' Jätka pensionisissemakseid: '+listJoin(perks)+' – see kasu on suurem kui peaaegu ükski laenuintress.');
+        if(bufMonths<3) msg+=L(' First, build your cash buffer to about 3 months of outgoings.', ' Kõigepealt loo endale umbes 3 kuu kulude suurune rahapuhver.');
       } else if(rate>0 && rate>ret-2){
-        msg=L(nm+' at '+num(rate)+'% is close to the '+num(ret)+'% you expect from investing after fees, so paying it early and investing come out about even. Paying early is the safer of the two.',
-              nm+' intressiga '+num(rate)+'% on lähedal '+num(ret)+'%-le, mida investeerimiselt pärast tasusid ootad, seega ennetähtaegne tasumine ja investeerimine annavad umbes sama tulemuse. Ennetähtaegne tasumine on neist kindlam.');
+        msg=L(cap(nm)+' at '+num(rate)+'% is close to the '+num(ret)+'% you expect from investing after fees, so paying it early and investing come out about even. Paying early is the safer of the two.',
+              cap(nm)+': intress '+num(rate)+'% on peaaegu sama, mis '+num(ret)+'%, mida investeerimiselt pärast tasusid ootad, nii et ennetähtaegne tagasimaksmine ja investeerimine annavad umbes sama tulemuse. Ennetähtaegne tagasimaksmine on neist kindlam.');
       } else if(owing.length>1 && rate>0){
-        msg=L('If you ever pay extra on a debt, start with '+nm+' ('+num(rate)+'%). It has the highest rate, so it saves you the most.', 'Kui maksad kunagi laenu ennetähtaegselt, alusta laenust '+nm+' ('+num(rate)+'%). Sellel on kõrgeim intress, seega säästad nii kõige rohkem.');
+        msg=L('If you ever pay extra on a debt, start with '+nm+' ('+num(rate)+'%). It has the highest rate, so it saves you the most.', 'Kui tahad mõnda laenu kiiremini tagasi maksta, alusta sellest: '+nm+' ('+num(rate)+'%). Sellel on kõrgeim intress, seega säästad nii kõige rohkem.');
       }
     }
     if(note){ note.style.display=msg?'':'none'; note.textContent=msg; note.classList.toggle('strong', strong); }
   }
 
   set('out-p2', c.aP2>0 ? L('You ','Sina ')+num(state.p2rate)+L('% + state ','% + riik ')+num(state.p2state)+'% · '+eur(c.p2Avg)+'/mo'+(c.p2Avg>c.p2+c.p2s+0.005 ? L(' on average',' keskmiselt') : '') : '');   // nothing to show without contributions
-  let p3=c.t3>0 ? eur(c.t3)+'/mo · '+eur(c.taxRefund)+L('/yr tax back','/a tagasi') : '';
+  let p3=c.t3>0 ? eur(c.t3)+'/mo · '+eur(c.taxRefund)+L('/yr tax back','/a maksutagastus') : '';
   const p3el=document.getElementById('out-p3');
   if(p3el) p3el.dataset.tip=L('22% income tax back on contributions up to 15% of gross income, capped at €6,000 a year. Paid after you file your tax return.', 'Saad tagasi 22% tulumaksu sissemaksetelt, mis on kuni 15% brutotulust ja kuni €6,000 aastas. Raha makstakse välja pärast tuludeklaratsiooni esitamist.')
     +(c.t3>0 && c.p3LimitHit ? (c.p3LimitHit==='income' ? L(' Right now only '+eur(c.p3Limit)+' a year counts: 15% of your income.', ' Praegu arvestatakse ainult '+eur(c.p3Limit)+' aastas: 15% sinu tulust.')
-                                                         : L(' Right now only the first €6,000 a year counts.', ' Praegu arvestatakse ainult esimest €6,000 aastas.')) : '');
+                                                         : L(' Right now only the first €6,000 a year counts.', ' Praegu arvestatakse ainult esimesed €6,000 aastas.')) : '');
   set('out-p3', p3);
   const p3lim=document.getElementById('p3-limit');   // over the refund limit: say so on the card too, not only in the tooltip
   if(p3lim){ p3lim.hidden=!(c.t3>0 && c.p3LimitHit); if(!p3lim.hidden) setMatrix(p3lim, c.p3LimitHit==='income' ? L('Tax back only on '+eur(c.p3Limit)+' a year, 15% of your income','Tagastus ainult '+eur(c.p3Limit)+' pealt aastas, 15% sinu tulust')
@@ -1895,24 +1909,18 @@ function renderCalc(){
   });
   if(bar&&leg){
     leg.innerHTML='';
-    const segSpecs=[];
+    const segSpecs=[], holdPct=pct100(etfs.map((e,i)=>c.etfVals[i]||0)), tgtPct=pct100(etfs.map(e=>+e.weight||0));   // whole %s that add up to 100
     etfs.forEach((e,i)=>{
       const col=ETF_COLORS[i%ETF_COLORS.length];
       const val=c.etfVals[i]||0, hold=hasVals?val/c.etfVal*100:0;
       const tgt=sumW>0?(+e.weight||0)/sumW*100:0;
       const perMo= plan ? (sumW>0?((+e.weight||0)/sumW)*c.etfMonthly:0) : (c.etfPerFundMonthly?(+e.monthly||0):0);
       const parts=[];
-      if(hasVals) parts.push(eur(val), num(hold)+'%');
-      if(plan && !c.etfAuto) parts.push((hasVals?L('target ','siht '):'')+num(tgt)+'%', eur(perMo)+'/mo');
-      else if(plan) parts.push(eur(perMo)+'/mo');
-      else if(perMo>0) parts.push(eur(perMo)+'/mo');
+      if(perMo>0) parts.push(eur(perMo)+'/mo');
+      if(hasVals || (plan && sumW>0)) parts.push((hasVals ? holdPct[i] : tgtPct[i])+'%');   // the target share is in the bar's hover; no shares, no %
       const nm0=e.name||L('Untitled','Nimetu');
       segSpecs.push({w:hasVals?hold:(plan?tgt:0), color:col, tip:nm0+' — '+(hasVals?eur(val)+' · '+num(hold)+L('% of holdings','% portfellist'):'')+(plan?(hasVals?' · ':'')+L('target ','siht ')+num(tgt)+'%':'')});
-      const sp=document.createElement('span');
-      const dot=document.createElement('span'); dot.className='dot'; dot.style.background=col;
-      const nm=document.createElement('span'); nm.className='ename'; nm.textContent=nm0;
-      const cl=document.createElement('span'); cl.className='ecalc'; animFrom(cl, 'etf'+i, parts.join(' · '));
-      sp.appendChild(dot); sp.appendChild(nm); sp.appendChild(cl); leg.appendChild(sp);
+      legendRow(leg, 'etf'+i, col, nm0, parts.join(' · '), hasVals ? eurS(val) : '');
     });
     updateBar(bar, segSpecs);
     showHide('etf-bar', hasVals || (plan && sumW>0));
@@ -1934,8 +1942,8 @@ function renderCalc(){
     const split=useRb ? rebalanceSplit(etfs.map((e,i)=>c.etfVals[i]||0), etfs.map(e=>+e.weight||0), c.etfMonthly) : null;
     if(split){
       const plain=etfs.map(e=>c.etfMonthly*(+e.weight||0)/sumW), onTarget=split.every((x,i)=>Math.abs(x-plain[i])<1.5);
-      rb.textContent= onTarget ? L('Your funds are on target, so keep your usual split this month.','Sinu fondid on sihtjaotuses, seega jätka sel kuul tavapärase jaotusega.')
-        : L('To rebalance, split next month\'s '+eur(c.etfMonthly)+' as: ','Tasakaalustamiseks jaga järgmise kuu '+eur(c.etfMonthly)+' nii: ')+etfs.map((e,i)=>split[i]>0?(e.name||L('Fund ','Fond ')+(i+1)).split(/\s[—|-]\s|\s\|/)[0]+' '+eur(split[i]):null).filter(Boolean).join(' · ');
+      rb.textContent= onTarget ? L('Your funds are on target, so keep your usual split this month.','Sinu fondide jaotus vastab sihtjaotusele, nii et jaga selle kuu sissemakse tavapäraselt.')
+        : L('To rebalance, split next month\'s '+eur(c.etfMonthly)+' as: ','Tasakaalustamiseks jaga järgmise kuu sissemakse ('+eur(c.etfMonthly)+') nii: ')+etfs.map((e,i)=>split[i]>0?(e.name||L('Fund ','Fond ')+(i+1)).split(/\s[—|-]\s|\s\|/)[0]+' '+eur(split[i]):null).filter(Boolean).join(' · ');
     }
     showHide('rebal', !!split);
   }
@@ -1946,7 +1954,7 @@ function renderCalc(){
         'Investeerimiskonto: '+eur(Math.min(v,d))+' saad välja võtta maksuvabalt'+(tax>0?' · ≈ '+eur(tax)+' maksu, kui võtaksid kõik välja':' (kasumit veel pole)')+'.')); }
       showHide('inv-acct', d>0); } }
   const invFee=avgFee([...etfs.map((e,i)=>[c.etfVals[i]||0, +e.fee||0]), ...state.investments.map(x=>[+x.value||0, +x.fee||0])]).fee;   // by what's in each, like the pension totals
-  set('etf-tag', [totV>0?eur(totV):'', totM>0?eur(totM)+L('\u00a0/\u00a0month','\u00a0kuus'):'', feeAvgText(invFee)].filter(Boolean).join(' · '));
+  set('etf-tag', [totV>0?eurS(totV):'', totM>0?eur(totM)+L('\u00a0/\u00a0month','\u00a0kuus'):'', feeAvgText(invFee)].filter(Boolean).join(' · '));
 
   // in-card "Other investments" — styled like the ETF block (bar + legend)
   const invList=state.investments;
@@ -1961,31 +1969,26 @@ function renderCalc(){
   const invValTotal=invList.reduce((a,x)=>a+(+x.value||0),0);
   if(invBar){
     showHide('inv-bar', invValTotal>0);
-    const invSegs=invList.map((x,i)=>({ w:(invValTotal>0?(+x.value||0)/invValTotal*100:0), color:ETF_COLORS[i%ETF_COLORS.length], tip:(x.name||L('Investment','Investeering'))+' — '+eurK(x.value)+(x.monthly?' · '+eur(x.monthly)+'/mo':'') }));
+    const invSegs=invList.map((x,i)=>({ w:(invValTotal>0?(+x.value||0)/invValTotal*100:0), color:ETF_COLORS[i%ETF_COLORS.length], tip:(x.name||L('Investment','Investeering'))+' — '+eur(x.value)+(x.monthly?' · '+eur(x.monthly)+'/mo':'') }));
     updateBar(invBar, invSegs);
   }
   if(invLeg){
     invLeg.innerHTML='';
     invList.forEach((x,i)=>{
-      const sp=document.createElement('span');
-      const dot=document.createElement('span'); dot.className='dot'; dot.style.background=ETF_COLORS[i%ETF_COLORS.length];
-      const nm=document.createElement('span'); nm.className='ename'; nm.textContent=x.name||L('Investment','Investeering');
-      const parts=[]; if(+x.value) parts.push(eurK(x.value)); if(+x.monthly) parts.push(eur(x.monthly)+'/mo');
-      const cl=document.createElement('span'); cl.className='ecalc'; animFrom(cl, 'inv'+i, parts.length?parts.join(' · '):'—');
-      sp.appendChild(dot); sp.appendChild(nm); sp.appendChild(cl); invLeg.appendChild(sp);
+      legendRow(invLeg, 'inv'+i, ETF_COLORS[i%ETF_COLORS.length], x.name||L('Investment','Investeering'), +x.monthly ? eur(x.monthly)+'/mo' : '', +x.value ? eurS(x.value) : '');
     });
   }
 
   // yearly
   const extras=[]; if(c.bonusAmt>0) extras.push('bonus'); if(c.aOtherGross>0) extras.push('other income');
-  set('y-tag', extras.length===2 ? L('incl. bonus + other income','sh preemia + muu tulu') : extras.length ? L('incl. ','sh ')+eur(extras[0]==='bonus'?c.bonusAmt:c.aOtherGross)+' '+(extras[0]==='bonus'?L('bonus','preemia'):L('other income','muu tulu')) : L('salary only','ainult palk'));
+  set('y-tag', extras.length===2 ? L('incl. bonus + other income','sh preemia + muu tulu') : extras.length ? L('incl. ','sh ')+eurS(extras[0]==='bonus'?c.bonusAmt:c.aOtherGross)+' '+(extras[0]==='bonus'?L('bonus','preemia'):L('other income','muu tulu')) : L('salary only','ainult palk'));
   // breakdown: one line per extra income stream (yearly gross)
   const yo=document.getElementById('y-other-rows');
   if(yo){
     const TAXLBL={salary:'taxed like salary', free:'tax-free', custom:'own rate'};
     tagRows(yo, c.incList.filter(s=>s.freq!=='once'), s=>s.name||L('Other income','Muu tulu'),
       s=>(s.tax==='custom'?num(+s.rate||0)+L('% tax','% maks'):t(TAXLBL[s.tax||'salary']))+t({week:' · weekly', quarter:' · quarterly', year:' · yearly'}[s.freq]||''),
-      s=>(+s.amount||0)*(PER_YEAR[s.freq]||12));
+      s=>(+s.amount||0)*(PER_YEAR[s.freq]||12), eur);
   }
   showHide('row-y-custtax', c.aCustTax>0); set('out-y-custtax', '−'+eur(c.aCustTax));
   showHide('srow-other', c.yOtherNet>0); set('sur-other', '+'+eur(c.yOtherNet));
@@ -2017,7 +2020,7 @@ function renderCalc(){
   // budget donut
   const exp=c.expenses, inv=c.cashInvested, net=c.net;
   showHide('bd-note', c.p2>0);
-  set('bd-note', L('Excludes '+eur(c.p2)+'/mo 2nd pillar, already deducted from your pay','Ei sisalda II samba '+eur(c.p2)+' kuus, mis on palgast juba maha arvatud'));
+  set('bd-note', L('Excludes '+eur(c.p2)+'/mo 2nd pillar, already deducted from your pay','Ei sisalda II samba sissemakset ('+eur(c.p2)+' kuus), mis on palgast juba maha arvatud'));
   const dpay=c.debtMonthly;
   const leftover=net-exp-dpay-inv;
   const total=Math.max(net, exp+dpay+inv) || 1;
@@ -2064,14 +2067,14 @@ function renderCalc(){
     animShowHide(pl+'share', F.length>0);   // the line closes with its last text instead of emptying first
   });
   animShowHide('pension-card', c.pension>0 || c.aP2>0 || c.t3>0);   // shown when there's a value or a contribution
-  set('out-pension', eur(c.pension));
+  set('out-pension', eurS(c.pension));
 
-  set('sum-salary', eur(state.gross)+'/mo'+(c.aOtherGross>0?' + '+eurK(c.aOtherGross)+L('/yr other','/a muu tulu'):''));
+  set('sum-salary', eur(state.gross)+'/mo'+(c.aOtherGross>0?' + '+eurS(c.aOtherGross)+L('/yr other','/a muu tulu'):''));
   set('proj-feeline', feeText(c));
   { // summaries of the merged sections
     const saved=c.buffer+c.pension+c.etfVal+c.invValue, phys=c.physVal+c.debtAssets, R=projRate(c);
-    set('sum-savings', saved>0||c.invested>0 ? [saved>0?eurC(saved):'', c.invested>0?eur(c.invested)+'/mo':''].filter(Boolean).join(' · ') : L('none','puudub'));
-    set('sum-property', [phys>0?eurK(phys):'', c.debt>0?eurK(c.debt)+L(' owed',' võlgu'):''].filter(Boolean).join(' · ')||L('none','puudub'));
+    set('sum-savings', saved>0||c.invested>0 ? [saved>0?eurS(saved):'', c.invested>0?eur(c.invested)+'/mo':''].filter(Boolean).join(' · ') : L('none','puudub'));
+    set('sum-property', [phys>0?eurS(phys):'', c.debt>0?eurS(c.debt)+L(' owed',' võlgu'):''].filter(Boolean).join(' · ')||L('none','puudub'));
     set('sum-settings', num(R.gross)+'%'+(R.fee>0?' − '+num2(R.fee)+'%':'')+' · '+projYears()+L('y','a')+' · '+num(state.taxRate)+L('% tax','% maks'));
   }
   set('sum-exp', eur(c.expenses)+'/mo'+(c.expByCats?' · '+c.expItems.length+(c.expItems.length===1?L(' category',' kategooria'):L(' categories',' kategooriat')):''));
@@ -2131,9 +2134,9 @@ function renderCalc(){
   const dParts=[]; if(hasP2) dParts.push(L('your 2nd-pillar contribution','sinu II samba sissemakse')); dParts.push(L('unemployment insurance','töötuskindlustusmakse'),L('income tax','tulumaks')); if(c.aCustTax>0) dParts.push(L('tax on other income at your rates','muu tulu maks sinu määradega'));
   tipOn('tile-net', L('Gross minus ','Bruto miinus ')+listJoin(dParts)+(c.taxRefund>0?L(', plus the 3rd-pillar tax refund (paid out the following spring)',', pluss III samba tulumaksutagastus (makstakse välja järgmisel kevadel)'):'')+'.');
   const bi=[]; if(hasP3) bi.push(L('3rd pillar','III sammas')); if(c.etfMonthly>0) bi.push(L('ETFs','ETF-id')); if(c.invMonthly>0) bi.push(L('other investments','muud investeeringud'));
-  tipOn('bd-inv-label', L('What you invest out of take-home pay','Mida sa netopalgast investeerid')+(bi.length?': '+listJoin(bi):'')+'.'+(hasP2?L(' Your 2nd pillar is taken before you’re paid, so it isn’t included here.',' II sammas arvatakse maha enne palga maksmist, seega seda siin pole.'):''));
+  tipOn('bd-inv-label', L('What you invest out of take-home pay','Mida sa netopalgast investeerid')+(bi.length?': '+listJoin(bi):'')+'.'+(hasP2?L(' Your 2nd pillar is taken before you’re paid, so it isn’t included here.',' II sammas arvatakse maha enne palga maksmist, nii et seda siin pole.'):''));
   tipOn('tile-gross', L('Base salary ×12'+(c.aOtherGross>0?' plus other income '+eur(c.aOtherGross):'')+(((state.bonus||0)>0)?' plus your '+eur(state.bonus)+' bonus':'')+', before any deductions.',
-    'Põhipalk ×12'+(c.aOtherGross>0?' pluss muu tulu '+eur(c.aOtherGross):'')+(((state.bonus||0)>0)?' pluss sinu preemia '+eur(state.bonus):'')+', enne mahaarvamisi.'));
+    'Põhipalk ×12'+(c.aOtherGross>0?' pluss muu tulu '+eur(c.aOtherGross):'')+(((state.bonus||0)>0)?' pluss sinu preemia '+eur(state.bonus):'')+', enne makse ja kinnipidamisi.'));
 
   // cash card: shown only when there is something in it (money in an account, physical cash, or a credit limit)
   animShowHide('cash-card', c.buffer>0 || (state.creditLimit||0)>0);
@@ -2150,7 +2153,7 @@ function renderCalc(){
     if(r){ set('ret-tag', r.yrs>0 ? L('in '+r.year+' · age '+r.age, r.year+'. aastal · '+r.age+'-aastaselt') : L('now · age '+r.ageNow, 'praegu · '+r.ageNow+'-aastaselt'));   // already past retirement age: from today's savings
       set('ret-total', '≈ '+eur(r.total)+L(' a month',' kuus'));
       // the comparison with today's spending only shows in today's money (future euros would flatter it)
-      set('ret-sub', (inflPct() ? L('in today\'s money','tänases rahas') : L('in '+r.year+' euros',r.year+'. aasta eurodes'))+(r.spend>0 && inflPct() ? (r.total>10*r.spend ? L(' · over 10× your spending now',' · üle 10× sinu praegustest kulutustest') : L(' · covers '+Math.round(r.total/r.spend*100)+'% of your spending now',' · katab '+Math.round(r.total/r.spend*100)+'% sinu praegustest kulutustest')) : '')+(r.yrs>0 ? L(' · '+r.yrs+' years from now',' · '+r.yrs+' aasta pärast') : ''));
+      set('ret-sub', (inflPct() ? L('in today\'s money','tänases rahas') : L('in '+r.year+' euros',r.year+'. aasta eurodes'))+(r.spend>0 && inflPct() ? (r.total>10*r.spend ? L(' · over 10× your spending now',' · üle 10 korra suurem kui sinu praegused kulutused') : L(' · covers '+Math.round(r.total/r.spend*100)+'% of your spending now',' · katab '+Math.round(r.total/r.spend*100)+'% sinu praegustest kulutustest')) : '')+(r.yrs>0 ? L(' · '+r.yrs+' years from now',' · '+r.yrs+' aasta pärast') : ''));
       set('ret-state', (r.stateLater ? L('from '+STATE_PENSION_AGE+' · ',STATE_PENSION_AGE+'-aastaselt · ') : '')+eur(r.state1)+'/mo · '+eur(r.stateGross)+L(' before tax',' enne makse'));   // whether it's the national average: tooltip and How it's worked out
       set('ret-pen', eur(r.fromPen)+'/mo · '+eurS(r.penAt)+L(' saved',' kogutud'));
       set('ret-inv', eur(r.fromInv)+'/mo · '+eurS(r.invAt)+L(' saved',' kogutud'));
@@ -2161,12 +2164,12 @@ function renderCalc(){
                 : L('You\'re past retirement age, so this uses what you have today.','Oled pensioniealine, seega arvestatakse sellega, mis sul täna on.'),
         L('Pension funds are paid out evenly over '+(state.payoutYears||20)+' years.','Pensionifondid makstakse välja ühtlaselt '+(state.payoutYears||20)+' aasta jooksul.'),
         L('Pension fund payouts can start up to 5 years before the official pension age (3rd pillar savings started before 2021: from age 55). Money taken out earlier is taxed 22%, and the 3rd pillar\'s lower rates also need at least 5 years of saving. Here payouts start at your retirement age.',
-          'Pensionifondide väljamakseid saab alustada kuni 5 aastat enne ametlikku pensioniiga (enne 2021. aastat alustatud III samba kogumisel alates 55. eluaastast). Varem välja võetud raha maksustatakse 22% ja III samba soodsamad määrad eeldavad ka vähemalt 5-aastast kogumist. Siin algavad väljamaksed sinu pensionile jäämise east.'),
+          'Pensionifondide väljamakseid saab alustada kuni 5 aastat enne ametlikku pensioniiga (enne 2021. aastat alustatud III samba kogumisel alates 55. eluaastast). Varem välja võetud raha maksustatakse 22%-ga ja III samba soodsamad määrad eeldavad ka vähemalt 5-aastast kogumist. Siin algavad väljamaksed sinu pensionile jäämise east.'),
         r.stateLater ? L('The state pension starts at '+STATE_PENSION_AGE+', so it isn\'t in the total: until then you live on your pension funds and investments, and pay for your own health insurance (€'+HEALTH_PREMIUM+' a month in 2026, not taken off here).',
-                         'Riiklik pension algab '+STATE_PENSION_AGE+'-aastaselt, seega see pole summas: seni elad pensionifondidest ja investeeringutest ning maksad oma ravikindlustuse eest ise (2026. aastal €'+HEALTH_PREMIUM+' kuus, siin maha arvamata).') : '',
+                         'Riiklik pension algab '+STATE_PENSION_AGE+'-aastaselt, nii et see pole kogusummas: seni elad pensionifondidest ja investeeringutest ning maksad oma ravikindlustuse eest ise (2026. aastal €'+HEALTH_PREMIUM+' kuus, siin maha arvamata).') : '',
         L('From investments you take 4% a year, a common rule of thumb for money that should last.','Investeeringutest võtad välja 4% aastas: levinud rusikareegel, et raha jätkuks.'),
         r.ownForecast ? L('State pension: your own forecast.','Riiklik pension: sinu enda prognoos.') : L('State pension: the national average ('+eur(AVG_STATE_PENSION)+' a month in 2026).','Riiklik pension: riigi keskmine (2026. aastal '+eur(AVG_STATE_PENSION)+' kuus).'),
-        r.stateGross>r.stateToday ? L('In '+r.stateYear+' euros that is about '+eur(r.stateGross)+' a month, with prices rising '+num(state.projInflation)+'% a year.','Aasta '+r.stateYear+' eurodes on see umbes '+eur(r.stateGross)+' kuus, kui hinnad tõusevad '+num(state.projInflation)+'% aastas.') : '',
+        r.stateGross>r.stateToday ? L('In '+r.stateYear+' euros that is about '+eur(r.stateGross)+' a month, with prices rising '+num(state.projInflation)+'% a year.',r.stateYear+'. aasta eurodes on see umbes '+eur(r.stateGross)+' kuus, kui hinnad tõusevad '+num(state.projInflation)+'% aastas.') : '',
         ip ? L('Inflation: '+num(ip)+'% a year is taken off, so amounts are in today\'s money and compare directly with your spending now.','Inflatsioon: '+num(ip)+'% aastas on maha arvatud, nii et summad on tänases rahas ja võrreldavad sinu praeguste kulutustega.')
            : L('Inflation: off. Amounts are in '+r.year+' euros, which will buy less than today\'s.','Inflatsioon: väljas. Summad on '+r.year+'. aasta eurodes, millega saab osta vähem kui tänastega.'),
         L('Tax: '+num(state.taxRate)+'% on the state pension above '+eur(r.exemption)+' a month (tax-free for pensioners'+(r.exemption>PENSIONER_EXEMPTION?', '+eur(PENSIONER_EXEMPTION)+' in 2026 money':' in 2026')+')'+(r.stateTax>0?', '+eur(r.stateTax)+' a month':'')+(r.invTax>0?', and on the growth part of investment withdrawals ('+Math.round(r.gainShare*100)+'%), '+eur(r.invTax)+' a month':'')+'. '+(r.payAge<STATE_PENSION_AGE-5 ? 'Pension fund payouts: '+num(r.penTaxPct)+'%, '+eur(r.penTax)+' a month, because they start more than 5 years before the pension age of '+STATE_PENSION_AGE+'.'
@@ -2193,7 +2196,7 @@ function feeText(c){
   const parts=Object.keys(names).filter(k=>P[k].w>0).map(k=>names[k]+' '+num2(P[k].fee)+'%');
   if(!parts.length) return L('Fees: none yet. Add each fund\'s yearly fee under Savings & investments.','Tasud: veel pole. Lisa iga fondi aastatasu jaotises Säästud ja investeeringud.');
   const miss=c.feeMissing.p2+c.feeMissing.p3+c.feeMissing.etf;
-  return L('Fees: '+num2(c.fundFee)+'% a year on average ('+parts.join(', ')+'), weighted by what\'s in each plus a year of deposits.','Tasud: keskmiselt '+num2(c.fundFee)+'% aastas ('+parts.join(', ')+'), kaalutud selle järgi, mis igas on, pluss aasta sissemaksed.')
+  return L('Fees: '+num2(c.fundFee)+'% a year on average ('+parts.join(', ')+'), weighted by what\'s in each plus a year of deposits.','Tasud: keskmiselt '+num2(c.fundFee)+'% aastas ('+parts.join(', ')+'), kaalutud iga fondi väärtuse ja ühe aasta sissemaksete järgi.')
     +(miss ? L(' '+miss+(miss===1?' fund has':' funds have')+' no fee entered and '+(miss===1?'counts':'count')+' as 0%.',' '+miss+(miss===1?' fondil pole tasu sisestatud ja seda arvestatakse':' fondil pole tasu sisestatud ja neid arvestatakse')+' 0%-ga.') : '');
 }
 // "That looks off" notes under fields: likely typos or numbers worth a second look. They never block anything.
@@ -2403,7 +2406,7 @@ const LISTS={
            {k:'spend', cls:'tspend', label:'Yearly spending', post:'/yr', pre:'€', hideUnless:['kind','fire'], tip:'What you would spend per year once financially independent. Leave empty to use your current expenses × 12.'},
            {k:'rate', cls:'trate', label:'Withdrawal rate', post:'%/yr', hideUnless:['kind','fire'], tip:'The share of your investments you would spend each year. 4% is a common rule of thumb; your FIRE number is yearly spending ÷ this rate.'}],
           [{k:'health', cls:'thealth', label:'Health insurance', hideUnless:['kind','fire'], tip:'Until pension age, health insurance comes from the social tax paid on your work. If you stop working earlier, you can buy it yourself from the Health Insurance Fund. This adds it to your yearly spending, which keeps the goal on the safe side: from pension age the state covers it again.',
-            select:()=>[['yes', L('Pay for it myself · €'+HEALTH_PREMIUM+'/mo','Maksan ise · €'+HEALTH_PREMIUM+'/kuus')], ['no', L('Not counted','Ei arvesta')]]}],
+            select:()=>[['yes', L('Pay for it myself · €'+HEALTH_PREMIUM+'/mo','Maksan ise · €'+HEALTH_PREMIUM+'/kuus')], ['no', L('Not counted','Ei arvestata')]]}],
           [{k:'current', cls:'tcur', label:'Saved so far', pre:'€', hideUnless:['kind','custom']}],
           [{k:'dueMon', cls:'tdm', label:'By when (optional)', select:dueMonthOpts, tip:'Set a deadline to see whether you are on track and how much more per month would get you there in time.'},
            {k:'dueYear', cls:'tdy', label:'Year', select:dueYears}]]},
@@ -2623,9 +2626,9 @@ function exampleState(){
   const nw=[112800,114100,116900,117600,116200,119800,122900,124600,127700,128900,131600];
   return normalize(Object.assign(freshDefaults(), {gross:3800, bonus:3000, expenses:950, thirdPillar:350, etfMonthly:600, p2rate:4, projReturn:8, projYears:25,
     cashOnHand:200, creditLimit:3000, birthYear:1990, enableProjRange:true,
-    accounts:[{name:L('Emergency fund','Rahapuhver'), amount:9500, yield:2.4}, {name:L('Everyday account','Igapäevakonto'), amount:2800}, {name:L('Holiday savings','Puhkuse säästud'), amount:1200, yield:1.5}],
+    accounts:[{name:L('Emergency fund','Rahapuhver'), amount:9500, yield:2.4}, {name:L('Everyday account','Igapäevakonto'), amount:2800}, {name:L('Holiday savings','Puhkuseraha'), amount:1200, yield:1.5}],
     etfs:[{name:L('Global equity','Globaalsed aktsiad'), weight:70, value:15900, fee:0.19}, {name:L('Emerging markets','Arenevad turud'), weight:15, value:2700, fee:0.18},
-          {name:L('Small caps','Väikeettevõtted'), weight:10, value:2100, fee:0.35}, {name:L('Government bonds','Riigivõlakirjad'), weight:5, value:1100, fee:0.1}],
+          {name:L('Small caps','Väikeettevõtete aktsiad'), weight:10, value:2100, fee:0.35}, {name:L('Government bonds','Riigivõlakirjad'), weight:5, value:1100, fee:0.1}],
     investments:[{name:L('Company shares','Ettevõtte aktsiad'), value:3400}, {name:L('Gold','Kuld'), monthly:50, value:1500, fee:0.25}, {name:L('Crypto','Krüpto'), value:900}],
     p2funds:[{name:L('Index pension fund','Indeksfond'), value:24600, share:100, fee:0.29}, {name:L('Old pension fund','Vana pensionifond'), value:3100, share:0, fee:0.8}],
     p3funds:[{name:L('Voluntary pension fund','Vabatahtlik pensionifond'), value:11800, share:100, fee:0.3}],
@@ -2676,7 +2679,7 @@ function debtRing(c){
   const show=c.debt>0, share=c.assets>0 ? c.debt/c.assets*100 : 100, pct=Math.min(100, share);
   track.style.display=ring.style.display=show?'':'none';
   ring.style.strokeDasharray = show ? pct.toFixed(2)+' '+(100-pct).toFixed(2) : '0 100';
-  ring.setAttribute('data-tip', L('Debt — ','Laen — ')+eurK(c.debt)+(share>100 ? L(', more than everything you own ('+Math.round(share)+'% of assets)',', rohkem kui kogu sinu vara ('+Math.round(share)+'% varast)') : L(', equal to '+Math.round(share)+'% of your assets',', võrdub '+Math.round(share)+'% sinu varast')));
+  ring.setAttribute('data-tip', L('Debt — ','Laen — ')+eur(c.debt)+(share>100 ? L(', more than everything you own ('+Math.round(share)+'% of assets)',', rohkem kui kogu sinu vara ('+Math.round(share)+'% varast)') : L(', equal to '+Math.round(share)+'% of your assets',', see on '+Math.round(share)+'% sinu varast')));
 }
 // Legend rows pop in/out: height (and the list gap) grows/shrinks while the row fades and slides in from the left.
 function legendPop(el, show, done){
@@ -2713,19 +2716,19 @@ function renderAllocation(c){
   const slices=slicesAll.filter(s=>s.value>0);
   const total=slices.reduce((a,s)=>a+s.value,0), shares=pct100(slices.map(s=>s.value));   // whole percentages that add up to 100
   set('alloc-center', eurC(total));
-  set('alloc-total', eur(total));
+  set('alloc-total', eurS(total));
   // legend rows are kept and updated in place (keyed), so added rows pop in and removed rows pop out
   const leg=document.getElementById('alloc-legend'); if(!leg) return;
   const row=(k, build, update)=>({k, build, update});
   const want=slices.map((s,si)=>row('s:'+(s.key||s.label), ()=>{
       const sp=document.createElement('span'), dot=document.createElement('span'); dot.className='dot'; dot.style.background=s.color;
       sp.appendChild(dot); sp.appendChild(document.createTextNode(s.label+' ')); sp.appendChild(document.createElement('b')); sp.appendChild(document.createElement('i')); return sp; },
-    sp=>{ sp.childNodes[1].nodeValue=t(s.label)+' '; setMatrix(sp.querySelector('b'), eurK(s.value)); setMatrix(sp.querySelector('i'), shares[si]+'%'); }));   // label follows the language
+    sp=>{ sp.childNodes[1].nodeValue=t(s.label)+' '; setMatrix(sp.querySelector('b'), eurS(s.value)); setMatrix(sp.querySelector('i'), shares[si]+'%'); }));   // label follows the language
   if(!slices.length) want.push(row('empty', ()=>{ const sp=document.createElement('span'); sp.style.color='var(--text2)'; sp.textContent=t('No assets entered yet.'); return sp; }, sp=>{ sp.textContent=t('No assets entered yet.'); }));
   if(c.debt>0)
     want.push(row('debt', ()=>{ const sp=document.createElement('span'); sp.style.color='var(--danger)'; const d=document.createElement('span'); d.className='dot'; d.style.background='var(--danger)';
         const b=document.createElement('b'); b.style.color='var(--danger)'; sp.appendChild(d); sp.appendChild(document.createTextNode('Debt ')); sp.appendChild(b); return sp; },
-      sp=>{ sp.childNodes[1].nodeValue=t('Debt')+' '; setMatrix(sp.querySelector('b'), '−'+eurK(c.debt)); }));
+      sp=>{ sp.childNodes[1].nodeValue=t('Debt')+' '; setMatrix(sp.querySelector('b'), '−'+eurS(c.debt)); }));
   const have=new Map([...leg.children].map(el=>[el.dataset.k, el]));
   const wanted=new Set(want.map(w=>w.k));
   const leaving=el=>el && !wanted.has(el.dataset.k);          // rows on their way out stay exactly where they are
@@ -2825,8 +2828,8 @@ function buildHistRows(){
 }
 function renderHistory(c){
   const H=state.history.filter(e=>e.m), box=document.getElementById('hist-chart'); if(!box) return;
-  const last=H[H.length-1], prev=H[H.length-2], first=H[0], sg=v=>(v>=0?'+':'')+eur(v);
-  set('hist-tag', H.length>=2 ? sg(last.nw-prev.nw)+L(' vs ',' võrreldes: ')+monthLabel(prev.m)+' · '+sg(last.nw-first.nw)+L(' since ',' alates ')+monthLabel(first.m) : '');
+  const last=H[H.length-1], prev=H[H.length-2], first=H[0], sg=v=>(v>=0?'+':'')+eurS(v);
+  set('hist-tag', H.length>=2 ? sg(last.nw-prev.nw)+L(' vs ',' võrreldes kuuga ')+monthLabel(prev.m)+' · '+sg(last.nw-first.nw)+L(' since ',' alates ')+monthLabel(first.m) : '');
   set('hist-note', !H.length ? L('Your history starts once you have entered some numbers. One snapshot is kept per month.','Ajalugu algab, kui oled numbrid sisestanud. Igast kuust hoitakse üht hetkeseisu.')
     : H.length===1 ? L('Your history starts here. Next month adds a second point, or add earlier months under Goals › History in the editor.','Sinu ajalugu algab siit. Järgmisel kuul lisandub teine punkt; varasemaid kuid saad lisada jaotises Eesmärgid › Ajalugu.')
     : L('One snapshot per month. This month follows your numbers as you change them; earlier months stay as they were.','Üks hetkeseis kuus. Selle kuu hetkeseis muutub koos sinu numbritega; varasemad kuud jäävad samaks.'));
@@ -2881,7 +2884,7 @@ function targetStatus(t,c){
   const goalAt=(amt,i)=> amt*inflAfter(i);   // with inflation on, a goal is in today's money, so it rises with prices
   switch(t.kind){
     case 'cash': { let eta=Infinity; for(let i=0;i<=720;i++) if(c.buffer+cashM*i>=goalAt(t.amount,i)){ eta=i; break; }
-      return {cur:c.buffer, goal:t.amount, eta, sub: cashM<0 ? L('Cash buffer · shrinks by your negative yearly surplus','Rahapuhver · väheneb negatiivse aastase ülejäägi võrra') : state.enableProjSurplus ? L('Cash buffer · your surplus is invested','Rahapuhver · ülejääk läheb investeerimisse') : L('Cash buffer · grows by your yearly surplus','Rahapuhver · kasvab sinu aastase ülejäägi võrra'),
+      return {cur:c.buffer, goal:t.amount, eta, invested: cashM>=0 && state.enableProjSurplus, sub: cashM<0 ? L('Cash buffer · shrinks by your yearly shortfall','Rahapuhver · väheneb aastase puudujäägi võrra') : state.enableProjSurplus ? L('Cash buffer · your surplus is invested','Rahapuhver · ülejääk läheb investeerimisse') : L('Cash buffer · grows by your yearly surplus','Rahapuhver · kasvab sinu aastase ülejäägi võrra'),
               need:m=>Math.max(0,(goalAt(t.amount,m)-c.buffer)/m - cashM)}; }
     case 'invested': { const reach=(i,v)=>v>=goalAt(t.amount,i);
       return {cur:start, goal:t.amount, eta:monthsTo(start, monthly, reach, rate), sub:L('Pensions + investments','Pensionid + investeeringud'), need:m=>extraNeeded(start, monthly, reach, rate, m)}; }
@@ -2909,43 +2912,48 @@ function renderTargets(c){
   const debts=(state.enableDebtTargets ? c.debtList : []).filter(d=>(+d.balance||0)>0).map(d=>{
     const po=payoff(d.balance, d.rate, d.payment);
     return {debt:true, name:L((d.name||'Debt')+' paid off', (d.name||'Laen')+' tasutud'), eta: po ? po.months : null, warn: !po ? L('Add a monthly payment to see when','Lisa igakuine makse, et näha, millal') : po.months===Infinity ? neverPaid(po) : '',
-            sub:eur(+d.balance||0)+L(' left',' jäänud')+' · '+eur(+d.payment||0)+'/mo · '+num(+d.rate||0)+'%'}; });
+            sub:eurS(+d.balance||0)+L(' left',' jäänud')+' · '+eur(+d.payment||0)+'/mo · '+num(+d.rate||0)+'%'}; });
   const items=[...T.map(t=>({t, s:targetStatus(t,c)})), ...debts.map(d=>({d}))];
-  ensureRows(list, items.length, 'tgtitem', '<div class="dline main"><span class="dname"></span><span class="tval"></span></div><div class="tbar"><div class="tfill"></div></div><div class="dline meta"><span class="tsub"></span><span class="teta"></span></div><div class="dline meta tdue"><span class="tdl"></span><span class="tdr"></span></div>');
+  ensureRows(list, items.length, 'tgtitem', '<div class="dline main"><span class="dname"></span><span class="dtag tpct"></span><span class="tval"></span></div><div class="tbar"><div class="tfill"></div></div><div class="dline meta"><span class="teta"></span><span class="tdr"></span></div>');
   let reached=0;
   items.forEach((it,i)=>{
     const r=list.children[i], due=it.t?dueMonths(it.t):null;
     r.classList.toggle('debtt', !!it.d);
+    const nm=r.querySelector('.dname'), tdr=r.querySelector('.tdr');
     if(it.d){
       const d=it.d; r.classList.remove('done','late');
-      r.querySelector('.dname').textContent=d.name; setMatrix(r.querySelector('.tval'), d.eta==null||d.eta===Infinity ? '—' : (d.eta<=0?L('Paid off','Tasutud'):toGo(d.eta)));
-      setMatrix(r.querySelector('.tsub'), d.sub); setMatrix(r.querySelector('.teta'), d.warn || (d.eta>0 ? '≈ '+monthYear(d.eta) : ''));
-      r.querySelector('.teta').classList.toggle('warn', !!d.warn); setMatrix(r.querySelector('.tdl'),''); setMatrix(r.querySelector('.tdr'),''); return;
+      nm.textContent=d.name; setTip(nm, ''); setMatrix(r.querySelector('.tval'), d.eta==null||d.eta===Infinity ? '—' : (d.eta<=0?L('Paid off','Tasutud'):toGo(d.eta)));
+      const te=r.querySelector('.teta'); te._b=null; setMatrix(te, d.sub); setMatrix(tdr, d.warn || (d.eta>0 ? '≈ '+monthYear(d.eta) : ''));
+      tdr.classList.toggle('warn', !!d.warn); setMatrix(r.querySelector('.tpct'),''); return;
     }
     const t=it.t, s=it.s, pct=s.goal>0?Math.min(100, Math.max(0, s.cur/s.goal*100)):0, done=s.goal>0 && s.cur>=s.goal;
     if(done) reached++;
     r.classList.toggle('done', done);
-    r.querySelector('.dname').textContent=t.name||kindLabel(t.kind);
-    setMatrix(r.querySelector('.tval'), eur(s.cur)+L(' of ',' / ')+eur(s.goal));
+    nm.textContent=t.name||kindLabel(t.kind); tdr.classList.remove('warn');
+    setMatrix(r.querySelector('.tval'), eurS(s.cur)+L(' of ',' / ')+eurS(s.goal));
     r.querySelector('.tfill').style.width=pct.toFixed(1)+'%';
-    setMatrix(r.querySelector('.tsub'), s.sub+' · '+Math.floor(pct)+'%');
-    // time first: "1y 2m to go", the date after it
-    const te=r.querySelector('.teta'); te.classList.remove('warn');
-    if(!te._b || te._b.parentNode!==te){ te.innerHTML='<b></b><span></span>'; te._b=te.firstChild; te._s=te.lastChild; }   // kept between renders, so the time and date animate when they change
-    const txt= s.goal<=0 ? L('Set a target amount','Määra eesmärgi summa') : done ? L('Reached ✓','Saavutatud ✓') : s.eta===null ? '' : s.eta===Infinity ? L('Not within 60 years at this pace','Selle tempoga mitte 60 aasta jooksul') : null;
-    setMatrix(te._b, txt!==null ? '' : toGo(s.eta)); setMatrix(te._s, txt!==null ? txt : ' · ≈ '+monthYear(s.eta));
+    setMatrix(r.querySelector('.tpct'), Math.floor(pct)+'%'); setTip(nm, s.sub);
+    // the date first, then the time to go; a cash target that can't grow because the surplus is invested says so, with a
+    // link to that setting, since otherwise its missing date looks like a fault
+    const te=r.querySelector('.teta');
+    if(!te._b || te._b.parentNode!==te){ te.innerHTML='<b></b><span></span><button type="button" class="tlink"></button>'; te._b=te.firstChild; te._s=te.children[1];   // kept between renders, so the time and date animate when they change
+      te.lastChild.addEventListener('click', ()=>{ openSection('settings:projection', r.closest('.card'));
+        setTimeout(()=>{ const sw=document.querySelector('[data-toggle="projSurplus"]'); if(sw) sw.focus({preventScroll:true}); }, 400); }); }
+    const inv=s.invested && !done && s.goal>0; te.lastChild.hidden=!inv; te.lastChild.textContent=inv ? L('your surplus is invested','ülejääk läheb investeerimisse') : '';
+    te.lastChild.setAttribute('aria-label', L('Your surplus is invested: open the setting “Also invest my yearly surplus”','Ülejääk läheb investeerimisse: ava seade „Investeeri ka aastane ülejääk”'));
+    const txt= s.goal<=0 ? L('Set a target amount','Määra eesmärgi summa') : done ? L('Reached ✓','Saavutatud ✓') : s.eta===null ? '' : s.eta===Infinity ? (inv ? L('Not within 60 years · ','Ei jõua 60 aastaga · ') : L('Not within 60 years at this pace','Selle tempoga ei jõua 60 aastaga')) : null;
+    setMatrix(te._b, txt!==null ? '' : '≈ '+monthYear(s.eta)); setMatrix(te._s, txt!==null ? txt : ' · '+toGo(s.eta)+(inv ? ' · ' : ''));
     // deadline: on track / behind, and the extra monthly that would make it
     let dl='', dr='', late=false;
     if(due!=null && !done && s.goal>0){
       dl=L('By ','Tähtaeg ')+monthLabel(t.dueYear+'-'+t.dueMon);
-      if(due<0){ dr=L('deadline has passed','tähtaeg on möödas'); late=true; }
-      else if(due===0){ dr=L('due this month','tähtaeg on sel kuul'); late=true; }
-      else if(s.eta!=null && s.eta!==Infinity && s.eta<=due){ dr=L('On track','Graafikus')+' · '+(due-s.eta>=1 ? '~'+monthsLabel(due-s.eta)+L(' early',' varem') : L('just in time','täpselt õigel ajal')); }
-      else { const need=s.need(due); late=true;
-        dr=(s.eta==null ? L('Needs ≈ '+eur(need)+'/mo to make it','Vaja ≈ '+eur(need)+' kuus, et jõuda') : (s.eta===Infinity?L('Behind','Maha jäänud'):L('Behind by ~','Maha jäänud ~')+monthsLabel(s.eta-due))+' · +'+eur(need)+L('/mo would make it',' kuus aitaks jõuda')); }
+      if(due<0){ dr=dl+L(': passed',': möödas'); late=true; }
+      else if(due===0){ dr=dl+L(': this month',': sel kuul'); late=true; }
+      else if(s.eta!=null && s.eta!==Infinity && s.eta<=due){ dr=dl+' · '+(due-s.eta>=1 ? '~'+monthsLabel(due-s.eta)+L(' early',' varem') : L('just in time','täpselt õigel ajal')); }
+      else { const need=s.need(due); late=true; dr=dl+' · +'+eur(need)+L('/mo would make it',' kuus aitaks jõuda'); }
     }
     r.classList.toggle('late', late);
-    setMatrix(r.querySelector('.tdl'), dl); setMatrix(r.querySelector('.tdr'), dr);
+    setMatrix(tdr, dr);
   });
   showHide('tgt-empty', !items.length);
   set('tgt-tag', T.length ? L(reached+' of '+T.length+' reached', reached+' / '+T.length+' saavutatud') : '');
@@ -2956,9 +2964,9 @@ function renderTargets(c){
   showHide('tgt-how', items.length>0);
   setLines('tgt-note', [
     L('Dates use the same growth as the Projection: '+num(R.net)+'% a year after fees'+(state.projGrowth?', with deposits rising '+num(state.projGrowth)+'% a year':'')+'.',
-      'Kuupäevad kasutavad sama kasvu nagu prognoos: '+num(R.net)+'% aastas pärast tasusid'+(state.projGrowth?', sissemaksed kasvavad '+num(state.projGrowth)+'% aastas':'')+'.'),
+      'Kuupäevad on arvutatud sama kasvuga nagu prognoosis: '+num(R.net)+'% aastas pärast tasusid'+(state.projGrowth?', sissemaksed kasvavad '+num(state.projGrowth)+'% aastas':'')+'.'),
     ip ? L('Inflation: '+num(ip)+'% a year. Goals are in today\'s money, so they rise with prices: €100,000 in 10 years means about '+eur(100000*inflAfter(120))+' then.',
-           'Inflatsioon: '+num(ip)+'% aastas. Eesmärgid on tänases rahas, nii et need kasvavad koos hindadega: €100,000 10 aasta pärast tähendab siis umbes '+eur(100000*inflAfter(120))+'.')
+           'Inflatsioon: '+num(ip)+'% aastas. Eesmärgid on tänases rahas, nii et need kasvavad koos hindadega: €100,000 tänases rahas on 10 aasta pärast umbes '+eur(100000*inflAfter(120))+'.')
        : L('Inflation: off. Goals are fixed euro amounts.','Inflatsioon: väljas. Eesmärgid on kindlad eurosummad.'),
     has('cash') ? (state.enableProjSurplus ? L('Cash buffer: your yearly surplus is invested, so cash only changes if the surplus is negative.','Rahapuhver: aastane ülejääk investeeritakse, seega muutub raha ainult siis, kui ülejääk on negatiivne.')
                                            : L('Cash buffer: grows by your yearly surplus (leftover cash, bonus and tax refund), spread over the months.','Rahapuhver: kasvab sinu aastase ülejäägi võrra (üle jääv raha, preemia ja tulumaksutagastus), jaotatuna kuude peale.')) : '',
@@ -3104,7 +3112,7 @@ function renderProjection(c){
   const penTaxPct=payoutTaxPct(payoutAge());   // pension funds in the after-tax line, as Retirement pays them out
   setLines('proj-note', [
     custom ? L('Start: '+eur(start)+' (your own numbers).','Algus: '+eur(start)+' (sinu enda numbrid).')
-           : L('Start: the '+eur(start)+' you have invested today (pensions, funds and other investments; cash isn\'t counted).','Algus: '+eur(start)+', mis sul on täna investeeritud (pensionid, fondid ja muud investeeringud; sularaha ei arvestata).'),
+           : L('Start: the '+eur(start)+' you have invested today (pensions, funds and other investments; cash isn\'t counted).','Algus: '+eur(start)+', mis sul on täna investeeritud (pensionid, fondid ja muud investeeringud; kontodel olevat raha ja sularaha ei arvestata).'),
     L('Each month you add '+eur(monthly)+(pincl.length&&!custom?' (incl. '+pincl.join(' + ')+')':'')+(state.projGrowth?', rising '+num(state.projGrowth)+'% a year':'')+'.',
       'Igal kuul lisad '+eur(monthly)+(pincl.length&&!custom?' (sh '+pincl.join(' + ')+')':'')+(state.projGrowth?', summa kasvab '+num(state.projGrowth)+'% aastas':'')+'.'),
     L('It grows '+num(R.gross)+'% a year'+(R.fee>0?' minus '+num2(R.fee)+'% fees = '+num(R.net)+'%':'')+'. Real markets go up and down; this is a smooth average, so treat it as a rough guide.',
@@ -3113,7 +3121,7 @@ function renderProjection(c){
     ip ? L('Inflation: '+num(ip)+'% a year is taken off, so every amount is in today\'s money (what it would buy today). That leaves ≈ '+num(realPct)+'% a year.',
            'Inflatsioon: '+num(ip)+'% aastas on maha arvatud, nii et kõik summad on tänases rahas (mida selle eest täna saaks). Alles jääb ≈ '+num(realPct)+'% aastas.')
        : L('Inflation: off. Amounts are future euros, which will buy less than today\'s. Turn on “After inflation” to see them in today\'s money.',
-           'Inflatsioon: väljas. Summad on tulevastes eurodes, millega saab osta vähem kui tänastega. Lülita sisse „Inflatsioon”, et näha neid tänases rahas.'),
+           'Inflatsioon: väljas. Summad on tulevastes eurodes, millega saab osta vähem kui tänastega. Lülita sisse „Pärast inflatsiooni”, et näha neid tänases rahas.'),
     net ? (custom ? L('Tax: '+num(state.taxRate)+'% income tax on growth above what you put in is taken off.','Maks: '+num(state.taxRate)+'% tulumaks kasvult üle sissemaksete on maha arvatud.')
          : penTaxPct>0
             ? L('Tax: '+num(state.taxRate)+'% income tax on investment gains above your deposits and '+num(penTaxPct)+'% on pension payouts (as Retirement pays them out) are taken off.',
@@ -3216,7 +3224,7 @@ const MAX_IMPORT_MB=5;   // a real backup is a few kilobytes; a huge file would 
 document.getElementById('importFile').addEventListener('change', e=>{
   const f=e.target.files[0]; if(!f) return;
   if(f.size>MAX_IMPORT_MB*1024*1024){ e.target.value='';
-    importRefused(L('That file is too large to be a backup from this tool (over '+MAX_IMPORT_MB+' MB), so nothing was changed.','See fail on selle tööriista varukoopia jaoks liiga suur (üle '+MAX_IMPORT_MB+' MB), seega midagi ei muudetud.')); return; }
+    importRefused(L('That file is too large to be a backup from this tool (over '+MAX_IMPORT_MB+' MB), so nothing was changed.','See fail on selle tööriista varukoopia jaoks liiga suur (üle '+MAX_IMPORT_MB+' MB), nii et midagi ei muudetud.')); return; }
   const rd=new FileReader();
   rd.onload=()=>{
     try{
@@ -3226,7 +3234,7 @@ document.getElementById('importFile').addEventListener('change', e=>{
       if(example){ example=false; state=load(); }   // importing ends the example; Undo then keeps your own data
       keepUndo();
       state=normalize(data); save(); backedUp(); refreshAll();
-    }catch(err){ importRefused(L('That file isn\'t a backup from this tool, so nothing was changed.','See fail ei ole selle tööriista varukoopia, seega midagi ei muudetud.')); }
+    }catch(err){ importRefused(L('That file isn\'t a backup from this tool, so nothing was changed.','See fail ei ole selle tööriista varukoopia, nii et midagi ei muudetud.')); }
   };
   rd.readAsText(f); e.target.value='';
 });
@@ -3245,7 +3253,7 @@ function syncSegs(){
   document.querySelectorAll('.seg').forEach(sg=>{ const cb=document.querySelector(sg.dataset.for); if(!cb) return;
     sg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', String(cb.checked===(b.dataset.v==='1')))); });
   document.querySelectorAll('.chip').forEach(ch=>{ const cb=document.querySelector(ch.dataset.for); if(cb) ch.setAttribute('aria-pressed', String(cb.checked)); });
-  const ip=inflPct(); document.querySelectorAll('.inflchip').forEach(ch=>{ setMatrix(ch, ip ? L('After '+num(ip)+'% inflation','Inflatsioon '+num(ip)+'%') : L('After inflation','Inflatsioon')); });   // the buttons name the rate in use
+  const ip=inflPct(); document.querySelectorAll('.inflchip').forEach(ch=>{ setMatrix(ch, ip ? L('After '+num(ip)+'% inflation','Pärast '+num(ip)+'% inflatsiooni') : L('After inflation','Pärast inflatsiooni')); });   // the buttons name the rate in use
 }
 // 2nd pillar: Not joined / 2% / 4% / 6% (sets both "joined" and the rate)
 document.querySelectorAll('#p2seg button').forEach(b=>b.addEventListener('click', ()=>{ const r=+b.dataset.r;
@@ -3255,7 +3263,7 @@ document.querySelectorAll('.seg[data-for] button').forEach(b=>b.addEventListener
 document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click', ()=>{ const cb=document.querySelector(ch.dataset.for); if(cb) cb.click(); syncSegs(); }));
 // Edit in context: a card's pencil opens its editor section, scrolls to it and highlights it.
 // When the editor sits below the dashboard (phones/tablets) a pill offers the way back to the card.
-let editBackTo=null;
+let editBackTo=null, backY=0;
 function openSection(key, from){
   const [sec,part]=key.split(':');   // e.g. 'savings:pensions' = the Pensions part of Savings & investments
   const d=document.querySelector('.editor .esec[data-sec="'+sec+'"]'); if(!d) return;
@@ -3275,11 +3283,15 @@ function openSection(key, from){
   setTimeout(go, 30); setTimeout(go, 340);
   d.classList.remove('flash'); void d.offsetWidth; d.classList.add('flash');
   const pill=document.getElementById('backpill');
-  if(!panel && from){ editBackTo=from; pill.hidden=false; } else pill.hidden=true;
+  if(!panel && from){ editBackTo=from; backY=window.scrollY; pill.hidden=false; } else pill.hidden=true;
 }
 document.querySelectorAll('.cardedit').forEach(b=>b.addEventListener('click', e=>{ e.stopPropagation(); openSection(b.dataset.edit, b.closest('.card')); }));
 document.getElementById('backpill').addEventListener('click', ()=>{ const pill=document.getElementById('backpill'); pill.hidden=true;
   if(editBackTo) editBackTo.scrollIntoView({behavior:REDUCE_MOTION?'auto':'smooth', block:'start'}); editBackTo=null; });
+// scrolled back up to the card (or past it) yourself: the pill has done its job. Only up counts: the way down to the editor passes the card.
+window.addEventListener('scroll', ()=>{ const pill=document.getElementById('backpill'); if(pill.hidden || !editBackTo) return;
+  const y=window.scrollY, up=y<backY; backY=y;
+  if(up && editBackTo.getBoundingClientRect().bottom>0){ pill.hidden=true; editBackTo=null; } }, {passive:true});
 // Backup reminder: your data lives only in this browser, so nudge an export after 30 days (or 7 days after you start,
 // if you've never exported). Dates are kept under KEY_META, never in your data. Importing a file counts as a backup.
 const DAY=86400000;
@@ -3303,13 +3315,14 @@ const STATIC_TEXT=[];
 (function(){ const w=document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {acceptNode:n=>{ const p=n.parentElement;
     return (!p || p.closest('script,style,[data-text],#goalsList') || !n.nodeValue.trim()) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; }});
   for(let n; (n=w.nextNode());){ n.__en=n.nodeValue; STATIC_TEXT.push(n); }
-  document.querySelectorAll('[placeholder],[data-placeholder],[aria-label]').forEach(e=>{ e.__ena={}; ['placeholder','data-placeholder','aria-label'].forEach(a=>{ if(e.hasAttribute(a)) e.__ena[a]=e.getAttribute(a); }); });
+  document.querySelectorAll('.ehint [data-tip]').forEach(e=>setTip(e, e.getAttribute('data-tip')));   // shortened help texts: the full text for Tab and screen readers
+  document.querySelectorAll('[placeholder],[data-placeholder],[aria-label],[aria-description]').forEach(e=>{ e.__ena={}; ['placeholder','data-placeholder','aria-label','aria-description'].forEach(a=>{ if(e.hasAttribute(a)) e.__ena[a]=e.getAttribute(a); }); });
 })();
 function translateStatic(){
   document.documentElement.lang=LANG;
   const sw=(en)=>{ const was=LANG; LANG='et'; const et=t(en); LANG=was; return et; };
   STATIC_TEXT.forEach(n=>{ if(n.isConnected && (n.nodeValue===n.__en || n.nodeValue===sw(n.__en))) n.nodeValue= LANG==='et' ? t(n.__en) : n.__en; });
-  document.querySelectorAll('[placeholder],[data-placeholder],[aria-label]').forEach(e=>{ if(!e.__ena) return; Object.entries(e.__ena).forEach(([a,v])=>e.setAttribute(a, t(v))); });
+  document.querySelectorAll('[placeholder],[data-placeholder],[aria-label],[aria-description]').forEach(e=>{ if(!e.__ena) return; Object.entries(e.__ena).forEach(([a,v])=>e.setAttribute(a, t(v))); });
   document.querySelectorAll('.langtabs [data-lang]').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.lang===LANG)));
 }
 document.querySelectorAll('.langtabs [data-lang]').forEach(b=>b.addEventListener('click', ()=>{

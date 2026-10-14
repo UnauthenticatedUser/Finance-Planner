@@ -87,6 +87,33 @@ def main():
                 d*=(1+inf/100)**(1/12); tot+=m/d
                 if i%12==0: m*=1+g/100
             if abs(tot-r['putR'])>max(0.01,abs(tot)*1e-9): fails+=1; print(k,'put in',r['putR'],'want',tot)
+        # the card: an emergency fund that can't grow because the surplus is invested says so, with a link to that setting
+        pg.set_viewport_size({'width':1300,'height':900})
+        for invest, lang in ((True,'en'), (True,'et'), (False,'en')):
+            pg.evaluate("l=>document.querySelector('.langtabs [data-lang='+l+']').click()", lang)
+            s=json.loads(json.dumps(base)); s.update(enableProjSurplus=invest, targets=[{'name':'Rainy day','kind':'cash','amount':10**7,'dueMon':'','dueYear':'','rate':4,'current':0,'spend':0}])
+            pg.evaluate("s=>{ document.querySelector('.viewtabs [data-view=progress]').click(); state=normalize(s); save(); refreshAll(); }", s); pg.wait_for_timeout(900)   # numbers finish animating
+            row=pg.evaluate("""()=>{ const r=document.querySelector('#tgt-list .tgtitem'), a=r.querySelector('.tlink'), c=compute(), t=targetStatus(state.targets[0], c);
+              return {link:!a.hidden && !!a.getClientRects().length, text:r.querySelector('.teta').textContent, val:r.querySelector('.tval').textContent, want:eurS(t.cur)+' of '+eurS(t.goal), pct:r.querySelector('.tpct').textContent, sur:c.surplus}; }""")
+            if row['val']!=row['want'].replace(' of ', ' of ' if lang=='en' else ' / ') or row['pct']!='0%': fails+=1; print('target row shows', row['val'], row['pct'], 'want', row['want'])
+            if invest and row['sur']>=0:
+                if not row['link'] or ('your surplus is invested' if lang=='en' else 'ülejääk läheb investeerimisse') not in row['text']: fails+=1; print('invested surplus: no link', lang, row)
+                pg.click('#tgt-list .tlink'); pg.wait_for_timeout(500)
+                if not pg.evaluate("document.querySelector('.esec[data-sec=settings]').open"): fails+=1; print('the link did not open Settings')
+            if not invest and row['link']: fails+=1; print('link shown although the surplus is not invested')
+        # loans as "paid off" targets: details on the left, the date on the right; a row reused for a goal loses the debt's red
+        s=json.loads(json.dumps(base)); s.update(enableDebtTargets=True, targets=[], debts=[{'name':'Car','balance':5000,'rtype':'fixed','rate':6,'margin':0,'payment':0,'asset':0}])
+        pg.evaluate("s=>{ state=normalize(s); save(); refreshAll(); }", s); pg.wait_for_timeout(900)
+        d=pg.evaluate("()=>{ const r=document.querySelector('#tgt-list .tgtitem'); return {left:r.querySelector('.teta').textContent, warn:r.querySelector('.tdr').classList.contains('warn')}; }")
+        if not d['left'].startswith('€5,000') or not d['warn']: fails+=1; print('debt target row', d)
+        s['targets']=[{'name':'Rainy day','kind':'cash','amount':10**7,'dueMon':'','dueYear':'','rate':4,'current':0,'spend':0}]; s['debts']=[]
+        pg.evaluate("s=>{ state=normalize(s); save(); refreshAll(); }", s); pg.wait_for_timeout(900)
+        g=pg.evaluate("()=>{ const r=document.querySelector('#tgt-list .tgtitem'); return {warn:r.querySelector('.tdr').classList.contains('warn'), tip:r.querySelector('.dname').getAttribute('data-tip')}; }")
+        if g['warn'] or not g['tip']: fails+=1; print('goal row kept debt state', g)
+        s['targets']=[]; s['debts']=[{'name':'Car','balance':5000,'rtype':'fixed','rate':6,'margin':0,'payment':200,'asset':0}]   # and back: the debt row drops the goal's details
+        pg.evaluate("s=>{ state=normalize(s); save(); refreshAll(); }", s); pg.wait_for_timeout(900)
+        n=pg.evaluate("()=>{ const e=document.querySelector('#tgt-list .tgtitem .dname'); return ['data-tip','aria-description','tabindex'].filter(a=>e.hasAttribute(a)); }")
+        if n: fails+=1; print('debt row kept the goal details', n)
         print('page errors:', errs[:3] or 'none')
         finish('targets', fails or errs, f"{N} random users: {'all match' if not fails else str(fails)+' differences'}")
 

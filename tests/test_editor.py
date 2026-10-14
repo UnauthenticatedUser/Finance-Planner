@@ -1,5 +1,6 @@
 """The editor: every "+ Add" button adds a row that saves, in English and Estonian, and picking "Car tax" as a spending
-category sets it to once a year.
+category sets it to once a year. On a phone, a card's pencil shows "Back to dashboard", which goes away once you are
+back at the card, whether you tap it or scroll up yourself.
 Run: python tests/test_editor.py"""
 from playwright.sync_api import sync_playwright
 from helpers import PAGE, finish, launch
@@ -32,6 +33,23 @@ with sync_playwright() as p:
             if got != [car_tax, 'year', yearly]: problems.append(f'{lang}: car tax pick gave {got}')
         if errs: problems.append(f'{lang}: page errors {errs[:2]}')
         pg.close()
+    # phone: the back pill after a card's pencil
+    pg = b.new_page(viewport={'width': 390, 'height': 844}, reduced_motion='reduce'); errs = []
+    pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
+    pg.goto(PAGE); pg.evaluate("localStorage.clear()"); pg.reload(); pg.wait_for_timeout(300)
+    pg.evaluate("showExample(true)"); pg.wait_for_timeout(300)
+    PILL = "()=>!document.getElementById('backpill').hidden"
+    ONSCREEN = "()=>{ const r=document.querySelector('.cardedit[data-edit^=\"savings\"]').closest('.card').getBoundingClientRect(); return r.bottom>0 && r.top<innerHeight; }"
+    for how in ('tap', 'scroll', 'top'):
+        pg.evaluate("document.querySelector('.cardedit[data-edit^=\"savings\"]').click()"); pg.wait_for_timeout(500)
+        if not pg.evaluate(PILL): problems.append(f'phone ({how}): no back pill after the pencil')
+        if how == 'tap': pg.click('#backpill')
+        elif how == 'top': pg.evaluate("window.scrollTo(0,0)")   # a jump straight past the card counts too
+        else: pg.evaluate("()=>{ const c=document.querySelector('.cardedit[data-edit^=\"savings\"]').closest('.card'); window.scrollTo(0, window.scrollY + c.getBoundingClientRect().top - 40); }")   # scroll up to the card
+        pg.wait_for_timeout(400)
+        if pg.evaluate(PILL): problems.append(f'phone ({how}): back pill still showing at the card')
+        if how != 'top' and not pg.evaluate(ONSCREEN): problems.append(f'phone ({how}): card not on screen')
+    if errs: problems.append(f'phone: page errors {errs[:2]}')
     b.close()
 
-finish('editor', problems, f'{len(ADD)} add buttons and the car tax default, in 2 languages: ' + ('all fine' if not problems else str(problems)))
+finish('editor', problems, f'{len(ADD)} add buttons and the car tax default, in 2 languages, and the back pill: ' + ('all fine' if not problems else str(problems)))
