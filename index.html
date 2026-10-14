@@ -30,7 +30,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-0enjrCMey3FbdqTxPxrvfKmrCX7aQI5XhX2jd3rorxM='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-hypiSiGFWT28SzSOz/RjUNvfAI411iYYkocn63PuLUg='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
 <meta name="referrer" content="no-referrer">   <!-- links out (source code, license) don't tell the other site which page you came from -->
 <meta name="color-scheme" content="dark">   <!-- the page is already dark: stops browser auto-dark modes (and the darkreader-lock line, the Dark Reader extension) from recoloring it -->
 <meta name="darkreader-lock">
@@ -538,12 +538,15 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   /* things that appear get a short entrance instead of popping in (it plays whenever they go from hidden to shown) */
   @keyframes popIn{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none}}
   @keyframes popInC{from{opacity:0; transform:translate(-50%,10px)} to{opacity:1; transform:translate(-50%,0)}}
+  @keyframes popInT{from{opacity:0; transform:translate(-50%,-10px)} to{opacity:1; transform:translate(-50%,0)}}
   @keyframes fadeIn{from{opacity:0} to{opacity:1}}
   .fwarn:not([hidden]), .isempty > .emptyhint, .notice:not([hidden]), .topbar.compact.menu-open .tbmenu, .suggest:not([hidden]){animation:popIn .2s cubic-bezier(.22,.8,.26,1) both}
-  .toast:not([hidden]){animation:popInC .24s cubic-bezier(.22,.8,.26,1) both}
+  .toast:not([hidden]){animation:popInC .24s cubic-bezier(.22,.8,.26,1) both} .toast.problem:not([hidden]){animation-name:popInT}
   #tip{animation:fadeIn .12s ease-out}
   @media (prefers-reduced-motion: reduce){ .fwarn, .emptyhint, .notice, .tbmenu, .suggest, .toast, #tip{animation:none !important} .chev, .drop summary::before{transition:none} }
   .toast > span{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}   /* a long name is cut short; Undo always fits */
+  /* a refused file: at the top, next to Import, with the whole reason on two or three lines; it slides down instead of up */
+  .toast.problem{top:22px; bottom:auto; max-width:min(460px, calc(100vw - 32px))} .toast.problem > span{white-space:normal}
   .toast .btn{padding:6px 14px; color:var(--accent); flex:none}
   #tip{position:fixed; z-index:1000; display:none; color:#F2F4F8; font-size:12px; pointer-events:none; box-shadow:0 6px 18px rgba(0,0,0,0.45); max-width:min(280px, calc(100vw - 16px)); line-height:1.45; background:#0A0C10; border:1px solid var(--border2); border-radius:10px; padding:6px 10px}
   /* phones */
@@ -1135,7 +1138,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
       </div>
     </details>
   </div>
-  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.1.4</span></footer>
+  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.1.5</span></footer>
   </div>
 
 </div>
@@ -1466,17 +1469,21 @@ function removeRow(row, after){
   if(REDUCE_MOTION || !row){ after(); return; }
   animHeight(row, false, after, rowEdge(row));
 }
-// After removing something from a list, a note offers Undo for a few seconds (the latest removal only).
-const toast=document.createElement('div'); toast.className='toast'; toast.setAttribute('role','status'); toast.hidden=true; document.body.appendChild(toast);
+// A short note at the bottom of the screen, one at a time: Undo after removing something from a list (the latest removal
+// only), or why an imported file was refused (a problem: at the top, next to Import; it wraps, stays longer and is announced at once).
+const toast=document.createElement('div'); toast.className='toast'; toast.hidden=true; document.body.appendChild(toast);
 let toastTimer=null;
-function undoToast(name, undo){
+function showToast(text, btnLabel, onBtn, problem){
   clearTimeout(toastTimer);
-  const msg=document.createElement('span'); msg.textContent= name ? L('Removed “'+name+'”','Eemaldatud: „'+name+'”') : L('Removed','Eemaldatud');   // your name as typed, not translated
-  const b=el('button','btn',t('Undo')); b.type='button';
-  b.addEventListener('click', ()=>{ toast.hidden=true; clearTimeout(toastTimer); undo(); });
-  toast.replaceChildren(msg, b); toast.hidden=true; void toast.offsetWidth; toast.hidden=false;   // replays the entrance for each removal
-  toastTimer=setTimeout(()=>{ toast.hidden=true; }, 7000);
+  const msg=document.createElement('span'); msg.textContent=text;
+  const b=el('button','btn',btnLabel); b.type='button';
+  b.addEventListener('click', ()=>{ toast.hidden=true; clearTimeout(toastTimer); if(onBtn) onBtn(); });
+  toast.classList.toggle('problem', !!problem); toast.setAttribute('role', problem ? 'alert' : 'status');
+  toast.replaceChildren(msg, b); toast.hidden=true; void toast.offsetWidth; toast.hidden=false;   // replays the entrance each time
+  toastTimer=setTimeout(()=>{ toast.hidden=true; }, problem ? 12000 : 7000);
 }
+const undoToast=(name, undo)=> showToast(name ? L('Removed “'+name+'”','Eemaldatud: „'+name+'”') : L('Removed','Eemaldatud'), t('Undo'), undo);   // your name as typed, not translated
+const importRefused=text=> showToast(text, L('Close','Sulge'), null, true);
 let booted=false;
 // Cards glide instead of snapping when a card appears/disappears (FLIP): remember where every visible card is, make
 // the change, then animate each card from its old position/width to the new one. While a card glides, its height is
@@ -3209,7 +3216,7 @@ const MAX_IMPORT_MB=5;   // a real backup is a few kilobytes; a huge file would 
 document.getElementById('importFile').addEventListener('change', e=>{
   const f=e.target.files[0]; if(!f) return;
   if(f.size>MAX_IMPORT_MB*1024*1024){ e.target.value='';
-    alert(L('That file is too large to be a backup from this tool (over '+MAX_IMPORT_MB+' MB), so nothing was changed.','See fail on selle tööriista varukoopia jaoks liiga suur (üle '+MAX_IMPORT_MB+' MB), seega midagi ei muudetud.')); return; }
+    importRefused(L('That file is too large to be a backup from this tool (over '+MAX_IMPORT_MB+' MB), so nothing was changed.','See fail on selle tööriista varukoopia jaoks liiga suur (üle '+MAX_IMPORT_MB+' MB), seega midagi ei muudetud.')); return; }
   const rd=new FileReader();
   rd.onload=()=>{
     try{
@@ -3219,7 +3226,7 @@ document.getElementById('importFile').addEventListener('change', e=>{
       if(example){ example=false; state=load(); }   // importing ends the example; Undo then keeps your own data
       keepUndo();
       state=normalize(data); save(); backedUp(); refreshAll();
-    }catch(err){ alert(L('That file isn\'t a backup from this tool, so nothing was changed.','See fail ei ole selle tööriista varukoopia, seega midagi ei muudetud.')); }
+    }catch(err){ importRefused(L('That file isn\'t a backup from this tool, so nothing was changed.','See fail ei ole selle tööriista varukoopia, seega midagi ei muudetud.')); }
   };
   rd.readAsText(f); e.target.value='';
 });

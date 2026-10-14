@@ -2,6 +2,12 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.1.5] – 2026-10-14
+
+- **Clearer import messages.** When a file can't be imported (it isn't a backup from this tool, or it's over 5 MB), the reason now shows in the tool's own note at the top of the screen, next to Import, instead of a browser popup. Screen readers announce it right away.
+
+Saved data and backups from earlier versions keep working.
+
 ## [1.1.4] – 2026-10-14
 
 - **Wide layout on big screens.** At most four columns of cards: on bigger screens the cards get wider instead of leaving empty columns on the right. Progress shows Targets and Retirement side by side, each half the width, instead of two narrow cards.
@@ -71,6 +77,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.1.5]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.5
 [1.1.4]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.4
 [1.1.3]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.3
 [1.1.2]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.2

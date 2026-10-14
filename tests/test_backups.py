@@ -22,7 +22,7 @@ with sync_playwright() as p:
     rich['text']={**rich.get('text',{}), 'pageTitle':'My plan', 'goalsHTML':'<li>Buy <b>flat</b></li>'}
     for lang in ['en','et']:
         ctx=b.new_context(accept_downloads=True, viewport={'width':1300,'height':900}, reduced_motion='reduce'); pg=ctx.new_page(); errs=[]
-        pg.on('pageerror', lambda e: errs.append(str(e)[:200])); pg.on('dialog', lambda d: d.accept())
+        pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
         def menu(sel):   # top bar buttons sit in the ☰ menu when the bar is compact
             if not pg.is_visible(sel) and pg.is_visible('#moreBtn'): pg.click('#moreBtn')
             pg.click(sel)
@@ -51,11 +51,13 @@ with sync_playwright() as p:
         bad=os.path.join(tempfile.mkdtemp(),'bad.json'); open(bad,'w').write('{not json')
         cur=pg.evaluate("JSON.stringify(state)"); pg.set_input_files('#importFile', bad); pg.wait_for_timeout(300)
         if pg.evaluate("JSON.stringify(state)")!=cur: fails.append((lang,'broken file changed data'))
+        note=pg.evaluate("()=>{ const t=document.querySelector('.toast'); return t.hidden ? '' : t.getAttribute('role')+': '+t.textContent; }")
+        if not note.startswith('alert: ') or ('backup' not in note and 'varukoopia' not in note): fails.append((lang,'broken file refused without saying why', note))
         # a file far bigger than any backup is refused before it's read, and says why
         big=os.path.join(tempfile.mkdtemp(),'big.json'); json.dump({**exported, 'pad':'x'*(6*1024*1024)}, open(big,'w'))
-        said=[]; pg.once('dialog', lambda d: said.append(d.message))
         pg.set_input_files('#importFile', big); pg.wait_for_timeout(300)
-        if pg.evaluate("JSON.stringify(state)")!=cur or not said or '5 MB' not in said[0]: fails.append((lang,'oversized file not refused clearly', said[:1]))
+        said=pg.evaluate("()=>{ const t=document.querySelector('.toast'); return t.hidden ? '' : t.textContent; }")
+        if pg.evaluate("JSON.stringify(state)")!=cur or '5 MB' not in said: fails.append((lang,'oversized file not refused clearly', said))
         # importing the same file twice in a row still works (file input resets)
         pg.set_input_files('#importFile', path); pg.wait_for_timeout(300); pg.set_input_files('#importFile', path); pg.wait_for_timeout(300)
         if pg.evaluate("JSON.stringify(state)")!=before_state: fails.append((lang,'re-import of same file failed'))
