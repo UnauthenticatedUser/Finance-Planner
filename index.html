@@ -30,12 +30,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YWpCvwiOi+GWmIGAqZ/B+7s1yfRtvDr+kM4LTDLg0Hw=' 'sha256-naFBOvsZb5C4X2iGpSSXApQuDIap5SOWaMebYLYF2sI='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-0enjrCMey3FbdqTxPxrvfKmrCX7aQI5XhX2jd3rorxM='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
 <meta name="referrer" content="no-referrer">   <!-- links out (source code, license) don't tell the other site which page you came from -->
 <meta name="color-scheme" content="dark">   <!-- the page is already dark: stops browser auto-dark modes (and the darkreader-lock line, the Dark Reader extension) from recoloring it -->
 <meta name="darkreader-lock">
 <style id="framed">html{display:none!important}</style>   <!-- hidden until the line below confirms it isn't shown inside another site's page, so nobody can overlay it to trick clicks (e.g. on Delete) -->
-<script>try{ if(window.top===window.self) document.getElementById('framed').remove(); }catch(e){}</script>
+<script>try{ if(window.top===window.self) document.getElementById('framed').remove(); }catch(e){}
+// The saved view and layout (KEY_UI and WIDE_MIN in the main script), set before anything is drawn, so a reload doesn't flash Overview or the standard layout first.
+try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.documentElement; h.classList.toggle('progress', u.view==='progress'); h.classList.toggle('wide', !!u.wide && innerWidth>=1600); }catch(e){}</script>
 <title>Estonian Finance Planner</title>
 <meta name="description" content="Free, private personal finance planner for Estonia: net salary, budget, II and III pillar pension, investments, loans, goals and retirement, with Estonian tax rules. No account, works offline. Tasuta isikliku rahanduse planeerija Eestile: palgakalkulaator, eelarve, II ja III sammas, pensionikalkulaator, investeeringud ja laenud. Eesti ja inglise keeles, töötab ka ilma internetita.">   <!-- what search engines show under the title -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHBhdGggZD0iTTE3LjA1IDQuMDVBMTIgMTIgMCAwIDEgMjIuODggMjUuODMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0YyQzE0RSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0iYnV0dCIvPjxwYXRoIGQ9Ik0yMS4wNyAyNi44OEExMiAxMiAwIDAgMSA2LjE3IDIyLjg4IiBmaWxsPSJub25lIiBzdHJva2U9IiM2RThCRkYiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9ImJ1dHQiLz48cGF0aCBkPSJNNS4xMiAyMS4wN0ExMiAxMiAwIDAgMSA2LjE3IDkuMTIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0E3OEJGQSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0iYnV0dCIvPjxwYXRoIGQ9Ik03LjUxIDcuNTFBMTIgMTIgMCAwIDEgMTQuOTUgNC4wNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMkRENEJGIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lY2FwPSJidXR0Ii8+PHBhdGggZD0iTTkuNSAyMC41TDE0IDE2bDMgMi41IDUuNS02IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNEQzOTkiIHN0cm9rZS13aWR0aD0iMi42IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=">   <!-- the allocation donut around a rising line -->
@@ -57,7 +59,7 @@
        lists on cards: .acctrow .physrow .debtitem .dline   investments card: #funds-section #inv-section (.invsec)   goals: #goals-card ul.goals
        views: .viewtabs .view (#view-overview, #view-progress)   progress: #history-card #hist-chart .hdot #targets-card .tgtitem .tbar .tfill
        tooltip: #tip   animation: .mtx (number scramble)
-     Conventions: phone rules in @media(max-width:480px); donut cards stack via @container (card's inner width ≤300px, not screen); wide layout only as body.wide inside @media(min-width:1600px);
+     Conventions: phone rules in @media(max-width:480px); donut cards stack via @container (card's inner width ≤300px, not screen); wide layout only as html.wide inside @media(min-width:1600px); the saved view and layout (html.progress, html.wide) are set by the small script in <head>, before the first paint;
        ≥1180px = editor docked right (earlier, docking would squeeze the dashboard below its two-card width); ≥780px = two-column dashboard; ≥700px = 4 tiles in one row; ≥560px = bigger hero.
        !important is only used where it must beat a card rule: .mnet (hero box, darker than cards) and print. */
 
@@ -239,8 +241,8 @@
   .bar > div:hover{opacity:1}
   /* printing: hide controls */
   @media print{
-    body.wide .view{columns:auto}
-    body.wide .dash{display:grid}
+    html.wide .view{columns:auto}
+    html.wide .dash{display:grid}
     .topbar .btn, .editor, .projctrl, .yrbtns, #tip, .toast{display:none !important}
     body{-webkit-print-color-adjust:exact; print-color-adjust:exact}
     .wrap{max-width:100%; padding:0}
@@ -345,7 +347,7 @@
   .yrbtns button:hover{color:var(--text)}
   .editor h2{margin:0 0 4px; font-size:17px; font-weight:600; letter-spacing:-0.01em}
   .esec{overflow:hidden; background:var(--card); border:none; border-radius:16px; margin-bottom:10px}
-  .esec:last-of-type, .view > :last-child, .view > :last-child > .card, body.wide .view > :last-child > .card{margin-bottom:0}   /* both columns end exactly at the layout's bottom edge */
+  .esec:last-of-type, .view > :last-child, .view > :last-child > .card, html.wide .view > :last-child > .card{margin-bottom:0}   /* both columns end exactly at the layout's bottom edge */
   .esec > summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px; font-size:14px; font-weight:500; padding:14px 16px}
   .esec > summary:hover{background:rgba(255,255,255,0.025)}
   .esecbody{padding:4px 12px 14px}
@@ -402,6 +404,7 @@
   .viewtabs{display:inline-flex; background:var(--surface); border-radius:999px; padding:3px; gap:2px}
   .viewtabs button{border:none; border-radius:999px; background:transparent; color:var(--text2); padding:6px 14px; font:inherit; font-size:13px; font-weight:500; cursor:pointer}
   .viewtabs button:hover{color:var(--text)}
+  html.progress #view-overview{display:none} html.progress #view-progress{display:block}   /* the saved view shows from the first paint; show() keeps the class in step */
   .view.entering{animation:viewIn .26s cubic-bezier(.22,.8,.26,1) both}
   @keyframes viewIn{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
   @media (prefers-reduced-motion: reduce){ .view.entering{animation:none} }
@@ -504,27 +507,30 @@
   .smallbtn:hover{color:var(--text)}
   .btn[hidden]{display:none}
   .inwrap input:disabled{pointer-events:none}   /* disabled fields get no mouse events, so their box shows the tooltip */
-  /* wide layout (body.wide), big screens only */
+  /* wide layout (html.wide), big screens only */
   @media (min-width:1600px){
-    body.wide .wrap{max-width:none; padding-left:32px; padding-right:32px}
-    body.wide .layout{grid-template-columns:minmax(0,1fr) 400px; gap:28px}
-    body.wide .view{column-width:440px; column-gap:var(--gap)}
-    body.wide .view > .topgrid{column-span:all; grid-template-columns:minmax(260px,1.4fr) repeat(4,minmax(0,1fr)); align-items:stretch; margin-bottom:var(--gap)}
-    body.wide .topgrid .mnet{grid-column:auto; padding:16px 20px !important}
-    body.wide .dash, body.wide .dash-right, body.wide .main .grid2{display:contents}
-    body.wide .main .card{break-inside:avoid; margin:0 0 var(--gap); display:block}
+    html.wide .wrap{max-width:none; padding-left:32px; padding-right:32px}
+    html.wide .layout{grid-template-columns:minmax(0,1fr) 400px; gap:28px}
+    html.wide .view{columns:440px 4; column-gap:var(--gap)}   /* at most 4 columns: on bigger screens the cards get wider instead of leaving empty columns */
+    html.wide .view > .topgrid{column-span:all; grid-template-columns:minmax(260px,1.4fr) repeat(4,minmax(0,1fr)); align-items:stretch; margin-bottom:var(--gap)}
+    html.wide .topgrid .mnet{grid-column:auto; padding:16px 20px !important}
+    html.wide .dash, html.wide .dash-right, html.wide .main .grid2{display:contents}
+    html.wide .main .card{break-inside:avoid; margin:0 0 var(--gap); display:block}
     /* Goals: always last and full width, so a long list grows downward under everything instead of making one
        column tower over the rest. Columns drop the last card's bottom margin, so Goals adds the usual 14px gap itself. */
-    body.wide #goals-card{column-span:all; margin-top:var(--gap)}
-    body.wide #history-card{column-span:all}
+    html.wide #goals-card{column-span:all; margin-top:var(--gap)}
+    /* Progress has only two cards under the chart: side by side, half the width each */
+    html.wide.progress #view-progress{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--gap); align-items:start}
+    html.wide #view-progress > .card{margin:0}
+    html.wide #history-card{grid-column:1 / -1}
   }
-  body.wide .layout > .main{animation:wideIn .28s ease both}
+  html.wide .layout > .main{animation:wideIn .28s ease both}
   @keyframes wideIn{from{opacity:.35} to{opacity:1}}
   /* users who prefer less motion */
   @media (prefers-reduced-motion: reduce){
     .dring{transition:none}
     .mtx{text-shadow:none}
-    body.wide .layout > .main{animation:none}
+    html.wide .layout > .main{animation:none}
   }
   .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:900; display:flex; align-items:center; gap:14px; width:max-content; max-width:calc(100vw - 32px);
     background:#0A0C10; border:1px solid var(--border2); border-radius:12px; padding:8px 8px 8px 16px; font-size:13px; color:var(--text); box-shadow:0 10px 28px rgba(0,0,0,0.5)}
@@ -1129,7 +1135,7 @@
       </div>
     </details>
   </div>
-  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.1.3</span></footer>
+  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.1.4</span></footer>
   </div>
 
 </div>
@@ -2730,7 +2736,10 @@ function renderAllocation(c){
   have.forEach(el=>{ if(!el._leaving) legendPop(el, false, ()=>el.remove()); });
 }
 
-const PROJ={W:320,H:110,padL:8,padR:8,padT:8,padB:16,N:64};
+// The projection is drawn at its real width (1 unit = 1 pixel), so its text and lines keep one size on any screen; the
+// height grows with the width up to 200px. PROJ holds the size of the current drawing, set by renderProjection().
+const projSize=w=>{ const W=Math.max(200, Math.round(w)||320); return {W, H:Math.round(Math.min(200, Math.max(120, W*0.34))), padL:10, padR:10, padT:10, padB:22, N:64}; };
+let PROJ=projSize(320);
 let projState=null;
 function projSampleLine(pts, xs, ys){
   const poly=pts.map(p=>({x:xs(p.y), y:ys(p.val)})), N=PROJ.N, x0=PROJ.padL, x1=PROJ.W-PROJ.padR, out=[];
@@ -2750,12 +2759,12 @@ function projSVG(s, yrs){   // s = {line, lo, hi, c0, c1, band}: y-coordinates s
   const cLine= s.cl ? path(s.cl) : 'M'+x0.toFixed(1)+' '+s.c0.toFixed(1)+' L'+x1.toFixed(1)+' '+s.c1.toFixed(1);
   return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">'
     +'<line x1="'+padL+'" y1="'+base+'" x2="'+x1+'" y2="'+base+'" stroke="rgba(255,255,255,0.12)"/>'
-    +(band?'<path d="'+band+'" fill="#34D39916" stroke="#34D39940" stroke-width="0.8" stroke-dasharray="2 2"/>':'')
+    +(band?'<path d="'+band+'" fill="#34D39916" stroke="#34D39940" stroke-width="1" stroke-dasharray="3 3"/>':'')
     +'<path d="'+area+'" fill="#34D39924"/>'
-    +'<path d="'+line+'" fill="none" stroke="#34D399" stroke-width="2" stroke-linejoin="round"/>'
-    +'<path d="'+cLine+'" fill="none" stroke="#A9B8FF" stroke-width="1.5" stroke-dasharray="4 3"/>'
-    +'<text x="'+padL+'" y="'+(H-5)+'" class="axl" font-size="9">'+L('now','täna')+'</text>'
-    +'<text x="'+x1+'" y="'+(H-5)+'" class="axl" font-size="9" text-anchor="end">'+yrs+L('y','a')+'</text>'
+    +'<path d="'+line+'" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linejoin="round"/>'
+    +'<path d="'+cLine+'" fill="none" stroke="#A9B8FF" stroke-width="1.6" stroke-dasharray="5 4"/>'
+    +'<text x="'+padL+'" y="'+(H-6)+'" class="axl" font-size="11">'+L('now','täna')+'</text>'
+    +'<text x="'+x1+'" y="'+(H-6)+'" class="axl" font-size="11" text-anchor="end">'+yrs+L('y','a')+'</text>'
     +'</svg>';
 }
 // ===== Progress: monthly history and targets =====
@@ -3108,6 +3117,7 @@ function renderProjection(c){
     range ? L('Range: the shaded band shows a return '+num(sp)+'% a year lower and higher.','Vahemik: varjutatud ala näitab '+num(sp)+'% võrra madalamat ja kõrgemat aastatootlust.') : ''
   ]);
   const el=document.getElementById('proj-svg'); if(!el) return;
+  el._w=Math.round(el.clientWidth); PROJ=projSize(el._w);
   const {W,H,padL,padR,padT,padB}=PROJ, maxV=Math.max(1, ...pts.map(p=>p.val), ...(hi||[]).map(p=>p.val), ...sim.pts.map(p=>p.putR));   // the highest point anywhere: a falling line or the put-in line can top it
   const xs=y=> padL + (y/yrs)*(W-padL-padR);
   const ys=val=> H-padB - (val/maxV)*(H-padT-padB);
@@ -3215,10 +3225,12 @@ document.getElementById('importFile').addEventListener('change', e=>{
 });
 
 document.querySelectorAll('.esec, .drop, .msurplus').forEach(smoothDetails);
-// The history chart is drawn at its real width: redraw it whenever that width changes (window size, wide layout, the
-// Progress view being shown), so it's never a small drawing stretched up. Next frame, so the redraw doesn't resize it mid-check.
-(function(){ const box=document.getElementById('hist-chart'); let raf=0;
-  new ResizeObserver(()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>{ const w=Math.round(box.clientWidth); if(w && w!==box._w) renderHistory(compute()); }); }).observe(box); })();
+// The history and projection charts are drawn at their real width: redraw them whenever that width changes (window size,
+// wide layout, a view being shown), so neither is a small drawing stretched up. Next frame, so a redraw doesn't resize it mid-check.
+function redrawOnResize(box, draw){ let raf=0;
+  new ResizeObserver(()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>{ const w=Math.round(box.clientWidth); if(w && w!==box._w) draw(); }); }).observe(box); }
+redrawOnResize(document.getElementById('hist-chart'), ()=>renderHistory(compute()));
+redrawOnResize(document.getElementById('proj-svg'), ()=>{ if(projState && projState.raf) cancelAnimationFrame(projState.raf); projState=null; renderProjection(compute()); });   // straight to the new size, no animation
 // Two-option choices (.seg) and chips (.chip) drive a hidden switch; they show its state after every update.
 function syncSegs(){
   const p2=document.getElementById('p2seg');
@@ -3298,7 +3310,7 @@ document.querySelectorAll('.langtabs [data-lang]').forEach(b=>b.addEventListener
   LANG=b.dataset.lang; setUI('lang', LANG);
   translateStatic(); refreshAll();
   const tb=document.getElementById('toggleAllBtn'); if(tb && tb._sync) tb._sync();
-  const wb=document.getElementById('wideBtn'); if(wb) wb.textContent=t(document.body.classList.contains('wide') ? 'Standard layout' : 'Wide layout');
+  const wb=document.getElementById('wideBtn'); if(wb) wb.textContent=t(document.documentElement.classList.contains('wide') ? 'Standard layout' : 'Wide layout');
   fitTopbar();
 }));
 translateStatic();
@@ -3311,6 +3323,7 @@ document.querySelectorAll('.sico[data-icon]').forEach(d=>{ const svg=document.qu
     document.querySelectorAll('.main > .view').forEach(vw=>{ const on=vw.id==='view-'+v; vw.hidden=!on;
       if(on && anim && !REDUCE_MOTION){ vw.classList.remove('entering'); void vw.offsetWidth; vw.classList.add('entering'); } });
     tabs.forEach(t=>t.setAttribute('aria-selected', t.dataset.view===v?'true':'false'));
+    document.documentElement.classList.toggle('progress', v==='progress');
   };
   tabs.forEach(t=>t.addEventListener('click', ()=>{ setUI('view', t.dataset.view); show(t.dataset.view, true); renderCalc(); }));
   show(readJSON(KEY_UI).view==='progress'?'progress':'overview', false);
@@ -3347,7 +3360,7 @@ document.querySelectorAll('.sico[data-icon]').forEach(d=>{ const svg=document.qu
   const apply=()=>{
     const room=window.innerWidth>=WIDE_MIN, on=room && wide;
     btn.hidden=!room; fitTopbar();
-    document.body.classList.toggle('wide', on);
+    document.documentElement.classList.toggle('wide', on);
     btn.textContent = t(on ? 'Standard layout' : 'Wide layout');     // names what clicking will do
     btn.setAttribute('data-tip', on ? 'Back to the standard layout, centered on the page.' : 'Use the whole screen: cards flow into columns so everything fits without scrolling.');
   };
