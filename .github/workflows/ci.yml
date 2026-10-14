@@ -1,12 +1,14 @@
 # CI/CD for Estonian Finance Planner.
-#   test:   runs every test in tests/ on each push and pull request, in Chromium, Firefox and WebKit (Safari's engine).
-#           All three must pass.
+#   test:   runs every test in tests/ on each push to main and each pull request, in Chromium, Firefox and WebKit
+#           (Safari's engine). All three must pass. Release tags don't run it again: a tag points at a commit on main
+#           that was already tested.
 #   deploy: publishes index.html to GitHub Pages, only from main and only when the tests passed.
 # Actions are pinned to exact commits (the version is in the comment); Dependabot proposes updates as pull requests.
 name: Tests
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
