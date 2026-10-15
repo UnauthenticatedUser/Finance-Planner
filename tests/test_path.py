@@ -10,7 +10,7 @@ Run: python tests/test_path.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, datetime
 from helpers import PAGE, fixture, finish, launch
-from model import surplus_invested, savings, save_months, payout_tax
+from model import surplus_invested, savings, save_months, payout_tax, pension_age
 
 
 def pick(*a): return random.choice(a)
@@ -24,7 +24,7 @@ def model_path(c, st, net, months):
     pen, inv = c['pension'], c['etfVal'] + c['invValue']; mp, mi = c['penMonthly'], c['investedNoPen'] + surplus_invested(st, c['surplus'])
     cash, owed, inv_f, inv_put = savings(c['debts'], months, st, c['surplus'], net, c['buffer'], stop); out = []
     i0 = inv; put = inv; tax = st['enableProjNet']; inc = st['taxRate'] / 100 if tax else 0
-    now = datetime.date.today().year; pt = payout_tax(max(st['retireAge'] or 65, now - st['birthYear'] if st['birthYear'] else 0), st['payoutYears'], st['taxRate']) / 100 if tax else 0
+    now = datetime.date.today().year; pt = payout_tax(max(st['retireAge'] or 65, now - st['birthYear'] if st['birthYear'] else 0), st['payoutYears'], st['taxRate'], pension_age(st)) / 100 if tax else 0
     for i in range(months + 1):
         if i:
             pen = pen * (1 + rm) + (mp if i <= stop else 0); inv = inv * (1 + rm) + (mi if i <= stop else 0); put += mi if i <= stop else 0
@@ -96,8 +96,9 @@ def main():
             if ('Try other numbers' in r['note']) != bool(st['enableProjCustom']): fails += 1; print(k, 'note about Try other numbers', st['enableProjCustom'], r['note'][-120:])
 
         # 2. the card: nothing entered yet shows a hint; a target without an amount gets no dot; a cash shortfall isn't called a loan
-        e = pg.evaluate("()=>{ state=normalize({}); refreshAll(); const c=document.getElementById('path-card'); return [c.classList.contains('isempty'), !!document.getElementById('path-empty').getClientRects().length, !!document.getElementById('pathbtns').getClientRects().length]; }")
-        if e != [True, True, False]: fails += 1; print('empty path card (isempty, hint shown, buttons shown)', e)
+        e = pg.evaluate("""()=>{ state=normalize({}); refreshAll(); const c=document.getElementById('path-card'); return [c.classList.contains('isempty'), !!document.getElementById('path-empty').getClientRects().length, !!document.getElementById('pathbtns').getClientRects().length,
+                 document.querySelectorAll('#path-list .row').length, document.getElementById('path-legend').textContent, document.getElementById('ret-tag').textContent]; }""")
+        if e != [True, True, False, 0, '', '']: fails += 1; print('emptied: path card (isempty, hint, buttons, old rows, legend) and the Retirement header', e)   # nothing left from the data before
         s = json.loads(json.dumps(base)); s.update(expenses=6000, debts=[], targets=[{'name': 'Zero', 'kind': 'networth', 'amount': 0}])
         z = pg.evaluate("s=>{ state=normalize(s); refreshAll(); return [pathHover.ms.map(m=>m.name), document.getElementById('path-legend').textContent, document.getElementById('path-card').classList.contains('isempty')]; }", s)
         if 'Zero' in z[0] or 'Shortfall' not in z[1] or 'Loans' in z[1] or z[2]: fails += 1; print('no amount / shortfall', z)
@@ -111,7 +112,7 @@ def main():
         y = pg.evaluate("""s=>{ state=normalize(s); save(); refreshAll(); const out={};
                  for(const b of document.querySelectorAll('#pathbtns button')){ b.click(); out[b.dataset.span]=[pathHover.pts.length-1, Math.round((pathHover.t1-pathHover.t0)*12), b.classList.contains('active')]; }
                  const r=retirement(compute()); out.year=r.year; out.label=document.getElementById('path-ret').textContent; return out; }""", s)
-        import datetime; now = datetime.date.today().year
+        now = datetime.date.today().year
         for span in ('5', '10', '20', '30'):
             m = int(span) * 12
             if y[span] != [m, m, True]: fails += 1; print('zoom', span, y[span])
@@ -180,8 +181,7 @@ def main():
                  const h=document.getElementById('path-hint'); return [Math.round(pathHover.pts[360].debt*inflAfter(360)), h.style.display!=='none' && h.textContent]; }""")
         if o[0] != 200000 or not o[1] or 'Mortgage has no monthly payment' not in o[1]: fails += 1; print('loan without a payment', o)
         pg.evaluate("s=>{ state=normalize(s); refreshAll(); }", s)
-        # 3. widths: no sideways scrolling on phones; every zoom label has the same room around it, the first and last too;
-        # in the wide layout the chips, Your path and History run full width
+        # 3. widths: no sideways scrolling on phones; every zoom label has the same room around it, the first and last too
         GAPS = """id=>{ const bar=document.getElementById(id), br=bar.getBoundingClientRect(), tx=b=>{ const r=document.createRange(); r.selectNodeContents(b); return r.getBoundingClientRect(); };
                  const bs=[...bar.querySelectorAll('button')].filter(b=>!b.hidden); return [tx(bs[0]).left-br.left, br.right-tx(bs[bs.length-1]).right,
                  ...bs.map(b=>{ const r=b.getBoundingClientRect(), x=tx(b); return Math.abs((x.left-r.left)-(r.right-x.right)); })]; }"""
@@ -199,9 +199,11 @@ def main():
         if abs(g[0] - g[1]) > 1.5 or max(g[2:]) > 1.5: fails += 1; print('projection labels unevenly spaced', [round(x, 1) for x in g])
         pg.evaluate("document.querySelector('.viewtabs [data-view=progress]').click()")
         pg.set_viewport_size({'width': 1900, 'height': 900}); pg.click('#wideBtn'); pg.wait_for_timeout(400)
-        wd = pg.evaluate("""()=>{ const v=document.getElementById('view-progress').getBoundingClientRect().width, wid=s=>Math.round(document.querySelector(s).getBoundingClientRect().width/v*100);
-                 return [wid('#view-progress > .pctrl'), wid('#path-card'), wid('#history-card'), wid('#targets-card')]; }""")
-        if wd[:3] != [100, 100, 100] or wd[3] > 55: fails += 1; print('wide layout widths (% of the page)', wd)
+        # wide layout: the chips and Your path full width; Targets on the left, Retirement with History under it on the right
+        wd = pg.evaluate("""()=>{ const v=document.getElementById('view-progress').getBoundingClientRect(), r=s=>document.querySelector(s).getBoundingClientRect(), wid=s=>Math.round(r(s).width/v.width*100);
+                 return [wid('#view-progress > .pctrl'), wid('#path-card'), wid('#targets-card'), wid('#retire-card'), wid('#history-card'),
+                         r('#retire-card').left>r('#targets-card').right, Math.abs(r('#history-card').left-r('#retire-card').left)<1, r('#history-card').top>r('#retire-card').bottom, Math.abs(r('#targets-card').top-r('#retire-card').top)<1]; }""")
+        if wd != [100, 100, 50, 50, 50, True, True, True, True]: fails += 1; print('wide layout (widths in % of the page, then placement)', wd)
         b.close()
     if errs: fails += 1; print('page errors:', errs[:3])
     finish('Your path', fails, f'{N} random users, the card and the widths' + (' all fine' if not fails else f': {fails} problems'))

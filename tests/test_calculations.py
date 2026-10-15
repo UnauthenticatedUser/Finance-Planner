@@ -1,12 +1,14 @@
 """Take-home pay, taxes, budget, net worth and the yearly summary.
 
 Hundreds of random users are run through the tool and through an independent Python model of Estonia's 2026 rules
-(income tax, basic exemption, unemployment insurance, 2nd pillar including on the bonus, 3rd pillar tax refund). The
+(income tax, basic exemption, unemployment insurance, 2nd pillar including on the bonus, 3rd pillar tax refund, and for
+working pensioners no unemployment insurance and only what the state pension leaves of the EUR 776 tax-free amount). The
 two must agree to the cent, and every headline figure on screen must show the computed value.
 Run: python tests/test_calculations.py [number of users]"""
 from playwright.sync_api import sync_playwright
-import json, random, sys
+import json, random, sys, math, datetime
 from helpers import PAGE, finish, launch
+from model import pension_age, state_pension
 PY={'week':52,'month':12,'quarter':4,'year':1}
 def R(a,b,z=0.25): return 0 if random.random()<z else round(random.uniform(a,b))
 def user():
@@ -23,9 +25,12 @@ def user():
     s['p2funds']=[{'name':'F%d'%i,'value':R(0,80000),'share':R(0,100),'fee':round(random.uniform(0,1),2)} for i in range(random.randint(0,2))]
     s['p3funds']=[{'name':'G%d'%i,'value':R(0,30000),'share':R(0,100),'fee':round(random.uniform(0,1),2)} for i in range(random.randint(0,2))]
     s['euribor']=round(random.uniform(-0.5,4),2)
+    s['birthYear']=random.choice([0]*6+[1950,1958,1961,1964,1990]); s['statePension']=random.choice([0,500,700,900])   # some are of pension age
     return s
 def model(s):
     g=s['gross']; T=s['taxRate']/100; U=s['unemployment']/100; E=s['basicExemption']
+    if s['birthYear'] and s['birthYear']+math.floor(pension_age(s))<=datetime.date.today().year:   # a working pensioner
+        U=0; E=max(0, 776-state_pension(s, (g+sum(x['amount']*PY[x['freq']]/12 for x in s['incomes'] if x['freq']!='year' and x['tax']=='salary'))*12+s['bonus']+sum(x['amount'] for x in s['incomes'] if x['freq']=='year' and x['tax']=='salary')))
     p2r=s['p2rate'] if s['enableP2'] else 0; p2sr=s['p2state'] if s['enableP2'] else 0
     inc=s['incomes']; per_month=lambda x: x['amount']*PY[x['freq']]/12
     mon=[x for x in inc if x['freq']!='year']; yr=[x for x in inc if x['freq']=='year']

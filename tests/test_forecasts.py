@@ -7,7 +7,7 @@ Run: python tests/test_forecasts.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys
 from helpers import PAGE, finish, launch
-from model import grow, payout_tax, surplus_invested, save_months
+from model import grow, payout_tax, surplus_invested, save_months, pension_age
 from test_calculations import user, model
 def amort(B,rate,P):
     if B<=0: return 0
@@ -57,9 +57,9 @@ def main():
                 stop=save_months(s, r['now'])   # deposits stop when you retire
                 pv,_=grow(c['pension'],penM,net_r,yrs*12,s['projGrowth'],stop); i0=c['etfVal']+c['invValue']
                 iv,iput=grow(i0,c['etfM']+c['invM']+surplus_invested(s, c['surplus']),net_r,yrs*12,s['projGrowth'],stop)
-                age=max(s['retireAge'], r['now']-s['birthYear'] if s['birthYear'] else 0)   # pension funds are taxed as Retirement pays them out
-                dep=(s['invDeposits'] if s['invDeposits']>0 else i0)+(iput-i0); final=pv*(1-payout_tax(age, s['payoutYears'], s['taxRate'])/100)+iv-s['taxRate']/100*max(0,iv-dep)
-                pt=payout_tax(age, s['payoutYears'], s['taxRate']); said=f"{pt}% on pension payouts" if pt else "pension payouts are tax-free"
+                age=max(s['retireAge'] or 65, r['now']-s['birthYear'] if s['birthYear'] else 0)   # pension funds are taxed as Retirement pays them out
+                pt=payout_tax(age, s['payoutYears'], s['taxRate'], pension_age(s)); dep=(s['invDeposits'] if s['invDeposits']>0 else i0)+(iput-i0); final=pv*(1-pt/100)+iv-s['taxRate']/100*max(0,iv-dep)
+                said=f"{pt}% on pension payouts" if pt else "pension payouts are tax-free"
                 if said not in r['note']: bad(i,f"after-tax note should say '{said}'")
             else: final,_=grow(start,monthly,net_r,yrs*12,s['projGrowth'],save_months(s, r['now']))
             if s['enableProjReal']: final/=1.025**yrs

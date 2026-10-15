@@ -16,11 +16,10 @@ def grow(start, monthly, rate, months, g=0, stop=math.inf):
 
 
 def save_months(s, now):
-    """Months of saving left: deposits stop when you retire; without a year of birth, or past that age, they go on."""
+    """Months of saving left: deposits stop when you retire (none once you're at that age); without a year of birth they go on."""
     by = s.get('birthYear') or 0
     if not (1000 <= by <= now): return math.inf
-    yrs = by + (s.get('retireAge') or 65) - now
-    return yrs * 12 if yrs > 0 else math.inf
+    return max(0, by + (s.get('retireAge') or 65) - now) * 12
 
 
 def cash_rate(s):
@@ -98,8 +97,31 @@ def life_left(age):
     return max(1, 19.3 - 0.8 * (age - 65))
 
 
-def payout_tax(age, payout_years, tax_rate):
-    """Tax % on pension fund payouts starting at `age`: income tax more than 5 years before pension age (65), else none
-    when spread over at least the remaining life expectancy and 10% when shorter."""
-    if age < 60: return tax_rate
+PENSION_AGE_KNOWN = [(1961, 65), (1962, 65 + 1/12), (1963, 65 + 3/12), (1964, 65 + 4/12)]   # Social Insurance Board, by year of birth
+
+
+def pension_age(s):
+    """State pension age: your own setting, else by year of birth (the latest known one, 65y4m, for later years or none)."""
+    if (s.get('pensionAgeYears') or 0) > 0: return s['pensionAgeYears'] + (s.get('pensionAgeMonths') or 0) / 12
+    by = s.get('birthYear') or 0
+    return next((a for y, a in PENSION_AGE_KNOWN if by and by <= y), PENSION_AGE_KNOWN[-1][1])
+
+
+I_BASE, I_YEAR, I_AVG_PAY, I_MIN_PAY = 399.24, 10.477, 5092.70 / 0.2, 886 * 12   # 2026: base part, a year's value, average and minimum pay a year
+
+
+def state_pension(s, a_sal):
+    """State pension a month in today's money: your own forecast, else estimated from a year's salary-like pay (`a_sal`): the
+    base part plus a year's value for each year from 20 until retirement, each year worth half your pay against the average and
+    half a solidarity share (1 from 12 minimum months of pay up), times 0.8 in the II pillar; else (no pay) the average."""
+    if (s.get('statePension') or 0) > 0: return s['statePension']
+    if a_sal <= 0: return 860
+    unit = (0.8 if s.get('enableP2') else 1) * (min(1, a_sal / I_MIN_PAY) + a_sal / I_AVG_PAY) / 2
+    return I_BASE + I_YEAR * unit * max(0, (s.get('retireAge') or 65) - 20)
+
+
+def payout_tax(age, payout_years, tax_rate, spa=65):
+    """Tax % on pension fund payouts starting at `age`: income tax more than 5 years before pension age `spa`, else
+    none when spread over at least the remaining life expectancy and 10% when shorter."""
+    if age < spa - 5: return tax_rate
     return 10 if payout_years < life_left(age) - 1e-9 else 0

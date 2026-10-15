@@ -10,8 +10,13 @@ Run: python tests/test_targets.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, datetime
 from helpers import PAGE, FIXTURES, fixture, finish, launch
-from model import months_to, surplus_invested, savings, save_months, by_month, payout_tax
+from model import months_to, surplus_invested, savings, save_months, by_month, payout_tax, pension_age
 def pick(*a): return random.choice(a)
+def need_problem(n, makes):
+    # the extra €/month for a deadline: enough, and noticeably less isn't; "out of reach" (infinity) only when nothing would do
+    if n==math.inf: return 'says out of reach, but €1T a month makes it' if makes(1e12) else None
+    if not makes(n): return 'does not make it'
+    if n>1 and makes(n*0.97): return 'is too high'
 def main():
     random.seed(int(sys.argv[2]) if len(sys.argv)>2 else 7); N=int(sys.argv[1]) if len(sys.argv)>1 else 120
     with sync_playwright() as p:
@@ -36,7 +41,7 @@ def main():
                 const sim=simulate(pi.start, pi.monthly, R.net, Math.max(1,Math.round(state.projYears||20)), state.projGrowth, state.enableProjReal?state.projInflation:0);
                 return {st, net:R.net, start:pi.start, monthly:pi.monthly, c:{pension:c.pension, penMonthly:c.penMonthly, buffer:c.buffer, networth:c.networth, surplus:c.surplus, etfVal:c.etfVal, invValue:c.invValue, etfMonthly:c.etfMonthly, invMonthly:c.invMonthly, expenses:c.expenses},
                         debts:c.debtList.filter(d=>(+d.balance||0)>0).map(d=>({B:+d.balance, r:(+d.rate||0)/1200, P:Math.max(0,+d.payment||0)})), st8:{...state},
-                        putR:sim.putR, put:sim.put, propsub:document.getElementById('proj-sub').textContent}; }""", s)
+                        putR:sim.putR}; }""", s)
             st=r['st8']; net=r['net']; g=st['projGrowth']; c=r['c']
             infl=1+(st['projInflation'] if st['enableProjReal'] else 0)/100
             # saving stops when you retire; cash, loans and paid-off loans' payments month by month
@@ -53,37 +58,34 @@ def main():
             if not st['enableProjNet'] and not (want==got or (abs(want-got)<=1 and want<math.inf)): fails+=1; print(k,'networth eta', got,'want',want)
             # FIRE
             t=s['targets'][1]; yearly=(t['spend'] if t['spend']>0 else c['expenses']*12)+(272*12 if t['health']=='yes' else 0); goal=yearly/(t['rate']/100); acc=c['etfVal']+c['invValue']   # health: own insurance before pension age, €272/mo in 2026
-            mo=c['etfMonthly']+c['invMonthly']+surplus_invested(st, c['surplus']); infl=1+(st['projInflation'] if st['enableProjReal'] else 0)/100
+            mo=c['etfMonthly']+c['invMonthly']+surplus_invested(st, c['surplus'])
             want=mt(acc, mo, lambda i,v: v+inv_f[i]>=goal*infl**(i/12)) if goal>0 else None
             got=r['st'][1]['eta']; got=math.inf if got is not None and got>1e300 else got
             if not st['enableProjNet'] and want!=got: fails+=1; print(k,'fire eta', got,'want',want)
             # cash buffer: earns interest, grows by the part of the yearly surplus that isn't invested (a negative one always counts)
             # and by the same part of paid-off loans' payments, until you retire; the goal rises with inflation when that's on
-            A=s['targets'][3]['amount']; want=math.inf; cash_at=lambda i: cash[i]
+            A=s['targets'][3]['amount']; want=math.inf
             for i in range(0,721):
-                if cash_at(i)>=A*infl**(i/12): want=i; break
+                if cash[i]>=A*infl**(i/12): want=i; break
             got=r['st'][3]['eta']; got=math.inf if got is None or got>1e300 else got
             if want!=got: fails+=1; print(k,'cash eta',got,'want',want)
             x=r['st'][3]
             if x['need'] is not None and x['due']>0:
                 n=x['need']; due=min(x['due'],720)   # reached in any month up to the deadline, with the extra put in month by month (cash below zero earns nothing)
                 makes=lambda e: (lambda cs: any(cs[i]>=A*infl**(i/12)-0.01 for i in range(0,due+1)))(savings(r['debts'], due, st, c['surplus'], net, c['buffer'], stop, e)[0])
-                if not makes(n): fails+=1; print(k,'cash need',n,'does not make it')
-                if n>1 and makes(n*0.97): fails+=1; print(k,'cash need',n,'is too high')
+                bad=need_problem(n, makes)
+                if bad: fails+=1; print(k,'cash need',n,bad)
             # deadline: extra €/month really makes it, and noticeably less doesn't
             for x,(reach,start,monthly) in ([] if st['enableProjNet'] else zip(r['st'], [(reach_nw(), r['start'], r['monthly']), (lambda i,v: v+inv_f[i]>=goal*infl**(i/12), acc, mo), (lambda i,v: v+inv_f[i]>=s['targets'][2]['amount']*infl**(i/12), r['start'], r['monthly'])])):
                 if x['need'] is None or x['due'] is None or x['due']<=0: continue
-                n=x['need']
-                if n>0:
-                    if mt(start, monthly+n, reach)>x['due']: fails+=1; print(k,x['kind'],'need',n,'does not make it')
-                    if n>1 and mt(start, monthly+n*0.97, reach)<=x['due']: fails+=1; print(k,x['kind'],'need',n,'is too high')
-                elif mt(start, monthly, reach)>x['due']: fails+=1; print(k,x['kind'],'says no extra needed but misses')
+                bad=need_problem(x['need'], lambda e, reach=reach, start=start, monthly=monthly, due=x['due']: mt(start, monthly+e, reach)<=due)
+                if bad: fails+=1; print(k,x['kind'],'need',x['need'],bad)
             # After tax on: what you'd keep if you cashed out each month; growth itself is never taxed. Pensions lose the payout tax
             # (as Retirement pays them out), investments income tax on gains above what was put in (entered net deposits replace
             # today's value), the invested share of paid-off loans' payments included
             if st['enableProjNet']:
                 now=datetime.date.today().year; age=max(st['retireAge'] or 65, now-st['birthYear'] if st['birthYear'] else 0)
-                pt=payout_tax(age, st['payoutYears'], st['taxRate'])/100; inc=st['taxRate']/100; i0=c['etfVal']+c['invValue']
+                pt=payout_tax(age, st['payoutYears'], st['taxRate'], pension_age(st))/100; inc=st['taxRate']/100; i0=c['etfVal']+c['invValue']
                 pen_v,_=by_month(c['pension'], c['penMonthly'], net, 720, g, stop)
                 def kept(e, inv_only=False):
                     iv,ip=by_month(i0, mo+e, net, 720, g, stop); out=[]
@@ -100,8 +102,8 @@ def main():
                     if want!=got: fails+=1; print(k,'after tax',x['kind'],'eta',got,'want',want)
                     if x['need'] is not None and x['due']>0 and want>x['due']:
                         n=x['need']; due=min(x['due'],720); makes=lambda e: (lambda a: any(a[i]>=amt*infl**(i/12)-0.01 for i in range(0,due+1)))(vals(e))
-                        if not makes(n): fails+=1; print(k,'after tax',x['kind'],'need',n,'does not make it')
-                        if n>1 and makes(n*0.97): fails+=1; print(k,'after tax',x['kind'],'need',n,'is too high')
+                        bad=need_problem(n, makes)
+                        if bad: fails+=1; print(k,'after tax',x['kind'],'need',n,bad)
             # put in, today's money when shown so
             yrs=max(1,round(st['projYears'])); inf=st['projInflation'] if st['enableProjReal'] else 0
             m=r['monthly']; tot=r['start']; d=1.0

@@ -37,6 +37,18 @@ with sync_playwright() as p:
             opt.first.dispatch_event('mousedown'); pg.wait_for_timeout(150)
             got = pg.evaluate("()=>{ const e=state.expenseItems.at(-1); return [e.name, e.freq, [...document.querySelectorAll('#exp-rows .exfreq')].at(-1).textContent]; }")
             if got != [car_tax, 'year', yearly]: problems.append(f'{lang}: car tax pick gave {got}')
+        # other income suggestions: each type starts with its usual tax (rent 17.6% after the 20% deduction, dividends tax-free,
+        # a business account 20% plus the 2nd pillar rate)
+        p2 = pg.evaluate("()=>state.enableP2 ? state.p2rate : 0")
+        for typ, want in (('Rental income', ['custom', 17.6]), ('Dividends', ['free', 0]), ('Freelance work', ['custom', 20 + p2])):
+            pg.evaluate("()=>document.getElementById('addIncome').click()"); pg.wait_for_timeout(150)
+            pg.locator('#income-rows .invname').last.click(); pg.wait_for_timeout(150)
+            shown = pg.evaluate("n=>t(n)", typ)
+            opt = pg.locator('body > .suggest:not([hidden]) .sopt', has_text=shown)
+            if not opt.count(): problems.append(f'{lang}: "{shown}" not suggested'); continue
+            opt.first.dispatch_event('mousedown'); pg.wait_for_timeout(150)
+            got = pg.evaluate("()=>{ const e=state.incomes.at(-1); return [e.name, e.tax, e.rate]; }")
+            if got != [shown] + want: problems.append(f'{lang}: picking {typ} gave {got}')
         # decimals: a comma or a dot, in a setting and a list row
         for sel, typed, key, want in (('[data-key=projInflation]', ('2,5', '2.5'), "state.projInflation", 2.5),
                                       ('#acct-rows .acctyield', ('1,75', '1.75'), "state.accounts[0].yield", 1.75)):
@@ -111,10 +123,14 @@ with sync_playwright() as p:
     # numbers: the slider shows the new value at once with the glow; typing elsewhere still rolls them
     pg2 = b.new_page(viewport={'width': 1360, 'height': 900}); pg2.goto(PAGE); pg2.evaluate("localStorage.clear()"); pg2.reload(); pg2.wait_for_timeout(300)
     pg2.evaluate("()=>{ showExample(true); openSection('savings:surplus'); }"); pg2.wait_for_timeout(1200)
-    first = pg2.evaluate("()=>{ const r=document.getElementById('surplusRange'), e=document.getElementById('proj-big'); r.value=0; r.dispatchEvent(new Event('input')); return [e.textContent, e.classList.contains('mtx')]; }")
+    frame = "new Promise(ok=>requestAnimationFrame(()=>ok()))"   # the slider redraws on the next frame (once per frame while dragging)
+    first = pg2.evaluate("async ()=>{ const r=document.getElementById('surplusRange'), e=document.getElementById('proj-big'); r.value=0; r.dispatchEvent(new Event('input')); await "+frame+"; return [e.textContent, e.classList.contains('mtx')]; }")
     pg2.wait_for_timeout(600); settled = pg2.evaluate("document.getElementById('proj-big').textContent")
     if first[0] != settled or not first[1]: problems.append(f'slider: projection rolled or had no glow {first} -> {settled}')
-    if pg2.evaluate("()=>{ const r=document.getElementById('surplusRange'); r.value=50; r.dispatchEvent(new Event('input')); return !!projState.raf; }"): problems.append('slider: the projection chart still animates')
+    if pg2.evaluate("async ()=>{ const r=document.getElementById('surplusRange'); r.value=50; r.dispatchEvent(new Event('input')); await "+frame+"; return !!projState.raf; }"): problems.append('slider: the projection chart still animates')
+    # a fast drag (many input events within one frame) redraws once, with the last value
+    n = pg2.evaluate("async ()=>{ let k=0; const orig=renderCalc; renderCalc=()=>{ k++; orig(); }; const r=document.getElementById('surplusRange'); for(let v=0; v<=40; v+=2){ r.value=v; r.dispatchEvent(new Event('input')); } await "+frame+"; renderCalc=orig; return [k, surplusPct()]; }")
+    if n != [1, 60]: problems.append(f'slider: a fast drag redrew {n[0]} times or kept {n[1]}% (want once, 60%)')
     pg2.evaluate("()=>{ const f=document.querySelector('[data-key=projReturn]'); f.value='3'; f.dispatchEvent(new Event('input')); }")
     rolling = pg2.evaluate("document.getElementById('proj-big').textContent"); pg2.wait_for_timeout(600); settled2 = pg2.evaluate("document.getElementById('proj-big').textContent")
     if rolling == settled2: problems.append('typing: the projection did not roll to its new value')

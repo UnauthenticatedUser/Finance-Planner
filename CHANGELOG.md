@@ -2,6 +2,30 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.2.1] – 2026-10-16
+
+Fixes for v1.2.0, and Estonian rules the tool had simplified.
+
+- **State pension age by year of birth.** It was always 65. It's now 65 if you were born in 1961 or earlier, and 65 years and 1, 3 or 4 months if you were born in 1962, 1963 or 1964. After that it follows life expectancy, so 65 years and 4 months is used and the Retirement card says it may be later. You can set your own under Settings › Retirement › Advanced, for example if you retire early for raising children. The tax on pension fund payouts started more than 5 years before pension age follows it too. If the state pension starts less than a year after you retire, it stays in the total and the card says how long the gap is.
+- **Working pensioners' pay.** From pension age no unemployment insurance is taken from pay. The €776 tax-free amount goes to the state pension first, and pay only gets what's left of it instead of €700. For example, a €700 pension and €1,000 pay now nets €796.72, as in the Tax and Customs Board's example.
+- **Other income starts with its usual tax.** Picking rental income, freelance work, a side business, royalties, dividends, child benefit or travel allowance sets its tax; anything else still starts as taxed like salary.
+- **State pension estimated from your pay.** Without your own forecast, the Retirement card used the €860 national average for everyone. It now works the state pension out from your pay the way the Social Insurance Board does: a €399.24 base part plus €10.477 a month for each year's unit, a year at the average pay being 1 unit (0.8 in the II pillar), counted from age 20 until you retire. Without any pay entered it still uses the average. How it's worked out shows the numbers, says you need 15 years of work in Estonia, and explains why the official pension calculator shows lower II and III pillar figures (it counts them as growing only as fast as prices).
+- **State pension forecast:** the help now says where to find your official forecast (the Social Insurance Board's pension calculator) and to enter only its I pillar line, because the II and III pillar are worked out from your own numbers. The Retirement card no longer says the state pension starts at 65.
+- **Euribor starts at 2.9%** for new users (the 6-month rate in mid-October 2026, was 2.6%). A value you've entered isn't changed.
+- One warning instead of two when the pension contribution split doesn't add up to 100%.
+- Arrow buttons light up gray on hover instead of red; only delete is red.
+- Text sizes tidied: chart labels, editor section titles and a few smaller lines follow the same scale.
+- In Estonian, the state pension age is called "Vanaduspensioniiga", so it isn't confused with the retirement age.
+- **No more lag with several targets.** In v1.2.0 every target worked out its date and its "+€X/mo" by running a 60-year forecast again and again, so each target made typing and the yearly surplus slider slower; with 8 targets a change took about four times as long, enough to make slower computers lag and their fans spin up. The forecast is now worked out once per change and shared by all targets and Your path, and the extra per month is found without re-running it, so 8 targets cost about as much as in v1.1.7. The slider also redraws at most once per screen frame while you drag, so it can't fall behind. The numbers are the same as before.
+- **Wide layout on Progress:** Targets sit on the left with Retirement and Net worth over time stacked on the right, so neither column leaves a big empty space. Your path's chart is taller on wide screens and its list of dates uses as many columns as fit, so a name and its date stay close together.
+- **Your path after clearing your data:** the card showed its "Add what you own…" hint but kept the previous list of milestones under it, for example the example's dates after leaving "Show an example". The list and legend now clear too.
+- **Retirement card:** after removing your year of birth, the header no longer keeps the old "in 2055 · age 65".
+- **At or past your retirement age, no new saving is counted.** The Projection, Targets and Your path now start from what you have today, as the Retirement card already did. Before, someone retiring this year was forecast to keep saving forever, while someone retiring next year stopped after a year. If you still work, raise the retirement age under Settings › Retirement. The notes under each card say this in the same words.
+- **Your path:** the hover box lists only the parts you have, like the legend, and How it's worked out mentions property, inflation and paid-off loans only when they apply.
+- Leftover styles and code from earlier versions were removed. Nothing you see changes.
+
+Saved data and backups from earlier versions keep working.
+
 ## [1.2.0] – 2026-10-15
 
 A new chart on Progress, a calmer, tidier look, and paid-off loans now follow your surplus split.
@@ -149,6 +173,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.2.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.2.1
 [1.2.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.2.0
 [1.1.7]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.7
 [1.1.6]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.6

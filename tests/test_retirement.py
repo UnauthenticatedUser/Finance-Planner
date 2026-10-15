@@ -1,15 +1,16 @@
 """Retirement income per month, against an independent model.
 
-Covers birth year and retirement age (including already past it, and before pension age: no state pension until 65,
-pension fund payouts taxed as income more than 5 years early), payout periods shorter and longer than life
-expectancy (19.3 years at 65, 0.8 fewer per later year), inflation on and off, the pensioners' EUR 776 tax-free
+Covers birth year and retirement age (including already past it, and before pension age: the state pension isn't in
+the total when it starts a year or more after retiring, pension fund payouts are taxed as income more than 5 years
+early), the state pension age by year of birth or set by hand, payout periods shorter and longer than life
+expectancy (19.3 years at 65, 0.8 fewer per later year), inflation on and off, the state pension estimated from pay (or the average without pay), the pensioners' EUR 776 tax-free
 amount, the growth share of investment withdrawals, loan payments still running at retirement, and huge numbers that
 must never show NaN or Infinity.
 Run: python tests/test_retirement.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys
 from helpers import PAGE, fixture, finish, launch
-from model import grow, life_left, payout_tax, surplus_invested
+from model import grow, life_left, payout_tax, surplus_invested, pension_age, state_pension
 def pick(*a): return random.choice(a)
 def main():
     random.seed(int(sys.argv[2]) if len(sys.argv)>2 else 5); N=int(sys.argv[1]) if len(sys.argv)>1 else 200
@@ -24,7 +25,9 @@ def main():
                      payoutYears=pick(0,1,10,20,30,100,random.randint(0,100)), projInflation=pick(0,2.5,-2,10,random.uniform(-50,100)) ,
                      statePension=pick(0,0,500,1200,1e12 if big else 2000), enableProjReal=pick(True,False), projReturn=pick(7,0,-5,12,random.uniform(-100,100)),
                      projGrowth=pick(0,3,-10,random.uniform(-100,100)), enableProjSurplus=pick(True,False), projSurplusPct=pick(100,25,0,random.uniform(0,100)),
-                     enableProjFee=pick(True,False), projFee=pick(0,0.2,1.5,100))
+                     enableProjFee=pick(True,False), projFee=pick(0,0.2,1.5,100),
+                     pensionAgeYears=pick(0,0,0,63,67,70), pensionAgeMonths=pick(0,0,6,11), enableP2=pick(True,False))
+            if random.random()<.3: s['gross']=pick(0,400,886,6000)   # the state pension estimate below and above the minimum, and none
             if big:
                 s['gross']=pick(1e6,1e9,1e12); s['etfMonthly']=pick(1e6,1e12); s['thirdPillar']=pick(1e5,1e12)
                 for k in ['accounts','etfs','investments','p2funds','p3funds']:
@@ -34,7 +37,7 @@ def main():
             r=pg.evaluate("""s=>{ state=normalize(s); save(); refreshAll(); const c=compute(), r=retirement(c), R=projRate(c);
                 const txt=['ret-tag','ret-total','ret-sub','ret-state','ret-pen','ret-inv','ret-note'].map(id=>{const e=document.getElementById(id); return e?e.textContent:''}).join(' | ');
                 const runs=c.debtList.map(d=>{ const q=payoff(d.balance, d.rate, d.payment); return {P:+d.payment||0, n:q?q.months:0}; });
-                return {r, runs, st:{...state}, c:{pension:c.pension,penM:c.t3+(c.aP2+c.aStateP2)/12,etfVal:c.etfVal,invValue:c.invValue,etfMonthly:c.etfMonthly,invMonthly:c.invMonthly,surplus:c.surplus,expenses:c.expenses,debtMonthly:c.debtMonthly}, net:R.net, now:new Date().getFullYear(), txt,
+                return {r, runs, st:{...state}, c:{aSal:c.aSal,pension:c.pension,penM:c.t3+(c.aP2+c.aStateP2)/12,etfVal:c.etfVal,invValue:c.invValue,etfMonthly:c.etfMonthly,invMonthly:c.invMonthly,surplus:c.surplus,expenses:c.expenses,debtMonthly:c.debtMonthly}, net:R.net, now:new Date().getFullYear(), txt,
                   visible:!document.getElementById('ret-body').hidden && !!document.getElementById('ret-body').getClientRects().length || document.getElementById('view-progress').hidden}; }""", s)
             st, c, got = r['st'], r['c'], r['r']
             by=st['birthYear']
@@ -49,14 +52,15 @@ def main():
             penAt=pen/defl; invAt=inv/defl
             tx=(st['taxRate'] or 0)/100
             pay_age=max(age, r['now']-by)                          # payouts start at retirement age, or now if that's later
-            nom=1 if st['enableProjReal'] else (1+(st['projInflation'] or 0)/100)**max(yrs, by+65-r['now'])   # inflation off: the pension figures in the euros of the year it starts
-            s1=(st['statePension'] if st['statePension']>0 else 860)*nom
+            spa=pension_age(st)
+            nom=1 if st['enableProjReal'] else (1+(st['projInflation'] or 0)/100)**max(yrs, by+spa-r['now'])   # inflation off: the pension figures in the euros of the year it starts
+            s1=state_pension(st, c['aSal'])*nom
             s1-=tx*max(0,s1-776*nom)                               # state pension: taxed above the pensioner's €776 a month
             dep=(st['invDeposits'] if st['invDeposits']>0 else start)+(put-start)
             gs=max(0,inv-dep)/inv if inv>0 else 0                  # share of a withdrawal that is growth (taxed)
             py=st['payoutYears'] or 20
-            penPart=penAt/(py*12)*(1-payout_tax(pay_age, py, st['taxRate'] or 0)/100)
-            tot=(s1 if pay_age>=65 else 0)+penPart+invAt*0.04/12*(1-tx*gs)   # no state pension before 65
+            penPart=penAt/(py*12)*(1-payout_tax(pay_age, py, st['taxRate'] or 0, spa)/100)
+            tot=(s1 if pay_age>spa-1 else 0)+penPart+invAt*0.04/12*(1-tx*gs)   # not counted when it starts a year or more after retiring
             spend=c['expenses']+sum(d['P'] for d in r['runs'] if d['n']>m)  # loans still being paid at retirement
             if got is None: fails+=1; print(i,'no result'); continue
             if got['yrs']==0 and not r['txt'].startswith(('now','praegu')): shown_bad+=1; print(i,'past retirement age should say now:', r['txt'][:60])

@@ -14,6 +14,11 @@ P3 = 'https://www.pensionikeskus.ee/en/iii-pillar/contributions/questions-and-an
 PENSIONER = 'https://sotsiaalkindlustusamet.ee/uudised/kuidas-mojutab-aprilli-pensionitous-tootava-pensionari-maksuvaba-tulu'   # 09.04.2026
 PENSION_AGE = 'https://www.emta.ee/en/private-client/taxes-and-payment/tax-incentives/basic-exemption-pensionable-age'   # updated 25.11.2025
 RATES = 'https://www.emta.ee/en/private-client/taxes-and-payment/declaration-income/tax-rates'
+WORKING = 'https://emta.ee/eraklient/maksud-ja-tasumine/maksusoodustused/maksuvaba-tulu-vanaduspensionieas'   # updated 01.09.2026
+AGE = 'https://sotsiaalkindlustusamet.ee/en/pension-and-benefits/applying-pension/retirement-age'   # updated 05.10.2026
+CALC = 'https://sotsiaalkindlustusamet.ee/en/pension-and-benefits/pension-amount/pension-calculation'   # updated 06.04.2026
+AVERAGE = "Social Ministry, explanatory memo to the regulation on the 2026 provisional average, 07.10.2025"
+FICHE = 'https://economy-finance.ec.europa.eu/document/download/67de7ae2-37bd-482a-a691-1cbc525b0733_en?filename=2024-ageing-report-country-fiche-Estonia.pdf'
 
 # (what is checked, changes from a blank tool, the tool's value, expected, source, the source's words)
 CASES = [
@@ -45,22 +50,45 @@ CASES = [
     ('state pension €700: no tax', {'birthYear': 1990, 'statePension': 700}, 'stateTax', 0, PENSION_AGE,
      '"The Social Insurance Board will pay you the entire old-age pension of 700 euros."'),
 
-    # Pension fund payout tax (%), by the age payouts start and how long they last. Pension age is 65 in 2026.
-    ('payout tax: lump sum at 66', {'payoutYears': 1}, 'payout@66', 10, PENSION_AGE,
+    # A working pensioner: the €776 tax-free amount goes to the pension first, the rest (76) to the pay, and no
+    # unemployment insurance is withheld. The example has no 2nd pillar.
+    ('working pensioner: net pay, €1,000 gross and a €700 pension', {'birthYear': 1955, 'statePension': 700, 'gross': 1000, 'enableP2': False}, 'net', 796.72, WORKING,
+     '"Tööandja arvestab teie avalduse alusel töötasule maksuvaba tulu 76 eurot (1000 – 76 = 924)" … "netotöötasu väljamakse 796,72 eurot (1000 – 203,28 = 796,72)"'),
+
+    # State pension age by year of birth: the year someone turns 65 sets it.
+    ('pension age, born 1961', {'birthYear': 1961}, 'spa', 65, AGE, '"In 2026, people born in 1961 reach retirement age — their retirement age is 65 years."'),
+    ('pension age, born 1962', {'birthYear': 1962}, 'spa', 65 + 1/12, AGE, '"In 2027, the retirement age will be 65 years and 1 month."'),
+    ('pension age, born 1963', {'birthYear': 1963}, 'spa', 65 + 3/12, AGE, '"In 2028, the retirement age will be 65 years and 3 month."'),
+    ('pension age, born 1964', {'birthYear': 1964}, 'spa', 65 + 4/12, AGE, '"In 2029, the retirement age will be 65 years and 4 month."'),
+
+    # The state pension estimated from pay: a year's unit, and the monthly pension it gives. €2,121.96 a month is the 2026
+    # average (20% of it a year is the €5,092.70 average pension part of social tax); €886 is the 2026 minimum base.
+    ('I pillar: a year at the average pay', {'gross': 2121.96, 'enableP2': False}, 'unit', 1, CALC + ' and ' + AVERAGE,
+     '"The solidary component is 1.0 if social tax was paid … at least 12 times the minimum wage"; the memo: the average "5092,70 eurot", social tax on it gives an insurance component of 1.0; "(solidary component + insurance component) ÷ 2 = joint part"'),
+    ('I pillar: a year at half the minimum base', {'gross': 443, 'enableP2': False}, 'unit', (0.5 + 443/2121.96)/2, CALC,
+     '"If less was paid, it is reduced proportionally" (443 / 886 = 0.5), and the insurance component is 443 / 2,121.96'),
+    ('I pillar: a year at the average pay in the II pillar', {'gross': 2121.96, 'enableP2': True}, 'unit', 0.8, FICHE,
+     '"effective rate of the state pension insurance part of the social tax is 16%" for those who joined the second pillar, against 20% (16 / 20 = 0.8)'),
+    ('I pillar: 45 years at the average pay', {'gross': 2121.96, 'enableP2': False, 'birthYear': 1990, 'retireAge': 65}, 'stateToday', 399.24 + 45 * 10.477, CALC,
+     '"Starting from April 1st, 2026, the base part is 399,2400 euros." … "the yearly rate is 10,477 euros." (45 years from age 20 to 65)'),
+
+    # Pension fund payout tax (%), by the age payouts start and how long they last, for someone whose pension age is 65.
+    ('payout tax: lump sum at 66', {'birthYear': 1961, 'payoutYears': 1}, 'payout@66', 10, PENSION_AGE,
      '"one-off and partial one-off payments made at pensionable age or up to five years before reaching pensionable age" (10%)'),
-    ('payout tax: lump sum at 60, five years early', {'payoutYears': 1}, 'payout@60', 10, PENSION_AGE,
+    ('payout tax: lump sum at 60, five years early', {'birthYear': 1961, 'payoutYears': 1}, 'payout@60', 10, PENSION_AGE,
      'the same 10%: "up to five years before reaching pensionable age"'),
-    ('payout tax: lump sum at 59, more than five years early', {'payoutYears': 1}, 'payout@59', 22, PENSION_AGE,
+    ('payout tax: lump sum at 59, more than five years early', {'birthYear': 1961, 'payoutYears': 1}, 'payout@59', 22, PENSION_AGE,
      '"lump sum payments made before pensionable age and partial lump sum payments, on which 22% income tax is withheld."'),
-    ('payout tax: over 10 years from 65', {'payoutYears': 10}, 'payout@65', 10, PENSION_AGE,
+    ('payout tax: over 10 years from 65', {'birthYear': 1961, 'payoutYears': 10}, 'payout@65', 10, PENSION_AGE,
      '"payments of a fixed-term pension divided by a shorter than the average life expectancy" (10%)'),
-    ('payout tax: over 30 years from 65', {'payoutYears': 30}, 'payout@65', 0, PENSION_AGE,
+    ('payout tax: over 30 years from 65', {'birthYear': 1961, 'payoutYears': 30}, 'payout@65', 0, PENSION_AGE,
      '"regular funded pension and pension agreement payments divided by life expectancy are exempt of tax"'),
 ]
 
 READ = """s=>{ state=normalize(s); refreshAll(); const c=compute(), r=retirement(c);
-  const out={net:c.net, taxRefund:c.taxRefund, p3Limit:c.p3Limit};
-  if(r){ out.stateTaxable=r.stateGross-r.exemption; out.stateTax=r.stateTax; }
+  const out={net:c.net, taxRefund:c.taxRefund, p3Limit:c.p3Limit, spa:statePensionAge()};
+  if(r){ out.stateTaxable=r.stateGross-r.exemption; out.stateTax=r.stateTax; out.stateToday=r.stateToday; }
+  out.unit=iPillarUnit(c.aSal);
   [59,60,65,66].forEach(a=>out['payout@'+a]=payoutTaxPct(a));
   return out; }"""
 
