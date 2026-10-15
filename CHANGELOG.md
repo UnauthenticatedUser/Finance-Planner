@@ -2,6 +2,10 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.2.2] – 2026-10-16
+
+- **A richer example.** "Show an example" now has a target already reached ("50K invested") and one behind its deadline ("250K net worth", with the extra per month that would make it), next to one on track and FIRE, so every kind of target status can be seen. It also has rental income under Other income, taxed 17.6%. The README screenshots show the new example, and Your path has its own screenshot.
+
 ## [1.2.1] – 2026-10-16
 
 Fixes for v1.2.0, and Estonian rules the tool had simplified.

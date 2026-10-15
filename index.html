@@ -30,7 +30,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-wCjk7ynKI5X9xnuAknSU5baNI0ZyqG8ebYDzZRbI3gM='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-bR1h/Alj2u9DARR+FNbZJN+QSuqxDpxicvRCU5lDSLY='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
 <meta name="referrer" content="no-referrer">   <!-- links out (source code, license) don't tell the other site which page you came from -->
 <meta name="color-scheme" content="dark">   <!-- the page is already dark: stops browser auto-dark modes (and the darkreader-lock line, the Dark Reader extension) from recoloring it -->
 <meta name="darkreader-lock">
@@ -1190,7 +1190,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
       </div>
     </details>
   </div>
-  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.2.1</span></footer>
+  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.2.2</span></footer>
   </div>
 
 </div>
@@ -2739,7 +2739,10 @@ function exampleState(){
     p3funds:[{name:L('Voluntary pension fund','Vabatahtlik pensionifond'), value:11800, share:100, fee:0.3}],
     physAssets:[{name:L('Car','Auto'), value:11000}, {name:L('Computer','Arvuti'), value:1800}],
     debts:[{name:L('Home loan','Kodulaen'), balance:96000, rtype:'euribor', margin:1.6, payment:610, asset:148000}, {name:L('Car loan','Autolaen'), balance:5200, rtype:'fixed', rate:5.9, payment:240}],
-    targets:[{name:L('Emergency fund','Rahapuhver'), kind:'cash', amount:16000, dueMon:'12', dueYear:String(y+1)}, {name:L('150K net worth','150K netovara'), kind:'networth', amount:150000, dueMon:'06', dueYear:String(y+3)}, {kind:'fire', spend:30000, health:'yes'}],
+    incomes:[{name:L('Rental income','Üüritulu'), amount:350, freq:'month', tax:'custom', rate:17.6}],
+    // one target of each state: on track, reached, behind its deadline, and FIRE with no deadline
+    targets:[{name:L('Emergency fund','Rahapuhver'), kind:'cash', amount:16000, dueMon:'12', dueYear:String(y+1)}, {name:L('50K invested','50K investeeritud'), kind:'invested', amount:50000},
+             {name:L('250K net worth','250K netovara'), kind:'networth', amount:250000, dueMon:'12', dueYear:String(y+3)}, {kind:'fire', spend:30000, health:'yes'}],
     history:nw.map((v,i)=>({m:ago(nw.length-i), nw:v})),
     text:{goalsHTML:'<li>'+[L('Keep 6 months of spending as cash','Hoia rahapuhvris 6 kuu kulud'), L('Invest 20% of take-home pay','Investeeri 20% netopalgast'), L('Pay off the car loan early','Maksa autolaen ennetähtaegselt tagasi')].join('</li><li>')+'</li>'}}));
 }

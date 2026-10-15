@@ -61,7 +61,9 @@ Nothing to install, nothing to sign up for.
 - **Retirement**: what you'd live on per month after tax, from the state pension, your pension funds and your investments.
 - **Net worth over time**: one snapshot is saved each month automatically, and you can add earlier months yourself.
 
-![Targets with deadlines: on track, behind with the extra needed per month, FIRE, and loan payoff dates](docs/card-targets.png)
+![Your path zoomed to retirement: net worth split into property, pensions, investments, cash and loans, with the hover box for one month and the dates of each target, loan payoff and retirement](docs/card-path.png)
+
+![Targets: one on track to beat its deadline, one reached, one behind with the extra needed per month, FIRE, and loan payoff dates](docs/card-targets.png)
 
 ![Retirement income per month in today's money, with How it's worked out open](docs/card-retirement.png)
 
