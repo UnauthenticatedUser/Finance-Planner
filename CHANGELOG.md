@@ -2,6 +2,47 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.2.0] – 2026-10-15
+
+A new chart on Progress, a calmer, tidier look, and paid-off loans now follow your surplus split.
+
+- **Your path**, a new card at the top of Progress: what your net worth is made of, month by month, from today. Property, pensions, investments and cash are stacked above the line, what you still owe is below it (and, if you spend more than you earn, the cash you'd be short of), and a white line on top is your net worth. It grows the same way as the net worth target: pensions and investments as in the Projection, plus what paid-off loans free up (see below), in today's money when inflation is on.
+  - Dots on the line mark when you reach each target, when each loan is paid off and when you retire, with a list of the dates under the chart. Pointing at a dot or a row lights up both.
+  - Point at the chart (or touch it on a phone) to see that month's net worth and each part, plus any milestones nearby.
+  - Zoom to 5, 10, 20 or 30 years, or to retirement once you've entered your year of birth. Each zoom label (and the Projection's) has the same space around it, the first and last ones too.
+  - With nothing entered yet, the card shows a short hint instead of an empty chart.
+  - Rename it by clicking its title, like every other card.
+- **More realistic forecasts:**
+  - **Saving stops when you retire.** Once you've entered your year of birth, deposits from your pay (pension contributions, investing and spare cash) stop in the year you retire, in the Projection, Targets and Your path; what you have keeps growing. Before, they went on forever. The Retirement card already counted up to retirement and doesn't change. When you'd retire before a target's deadline, its extra per month says "until you retire".
+  - **Cash earns interest.** In targets and Your path, your cash grows by your accounts' interest after tax: the average rate over all your cash (cash on hand earns nothing).
+  - **Deposit growth covers all your saving.** The yearly rise in deposits (Settings › Projection) now also lifts the part of your surplus you keep as cash, not only what you invest. A shortfall doesn't grow.
+  - **A loan without a monthly payment stays at today's balance** in targets and Your path, instead of growing with interest. Your path names it and asks for its payment.
+  - Your path's How it's worked out says when saving stops, what cash earns, and whether its amounts are before or after tax.
+- **Net worth over time moved to the bottom of Progress.** It only becomes useful after a few months of snapshots, so the cards that work from the first day come first: Your path, Targets, Retirement.
+- **One row of switches for the whole Progress page:** "After inflation", "After tax" and "Loan payoffs", in the same order as on the Projection. They sit once above the cards instead of on single cards.
+  - **After tax is new on Progress.** It's the same switch as the Projection's. Your path, and invested, net worth and FIRE targets, show what you'd keep if you took the money out at that point: pension payouts taxed the way Retirement pays them out, and income tax on investment gains above what you put in. Growth itself is never taxed along the way, since investments are assumed to be in an investment account (investeerimiskonto). Target dates and the extra per month follow the after-tax amounts, and the cards say "after tax".
+  - A goal that no amount could reach by its deadline now says "out of reach" instead of a huge amount a month.
+  - "Loan payoffs" was "Debts" on the Targets card; it now marks payoff dates on both Targets and Your path.
+  - The After tax buttons' hover text now describes the tax correctly. It used to say 10% on pension payouts, while the tool applies the payout tax Retirement uses, which is often 0%.
+- **One set of sizes.** Text uses a small, fixed set of sizes, each with one job: notes and labels, body text, card titles, tile figures, each card's key figure (projection, retirement, progress) and the net worth headline. Corners come in three sizes: small buttons, fields and inner boxes, and cards.
+- **Clearer layers.** Cards, tiles and editor sections share one faint edge, so they stand apart from the page; things that float (menus, notes, tooltips, the back button) share one shadow.
+- **Color where it means something.** Card and editor icons and the editor's section dots are now quiet gray. Color stays for the data: charts, gains and debts, and the blue accent. The retirement figure is white instead of yellow.
+- **Paid-off loans follow your surplus split.** Once a loan is paid off, its monthly payment is money you have to spare, so it's now split like your yearly surplus: the share you invest goes to your investments and grows with them, the rest goes to cash. Before, only the net worth target counted it, all as cash. Now cash, invested, net worth and FIRE targets and Your path all use the split:
+  - With 0% invested (the default), an emergency fund now gets the freed payment too, so its date can come sooner. Net worth targets stay as they were.
+  - With 100% invested, all of it is invested: an emergency fund doesn't get it, while invested, net worth and FIRE targets can come sooner.
+  - A loan's last payment is only what's left on it, so the rest of that month's payment is freed too, which can bring a date sooner, by a few months where net worth grows slowly.
+  - How it's worked out on Targets says how it's split. The Projection and Retirement show what you invest now and don't count loans ending, as before.
+- **The yearly surplus slider** splits sea blue (cash) and pine green (investments).
+- **Fixes:**
+  - A loan whose payment fits its balance exactly (€1,199.88 at €99.99 a month) showed its payoff one month late, from rounding.
+  - A cash target's "+€X/mo would make it" could be too high with inflation on: it only checked the deadline month, though the goal can be easier to reach earlier, before prices rise further. It's now the least that reaches the goal by the deadline, as for the other targets.
+  - With a shortfall, How it's worked out on Targets now says that a paid-off loan's payment covers the shortfall first.
+- **No zoom on iPhones and iPads.** Fields use 16px text on touch screens, so an iPhone (upright or sideways) or an iPad no longer zooms the page in when you tap one.
+- The README screenshots show the new look and the new card.
+- Tests check Your path month by month against a separate model (pensions, investments, cash, loans and inflation), that its dates match the Targets card, the zoom buttons, the hover values, Estonian, and phone and wide-screen widths.
+
+Saved data and backups from earlier versions keep working. A backup from this version opened in an older one loads fine; only Your path's renamed title is left out, since that card doesn't exist there.
+
 ## [1.1.7] – 2026-10-15
 
 - **Choose how much of your yearly surplus to invest.** The on/off switch "Also invest my yearly surplus" is now a percentage, so you can invest part of it and keep the rest as cash, for example to keep growing an emergency fund. A slider splits it between Cash and Investments. Under each end you can type that side's share (the other side and the slider follow) and see its euros a year. While you drag, every number and the projection chart update at once, with a short glow, so the feedback keeps up; typing anywhere else still rolls the numbers as before. The rest grows your cash buffer, and the Projection, Retirement and Targets use the split.
@@ -108,6 +149,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.2.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.2.0
 [1.1.7]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.7
 [1.1.6]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.6
 [1.1.5]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.5

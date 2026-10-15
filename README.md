@@ -54,17 +54,18 @@ Nothing to install, nothing to sign up for.
 
 ### Progress
 
-![The Progress page: net worth over time, targets and retirement](docs/progress.png)
+![The Progress page: your path, targets, retirement and net worth over time](docs/progress.png)
 
-- **Net worth over time**: one snapshot is saved each month automatically, and you can add earlier months yourself.
-- **Targets** for an emergency fund, a net worth goal, an invested total, financial independence (FIRE) or your own goal. Each target shows when you'll reach it at your current pace. With a deadline, it also says whether you're on track and how much more per month it would take. Debt payoff dates can be shown alongside.
+- **Your path**: what your net worth is made of, month by month, from today: property, pensions, investments and cash, minus what you owe. Dots mark when you'll reach each target, pay off each loan and retire. Zoom from 5 to 30 years or to retirement, and point at any month to see its numbers. **After inflation**, **After tax** and **Loan payoffs** above the cards apply to the whole page.
+- **Targets** for an emergency fund, a net worth goal, an invested total, financial independence (FIRE) or your own goal. Each target shows when you'll reach it at your current pace. With a deadline, it also says whether you're on track and how much more per month it would take. Loan payoff dates can be shown alongside.
 - **Retirement**: what you'd live on per month after tax, from the state pension, your pension funds and your investments.
+- **Net worth over time**: one snapshot is saved each month automatically, and you can add earlier months yourself.
 
 ![Targets with deadlines: on track, behind with the extra needed per month, FIRE, and loan payoff dates](docs/card-targets.png)
 
 ![Retirement income per month in today's money, with How it's worked out open](docs/card-retirement.png)
 
-Projection, Targets and Retirement each have a **How it's worked out** section that explains the numbers in plain words.
+Projection, Your path, Targets and Retirement each have a **How it's worked out** section that explains the numbers in plain words.
 
 ### Also
 
@@ -125,14 +126,14 @@ Fixed in the tool: the 10% tax on pension payouts that are a lump sum or shorter
 
 How each part is calculated:
 
-- **Growth**: money grows month by month at the return you set, minus fund fees. The default return of 8% a year is before inflation (about 5.4% after it). That's a cautious long-run figure for a portfolio spread around the world; US stocks alone have averaged about 10%. You can set it to whatever you expect under **Settings › Projection**.
+- **Growth**: money grows month by month at the return you set, minus fund fees. The default return of 8% a year is before inflation (about 5.4% after it). That's a cautious long-run figure for a portfolio spread around the world; US stocks alone have averaged about 10%. You can set it to whatever you expect under **Settings › Projection**. Deposits from your pay stop in the year you retire (once you've entered your year of birth); after that, what you have keeps growing. Deposit growth raises everything you save each month, the part kept as cash too.
 - **Fund fees**: each fund's yearly fee, averaged by how much is in each fund plus a year of what you put in. Funds without a fee entered count as 0%, and the tool tells you which ones.
 - **Inflation** (2.5% a year, on by default): it is taken off so amounts are in today's money. Turn off **After inflation** to see future euros instead. Goals count as today's money, so they rise with prices.
-- **After tax**: income tax on investment gains above what you've put in, and pension funds taxed the way Retirement pays them out (none when spread over at least your remaining life expectancy).
+- **After tax**: investments are assumed to be in an investment account (investeerimiskonto), as is usual in Estonia, so gains and dividends grow untaxed and are only taxed when you take money out. After tax shows what you'd keep at each point: income tax on investment gains above what you've put in, and pension funds taxed the way Retirement pays them out (none when spread over at least your remaining life expectancy).
 - **Retirement**: pension funds are paid out evenly over 20 years (you can change this) as monthly payments. They're tax-free when spread over at least your remaining life expectancy (19.3 years at 65); a shorter period is taxed 10%, and payouts starting more than 5 years before pension age are taxed as income. From investments you take 4% a year, and the growth part of what you take out is taxed as income. The state pension starts at 65 and is taxed above the €776 a month that's tax-free for pensioners; retiring earlier, it isn't in the total. Loan payments still running at retirement count as spending.
-- **Savings interest**: worked out from each account's yearly interest rate, minus income tax. Interest earned inside an investment account is only taxed when you take out more than you put in.
-- **Loans**: the rate is fixed or Euribor plus your bank's margin (a negative Euribor counts as 0). Your monthly payment gives the payoff date and the interest still to pay.
-- **Targets**: dates use the same growth as the projection. A cash buffer grows by the part of your yearly surplus you don't invest. The FIRE goal is your yearly spending divided by the withdrawal rate (4% by default). A FIRE target can include your own health insurance, which you pay yourself if you stop working before pension age; it's on for new FIRE targets.
+- **Savings interest**: worked out from each account's yearly interest rate, minus income tax. Interest earned inside an investment account is only taxed when you take out more than you put in. In targets and Your path, all your cash earns that average rate.
+- **Loans**: the rate is fixed or Euribor plus your bank's margin (a negative Euribor counts as 0). Your monthly payment gives the payoff date and the interest still to pay. A loan without a payment entered stays at today's balance in forecasts. Once a loan is paid off, its payment is split like your yearly surplus.
+- **Targets**: dates use the same growth as the projection. A cash buffer earns its interest and grows by the part of your yearly surplus you don't invest. The FIRE goal is your yearly spending divided by the withdrawal rate (4% by default). A FIRE target can include your own health insurance, which you pay yourself if you stop working before pension age; it's on for new FIRE targets.
 
 All of this is a simple model with smooth average returns. Real markets go up and down, so treat the results as a rough guide.
 
@@ -145,6 +146,7 @@ The [`tests`](tests) folder checks the tool's results against calculations writt
 - **Forecasts**: projection, after-tax value, fund fees and loan payoff dates.
 - **Retirement**: state pension (from 65), pension fund payouts and investment withdrawals, with their taxes, also when retiring early.
 - **Targets**: when each goal is reached (FIRE with or without health insurance), and that the suggested extra per month really reaches a deadline.
+- **Your path**: net worth and each of its parts, month by month, and that its dates match the Targets card.
 - **Editor**: every "+ Add" button works in both languages, and car tax defaults to once a year.
 - **Accessibility**: every button and field has a name for screen readers, text has enough contrast, keyboard focus is visible, and there's a "Skip to content" link.
 - **Backups**: Export, Import, Reset and Undo, and that backups from earlier versions still load with nothing lost.

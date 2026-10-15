@@ -7,7 +7,7 @@ Run: python tests/test_forecasts.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys
 from helpers import PAGE, finish, launch
-from model import grow, payout_tax, surplus_invested
+from model import grow, payout_tax, surplus_invested, save_months
 from test_calculations import user, model
 def amort(B,rate,P):
     if B<=0: return 0
@@ -54,13 +54,14 @@ def main():
             start=c['pension']+c['etfVal']+c['invValue']; monthly=penM+c['etfM']+c['invM']+surplus_invested(s, c['surplus'])
             if abs(start-r['start'])>1e-6 or abs(monthly-r['monthly'])>1e-6: bad(i,f"inputs {r['start']},{r['monthly']} vs {start},{monthly}")
             if s['enableProjNet']:
-                pv,_=grow(c['pension'],penM,net_r,yrs*12,s['projGrowth']); i0=c['etfVal']+c['invValue']
-                iv,iput=grow(i0,c['etfM']+c['invM']+surplus_invested(s, c['surplus']),net_r,yrs*12,s['projGrowth'])
+                stop=save_months(s, r['now'])   # deposits stop when you retire
+                pv,_=grow(c['pension'],penM,net_r,yrs*12,s['projGrowth'],stop); i0=c['etfVal']+c['invValue']
+                iv,iput=grow(i0,c['etfM']+c['invM']+surplus_invested(s, c['surplus']),net_r,yrs*12,s['projGrowth'],stop)
                 age=max(s['retireAge'], r['now']-s['birthYear'] if s['birthYear'] else 0)   # pension funds are taxed as Retirement pays them out
                 dep=(s['invDeposits'] if s['invDeposits']>0 else i0)+(iput-i0); final=pv*(1-payout_tax(age, s['payoutYears'], s['taxRate'])/100)+iv-s['taxRate']/100*max(0,iv-dep)
                 pt=payout_tax(age, s['payoutYears'], s['taxRate']); said=f"{pt}% on pension payouts" if pt else "pension payouts are tax-free"
                 if said not in r['note']: bad(i,f"after-tax note should say '{said}'")
-            else: final,_=grow(start,monthly,net_r,yrs*12,s['projGrowth'])
+            else: final,_=grow(start,monthly,net_r,yrs*12,s['projGrowth'],save_months(s, r['now']))
             if s['enableProjReal']: final/=1.025**yrs
             exp_big=pg.evaluate("n=>eurC(n)", final)
             if r['big']!=exp_big: bad(i,f"projection shows {r['big']} expected {exp_big}")
