@@ -37,7 +37,7 @@ Nothing to install, nothing to sign up for.
 </table>
 
 - **Net worth**: everything you own minus what you owe.
-- **Key numbers**: savings rate, invested per month, cash buffer (in months of spending) and your yearly surplus.
+- **Key numbers**: savings rate, invested per month, cash buffer (in months of spending) and your yearly surplus, with how much of it you invest.
 - **Yearly income**: gross and net pay, with a full breakdown of income tax, unemployment insurance, the 2nd pillar, the state top-up and the 3rd pillar tax refund.
 - **Projection**: what your pensions and investments could grow to in 10–40 years.
   - **After inflation** (on by default) shows amounts in today's money.
@@ -116,6 +116,7 @@ These are only defaults. Almost every assumption can be changed in the editor:
 - **Settings › Taxes › Advanced**: income tax, unemployment insurance, the basic exemption and the state's 2nd pillar top-up.
 - **Settings › Projection**: return, inflation, timeframe, range, a single fee for everything and how fast your deposits grow.
 - **Settings › Retirement**: year of birth, retirement age, your own state pension forecast and the pension payout period.
+- **Savings & investments › Yearly surplus**: how much of your yearly surplus you invest (0% by default); the rest stays as cash.
 - **Savings & investments › Pensions**: your 2nd pillar rate (2%, 4% or 6%).
 - **Property & debts › Debts**: today's Euribor.
 - **Goals › Targets**: the withdrawal rate of each FIRE target.
@@ -131,7 +132,7 @@ How each part is calculated:
 - **Retirement**: pension funds are paid out evenly over 20 years (you can change this) as monthly payments. They're tax-free when spread over at least your remaining life expectancy (19.3 years at 65); a shorter period is taxed 10%, and payouts starting more than 5 years before pension age are taxed as income. From investments you take 4% a year, and the growth part of what you take out is taxed as income. The state pension starts at 65 and is taxed above the €776 a month that's tax-free for pensioners; retiring earlier, it isn't in the total. Loan payments still running at retirement count as spending.
 - **Savings interest**: worked out from each account's yearly interest rate, minus income tax. Interest earned inside an investment account is only taxed when you take out more than you put in.
 - **Loans**: the rate is fixed or Euribor plus your bank's margin (a negative Euribor counts as 0). Your monthly payment gives the payoff date and the interest still to pay.
-- **Targets**: dates use the same growth as the projection. A cash buffer grows by your yearly surplus, unless you invest it. The FIRE goal is your yearly spending divided by the withdrawal rate (4% by default). A FIRE target can include your own health insurance, which you pay yourself if you stop working before pension age; it's on for new FIRE targets.
+- **Targets**: dates use the same growth as the projection. A cash buffer grows by the part of your yearly surplus you don't invest. The FIRE goal is your yearly spending divided by the withdrawal rate (4% by default). A FIRE target can include your own health insurance, which you pay yourself if you stop working before pension age; it's on for new FIRE targets.
 
 All of this is a simple model with smooth average returns. Real markets go up and down, so treat the results as a rough guide.
 

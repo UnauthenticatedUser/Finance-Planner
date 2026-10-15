@@ -2,6 +2,18 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.1.7] – 2026-10-15
+
+- **Choose how much of your yearly surplus to invest.** The on/off switch "Also invest my yearly surplus" is now a percentage, so you can invest part of it and keep the rest as cash, for example to keep growing an emergency fund. A slider splits it between Cash and Investments. Under each end you can type that side's share (the other side and the slider follow) and see its euros a year. While you drag, every number and the projection chart update at once, with a short glow, so the feedback keeps up; typing anywhere else still rolls the numbers as before. The rest grows your cash buffer, and the Projection, Retirement and Targets use the split.
+- **The setting moved** from Settings › Projection to its own place at the top of Savings & investments › Yearly surplus, next to the money it's about. Settings keeps the assumptions, such as return, inflation and taxes.
+- **The Annual surplus tile shows the split:** "60% invested / year", and when you open it, how many euros go to your investments and how many stay as cash, with a Change link to the setting. The emergency fund's "your surplus is invested" link opens the new place too.
+- **Back to top on phones and tablets.** Once you scroll down into the editor, a "Back to top" button appears at the bottom and takes you up. After a card's ✎ the same button still says "Back to dashboard" and takes you back to that card.
+- **Number fields only take numbers.** Euro amounts take 2 decimals, rates 3 (Euribor and fund fees are quoted that way), the surplus share 1 and the year of birth none; typing or pasting more digits doesn't add them. A minus sign only goes at the start, and only where the value can be negative, and a second decimal point is ignored, so strings like "-.,-,-." can't pile up. A field left with only a sign shows empty again. Values already saved are kept as they are.
+- **Fixes from v1.1.6:** on phones, the "Back to dashboard" button now moves up above the Undo note instead of sitting under it. In Cash & savings, an account with a long name keeps its rate and interest together on the line under the name, instead of breaking them across two lines.
+- Tests cover the split in the projection, retirement and target dates, the tile, both links, the slider, older data, Back to top and both fixes, and check that decimals work with a comma or a dot and stop at each field's limit.
+
+Saved data and backups from earlier versions keep working: if you had the surplus switch on, it becomes 100%; off becomes 0%. A backup from this version opened in an older one counts any share above 0% as all of it.
+
 ## [1.1.6] – 2026-10-14
 
 - **Calmer cards.** Investments, Cash & savings, Debts and Targets show less small gray text:
@@ -96,6 +108,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.1.7]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.7
 [1.1.6]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.6
 [1.1.5]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.5
 [1.1.4]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.4

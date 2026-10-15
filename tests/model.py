@@ -14,6 +14,14 @@ def grow(start, monthly, rate, months, g=0):
     return v, put
 
 
+def surplus_invested(s, surplus):
+    """The part of the yearly surplus invested each month: the share set (all of it in data from before v1.1.7, where it
+    was a switch); a negative surplus is never invested."""
+    share = s.get('projSurplusPct', 100) if s.get('enableProjSurplus') else 0
+    share = math.floor(share * 10 + 0.5) / 10   # one decimal, as the tool shows it
+    return share / 100 * max(0, surplus) / 12
+
+
 def months_to(start, monthly, rate, g, reached, cap=720):
     """First month in which reached(month, value) holds, or infinity within `cap` months."""
     rm = max(0, 1 + rate / 100) ** (1 / 12) - 1; v = start; m = monthly

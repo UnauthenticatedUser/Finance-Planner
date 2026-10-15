@@ -7,7 +7,7 @@ Run: python tests/test_forecasts.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys
 from helpers import PAGE, finish, launch
-from model import grow, payout_tax
+from model import grow, payout_tax, surplus_invested
 from test_calculations import user, model
 def amort(B,rate,P):
     if B<=0: return 0
@@ -34,7 +34,7 @@ def main():
             if pg.evaluate("n=>eurS(n)", n)!=want: bad('eurS',f"{n} shows {pg.evaluate('n=>eurS(n)', n)}, expected {want}")
         for i in range(N):
             s=user(); s.update(projGrowth=random.choice([0,0,2,3]), enableProjReal=random.random()<.3, projInflation=2.5, enableProjNet=random.random()<.3, invDeposits=random.choice([0,0,5000,20000]),
-                enableProjSurplus=random.random()<.3, enableProjFee=random.random()<.2, projFee=round(random.uniform(0,2),2), birthYear=random.choice([0,1950,1970,1985,1995,2005]), statePension=random.choice([0,900]), retireAge=random.choice([65,58,62]), payoutYears=random.choice([20,15]))
+                enableProjSurplus=random.random()<.3, projSurplusPct=random.choice([100,100,50,random.uniform(0,100)]), enableProjFee=random.random()<.2, projFee=round(random.uniform(0,2),2), birthYear=random.choice([0,1950,1970,1985,1995,2005]), statePension=random.choice([0,900]), retireAge=random.choice([65,58,62]), payoutYears=random.choice([20,15]))
             r=pg.evaluate("""s=>{ state=normalize(JSON.parse(s)); save(); refreshAll(); const c=compute(), pi=projInputs(c);
                 return {c:{pension:c.pension, etfVal:c.etfVal, invValue:c.invValue, etfM:c.etfMonthly, invM:c.invMonthly, surplus:c.surplus, fee:c.fundFee, exp:c.expenses, dM:c.debtMonthly, etfVals:c.etfVals},
                   start:pi.start, monthly:pi.monthly, rate:projRate(c).net, big:document.getElementById('proj-big').textContent,
@@ -51,11 +51,11 @@ def main():
             net_r=s['projReturn']-(s['projFee'] if s['enableProjFee'] else fee)
             if abs(net_r-r['rate'])>1e-9: bad(i,f"rate {r['rate']} vs {net_r}")
             # projection (gross or after tax), today's money
-            start=c['pension']+c['etfVal']+c['invValue']; monthly=penM+c['etfM']+c['invM']+(max(0,c['surplus'])/12 if s['enableProjSurplus'] else 0)
+            start=c['pension']+c['etfVal']+c['invValue']; monthly=penM+c['etfM']+c['invM']+surplus_invested(s, c['surplus'])
             if abs(start-r['start'])>1e-6 or abs(monthly-r['monthly'])>1e-6: bad(i,f"inputs {r['start']},{r['monthly']} vs {start},{monthly}")
             if s['enableProjNet']:
                 pv,_=grow(c['pension'],penM,net_r,yrs*12,s['projGrowth']); i0=c['etfVal']+c['invValue']
-                iv,iput=grow(i0,c['etfM']+c['invM']+(max(0,c['surplus'])/12 if s['enableProjSurplus'] else 0),net_r,yrs*12,s['projGrowth'])
+                iv,iput=grow(i0,c['etfM']+c['invM']+surplus_invested(s, c['surplus']),net_r,yrs*12,s['projGrowth'])
                 age=max(s['retireAge'], r['now']-s['birthYear'] if s['birthYear'] else 0)   # pension funds are taxed as Retirement pays them out
                 dep=(s['invDeposits'] if s['invDeposits']>0 else i0)+(iput-i0); final=pv*(1-payout_tax(age, s['payoutYears'], s['taxRate'])/100)+iv-s['taxRate']/100*max(0,iv-dep)
                 pt=payout_tax(age, s['payoutYears'], s['taxRate']); said=f"{pt}% on pension payouts" if pt else "pension payouts are tax-free"

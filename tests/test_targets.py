@@ -1,13 +1,15 @@
 """Target dates and the extra money a deadline needs, against an independent month-by-month model.
 
 Net worth goals (with loans paid down and freed payments), FIRE goals that rise with inflation, invested-total and
-cash goals (cash grows by the yearly surplus unless that is invested, and shrinks when it's negative), "put in" in today's money, and that the suggested extra EUR/month really reaches a deadline while
-noticeably less does not. Random mixes of debts, fees, inflation, deposit growth and big numbers.
+cash goals (cash grows by the part of the yearly surplus that isn't invested, and shrinks when it's negative), "put in" in today's money,
+and that the suggested extra EUR/month really reaches a deadline while noticeably less does not. Random mixes of debts, fees, inflation,
+deposit growth, invested surplus shares and big numbers. On the cards: the surplus link on a cash goal, the Annual surplus tile's split and
+its Change link, and old data where the surplus switch was on becoming 100%.
 Run: python tests/test_targets.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, datetime
-from helpers import PAGE, fixture, finish, launch
-from model import months_to
+from helpers import PAGE, FIXTURES, fixture, finish, launch
+from model import months_to, surplus_invested
 def debt_path(debts, months):
     # month by month: balance after interest and payment; once paid, the payment is freed as cash
     out=[0.0]*(months+1); state=[dict(b=d['B'], paid=False) for d in debts]
@@ -29,7 +31,7 @@ def main():
         for k in range(N):
             s=json.loads(json.dumps(base)); big=k%5==0
             s.update(projReturn=pick(10,7,0,-5,15,random.uniform(-20,30)), projInflation=pick(2.5,0,5,-1,random.uniform(0,10)), projGrowth=pick(0,3,-5,random.uniform(0,10)),
-                     enableProjSurplus=pick(True,False), enableProjFee=pick(True,False), projFee=pick(0,0.2,1.5), enableProjReal=pick(True,False), projYears=pick(10,20,40),
+                     enableProjSurplus=pick(True,False), projSurplusPct=pick(100,60,0,random.uniform(0,100)), enableProjFee=pick(True,False), projFee=pick(0,0.2,1.5), enableProjReal=pick(True,False), projYears=pick(10,20,40),
                      expenses=pick(1600,500,4000,9000), euribor=pick(2.6,0,4))
             s['debts']=[{'name':'d'+str(j), 'balance':pick(5000,150000,1e6 if big else 300000), 'rtype':pick('fixed','euribor'), 'rate':pick(0,3,8,25), 'margin':pick(0.5,2), 'payment':pick(0,100,950,3000), 'asset':pick(0,200000)} for j in range(random.randint(0,3))]
             if big: s['gross']=pick(1e5,1e7); s['etfMonthly']=pick(1e5,1e7)
@@ -47,7 +49,7 @@ def main():
             infl=1+(st['projInflation'] if st['enableProjReal'] else 0)/100
             # net worth
             path=debt_path(r['debts'], 720)
-            cashM=(min(0,c['surplus']) if st['enableProjSurplus'] else c['surplus'])/12
+            cashM=c['surplus']/12-surplus_invested(st, c['surplus'])
             base_nw=c['networth']-r['start']
             nwT=s['targets'][0]['amount']
             def reach_nw():
@@ -57,11 +59,11 @@ def main():
             if not (want==got or (abs(want-got)<=1 and want<math.inf)): fails+=1; print(k,'networth eta', got,'want',want)
             # FIRE
             t=s['targets'][1]; yearly=(t['spend'] if t['spend']>0 else c['expenses']*12)+(272*12 if t['health']=='yes' else 0); goal=yearly/(t['rate']/100); acc=c['etfVal']+c['invValue']   # health: own insurance before pension age, €272/mo in 2026
-            mo=c['etfMonthly']+c['invMonthly']+(max(0,c['surplus'])/12 if st['enableProjSurplus'] else 0); infl=1+(st['projInflation'] if st['enableProjReal'] else 0)/100
+            mo=c['etfMonthly']+c['invMonthly']+surplus_invested(st, c['surplus']); infl=1+(st['projInflation'] if st['enableProjReal'] else 0)/100
             want=months_to(acc, mo, net, g, lambda i,v: v>=goal*infl**(i/12)) if goal>0 else None
             got=r['st'][1]['eta']; got=math.inf if got is not None and got>1e300 else got
             if want!=got: fails+=1; print(k,'fire eta', got,'want',want)
-            # cash buffer: grows by the yearly surplus (only a negative one when the surplus is invested); the goal rises with inflation when that's on
+            # cash buffer: grows by the part of the yearly surplus that isn't invested (a negative one always counts); the goal rises with inflation when that's on
             A=s['targets'][3]['amount']; want=math.inf; cash_at=lambda i,extra=0: c['buffer']+(cashM+extra)*i
             for i in range(0,721):
                 if cash_at(i)>=A*infl**(i/12): want=i; break
@@ -87,20 +89,43 @@ def main():
                 d*=(1+inf/100)**(1/12); tot+=m/d
                 if i%12==0: m*=1+g/100
             if abs(tot-r['putR'])>max(0.01,abs(tot)*1e-9): fails+=1; print(k,'put in',r['putR'],'want',tot)
-        # the card: an emergency fund that can't grow because the surplus is invested says so, with a link to that setting
+        # the card: an emergency fund that can't grow because all of the surplus is invested says so, with a link to that setting
         pg.set_viewport_size({'width':1300,'height':900})
-        for invest, lang in ((True,'en'), (True,'et'), (False,'en')):
-            pg.evaluate("l=>document.querySelector('.langtabs [data-lang='+l+']').click()", lang)
-            s=json.loads(json.dumps(base)); s.update(enableProjSurplus=invest, targets=[{'name':'Rainy day','kind':'cash','amount':10**7,'dueMon':'','dueYear':'','rate':4,'current':0,'spend':0}])
+        for share, lang in ((100,'en'), (100,'et'), (60,'en'), (0,'en')):
+            pg.evaluate("l=>document.querySelector('.langtabs [data-lang='+l+']').click()", lang); invest=share>=100
+            s=json.loads(json.dumps(base)); s.update(enableProjSurplus=share>0, projSurplusPct=share or 100, targets=[{'name':'Rainy day','kind':'cash','amount':10**7,'dueMon':'','dueYear':'','rate':4,'current':0,'spend':0}])
             pg.evaluate("s=>{ document.querySelector('.viewtabs [data-view=progress]').click(); state=normalize(s); save(); refreshAll(); }", s); pg.wait_for_timeout(900)   # numbers finish animating
             row=pg.evaluate("""()=>{ const r=document.querySelector('#tgt-list .tgtitem'), a=r.querySelector('.tlink'), c=compute(), t=targetStatus(state.targets[0], c);
               return {link:!a.hidden && !!a.getClientRects().length, text:r.querySelector('.teta').textContent, val:r.querySelector('.tval').textContent, want:eurS(t.cur)+' of '+eurS(t.goal), pct:r.querySelector('.tpct').textContent, sur:c.surplus}; }""")
             if row['val']!=row['want'].replace(' of ', ' of ' if lang=='en' else ' / ') or row['pct']!='0%': fails+=1; print('target row shows', row['val'], row['pct'], 'want', row['want'])
             if invest and row['sur']>=0:
                 if not row['link'] or ('your surplus is invested' if lang=='en' else 'ülejääk läheb investeerimisse') not in row['text']: fails+=1; print('invested surplus: no link', lang, row)
-                pg.click('#tgt-list .tlink'); pg.wait_for_timeout(500)
-                if not pg.evaluate("document.querySelector('.esec[data-sec=settings]').open"): fails+=1; print('the link did not open Settings')
-            if not invest and row['link']: fails+=1; print('link shown although the surplus is not invested')
+                pg.click('#tgt-list .tlink'); pg.wait_for_timeout(600)
+                if pg.evaluate("[document.querySelector('.esec[data-sec=savings]').open, document.activeElement.id]")!=[True,'surplusRange']: fails+=1; print('the link did not open the surplus setting')
+            if not invest and row['link']: fails+=1; print('link shown although not all of the surplus is invested', share)
+            # the Annual surplus tile: what share is invested, and the same split as under the setting
+            tile=pg.evaluate("()=>[document.getElementById('surplus-sub').textContent, document.querySelector('#sur-split > span').textContent, document.getElementById('surplus-hint').textContent, compute().surplus]")
+            sub={100:{'en':'invested / year','et':'investeeritud / aastas'}, 60:{'en':'60% invested / year'}, 0:{'en':'unassigned / year'}}[share][lang]
+            y=round(tile[3]); inv=math.floor(y*share/100+0.5); eu=lambda v: '€{:,}'.format(v)   # whole euros that add up to the tile
+            words={100:eu(y), 60:eu(inv)+(' a year goes to your investments and ')+eu(y-inv), 0:eu(y)}[share]
+            if y<=0 or tile[0]!=sub or tile[1]!=tile[2] or words not in tile[1]: fails+=1; print('surplus tile', share, lang, tile, 'want', sub, words)
+        # spending more than you earn: nothing is invested, whatever the share, and the shortfall comes out of cash
+        s=json.loads(json.dumps(base)); s.update(enableProjSurplus=True, projSurplusPct=60, expenses=20000)
+        neg=pg.evaluate("s=>{ state=normalize(s); refreshAll(); return [compute().surplus, document.getElementById('surplus-sub').textContent, document.getElementById('surplus-hint').textContent, surplusInvested(compute())]; }", s)
+        if not (neg[0]<0 and neg[1]=='unassigned / year' and neg[2].startswith('A shortfall comes out of your cash') and neg[3]==0): fails+=1; print('negative surplus tile', neg)
+        # the tile's Change link opens the setting with the cursor in it
+        pg.evaluate("()=>{ document.querySelector('.viewtabs [data-view=overview]').click(); document.querySelector('.esec[data-sec=savings]').open=false; document.getElementById('surplus-det').open=true; }")
+        pg.click('#sur-change'); pg.wait_for_timeout(600)
+        if pg.evaluate("[document.querySelector('.esec[data-sec=savings]').open, document.activeElement.id, document.getElementById('surplus-det').open]")!=[True,'surplusRange',True]: fails+=1; print('Change did not open the surplus setting with the tile still open')
+        pg.click('#surplusRange'); pg.wait_for_timeout(200)   # using the setting keeps the tile open, so its split can be watched
+        if not pg.evaluate("document.getElementById('surplus-det').open"): fails+=1; print('the tile closed when the setting was used')
+        pg.mouse.click(5, 5); pg.wait_for_timeout(700)   # a click elsewhere on the page closes it (after its closing animation)
+        if pg.evaluate("document.getElementById('surplus-det').open"): fails+=1; print('the tile stayed open after a click elsewhere')
+        # older backups, imported: the surplus switch on means all of it (v1.1.6 file), off means none (v1.1.0 file); the slider's value is the cash share
+        for name, want in (('backup-v1.1.6.json', [100,'0']), ('backup-v1.1.0.json', [0,'100'])):
+            pg.set_input_files('#importFile', str(FIXTURES/name)); pg.wait_for_timeout(300)
+            got=pg.evaluate("()=>[surplusPct(), document.getElementById('surplusRange').value]")
+            if got!=want: fails+=1; print('old backup', name, 'gave', got, 'want', want)
         # loans as "paid off" targets: details on the left, the date on the right; a row reused for a goal loses the debt's red
         s=json.loads(json.dumps(base)); s.update(enableDebtTargets=True, targets=[], debts=[{'name':'Car','balance':5000,'rtype':'fixed','rate':6,'margin':0,'payment':0,'asset':0}])
         pg.evaluate("s=>{ state=normalize(s); save(); refreshAll(); }", s); pg.wait_for_timeout(900)

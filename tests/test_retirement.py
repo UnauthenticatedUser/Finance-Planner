@@ -9,7 +9,7 @@ Run: python tests/test_retirement.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys
 from helpers import PAGE, fixture, finish, launch
-from model import grow, life_left, payout_tax
+from model import grow, life_left, payout_tax, surplus_invested
 def pick(*a): return random.choice(a)
 def main():
     random.seed(int(sys.argv[2]) if len(sys.argv)>2 else 5); N=int(sys.argv[1]) if len(sys.argv)>1 else 200
@@ -23,7 +23,7 @@ def main():
             s.update(birthYear=pick(0,1940,1960,1975,1990,2000,2010,2026,2050), retireAge=pick(0,55,60,65,67,70,120,random.randint(1,120)),
                      payoutYears=pick(0,1,10,20,30,100,random.randint(0,100)), projInflation=pick(0,2.5,-2,10,random.uniform(-50,100)) ,
                      statePension=pick(0,0,500,1200,1e12 if big else 2000), enableProjReal=pick(True,False), projReturn=pick(7,0,-5,12,random.uniform(-100,100)),
-                     projGrowth=pick(0,3,-10,random.uniform(-100,100)), enableProjSurplus=pick(True,False),
+                     projGrowth=pick(0,3,-10,random.uniform(-100,100)), enableProjSurplus=pick(True,False), projSurplusPct=pick(100,25,0,random.uniform(0,100)),
                      enableProjFee=pick(True,False), projFee=pick(0,0.2,1.5,100))
             if big:
                 s['gross']=pick(1e6,1e9,1e12); s['etfMonthly']=pick(1e6,1e12); s['thirdPillar']=pick(1e5,1e12)
@@ -44,7 +44,7 @@ def main():
             age=st['retireAge'] or 65; yrs=max(0,by+age-r['now']); m=yrs*12
             pen=grow(c['pension'],c['penM'],r['net'],m,st['projGrowth'])[0] if m else c['pension']   # 2nd pillar on the bonus too
             start=c['etfVal']+c['invValue']
-            inv,put=grow(start,c['etfMonthly']+c['invMonthly']+(max(0,c['surplus'])/12 if st['enableProjSurplus'] else 0),r['net'],m,st['projGrowth']) if m else (start,start)
+            inv,put=grow(start,c['etfMonthly']+c['invMonthly']+surplus_invested(st, c['surplus']),r['net'],m,st['projGrowth']) if m else (start,start)
             defl=(1+(st['projInflation'] if st['enableProjReal'] else 0)/100)**yrs
             penAt=pen/defl; invAt=inv/defl
             tx=(st['taxRate'] or 0)/100
