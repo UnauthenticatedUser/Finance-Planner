@@ -32,12 +32,8 @@ with sync_playwright() as p:
     csp = pg.evaluate("document.querySelector('meta[http-equiv=Content-Security-Policy]')?.content || ''")
     fps = fingerprints((ROOT / 'index.html').read_text(encoding='utf-8'))
     if len(fps) != 2: problems.append(f'the page has {len(fps)} inline scripts, not 2')
-    if csp != RULE.format(scripts=' '.join(fps)): problems.append('security rule differs from the expected one: ' + csp.replace(' '.join(fps), '{scripts}'))
+    if csp != RULE.format(scripts=' '.join(fps)): problems.append('security rule differs from the expected one (if only the fingerprints: run python tools/update_csp.py): ' + csp.replace(' '.join(fps), '{scripts}'))
     if pg.evaluate("document.querySelector('meta[name=referrer]')?.content") != 'no-referrer': problems.append('referrer rule missing')
-    script_src = csp.split('script-src', 1)[1].split(';', 1)[0].split() if 'script-src' in csp else []
-    if "'unsafe-inline'" in script_src: problems.append("script-src still allows any inline script")
-    if script_src != fingerprints((ROOT / 'index.html').read_text(encoding='utf-8')):
-        problems.append('script fingerprints are out of date: run python tools/update_csp.py')
     # a script that isn't one of the page's own must not run, even when something manages to put it into the page
     pg.evaluate("()=>{ const s=document.createElement('script'); s.textContent='window.__injected=1'; document.body.appendChild(s); }"); pg.wait_for_timeout(100)
     if pg.evaluate("!!window.__injected"): problems.append('an injected script ran')

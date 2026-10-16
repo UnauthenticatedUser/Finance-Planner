@@ -2,6 +2,14 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.3.1] – 2026-10-17
+
+A code cleanup with no changes in how the tool works or what it shows.
+
+- Calculations that were repeated in several places are now worked out once and shared, so they can't drift apart.
+- Checks for browser features that every supported browser has were removed, and duplicated style rules were merged.
+- Two test checks that a broader check already covers were removed, along with an unused test helper.
+
 ## [1.3.0] – 2026-10-17
 
 New: the business account as a tax type, property bought with a loan keeping up with prices, pension funds growing until their payouts start, and pasting numbers with thousands separators. Also a clearer state pension field and fixes from independent reviews.
@@ -225,6 +233,9 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.3.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.3.1
+[1.3.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.3.0
+[1.2.2]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.2.2
 [1.2.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.2.1
 [1.2.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.2.0
 [1.1.7]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.1.7

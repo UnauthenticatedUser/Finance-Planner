@@ -30,7 +30,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-nJPSePsCYI7dpf6fa60XWTc1RB5kTMOZcZWYTLiNjyU='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-QdtO5jh61EeVbzFi+V0PdsZ00o4lJgZVuv1afcE6gkA='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
 <meta name="referrer" content="no-referrer">   <!-- links out (source code, license) don't tell the other site which page you came from -->
 <meta name="color-scheme" content="dark">   <!-- the page is already dark: stops browser auto-dark modes (and the darkreader-lock line, the Dark Reader extension) from recoloring it -->
 <meta name="darkreader-lock">
@@ -73,14 +73,13 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .layout{display:block}
   /* desktop: editor docked beside the dashboard */
   @media(min-width:1180px){
-    .wrap{max-width:1200px}
+    .wrap{max-width:1200px; padding-bottom:18px}
     .layout{display:grid; grid-template-columns:minmax(0,1fr) 380px; grid-template-rows:auto 1fr; gap:24px; align-items:start}   /* a taller editor stretches the footer's row, so the footer stays right under the cards */
-    .editor{position:sticky; top:18px; max-height:calc(100vh - 36px); overflow-y:auto; padding-right:4px}
+    .editor{position:sticky; top:18px; max-height:calc(100vh - 36px); overflow-y:auto; padding-right:4px; grid-column:2; grid-row:1 / span 2}
     /* a sticky editor can't go below its grid area, so anything under the layout pushed it up at the end of the page and
        its header (with Expand/Collapse all) slid off the top. So the editor spans both rows, and the footer (the page's
        bottom space) sits in the second row under the dashboard. */
-    .wrap{padding-bottom:18px}
-    .layout > .main{grid-column:1; grid-row:1} .editor{grid-column:2; grid-row:1 / span 2} .layout > .sitefoot{grid-column:1; grid-row:2; margin-top:0; padding-bottom:28px}   /* ".main" is also a row style */
+    .layout > .main{grid-column:1; grid-row:1} .layout > .sitefoot{grid-column:1; grid-row:2; margin-top:0; padding-bottom:28px}   /* ".main" is also a row style */
     .editor .edhead{top:0}   /* inside the editor panel it already rests at the top, so an offset would push it down */
     .editor::-webkit-scrollbar{width:8px}
     .editor::-webkit-scrollbar-thumb{border-radius:4px}
@@ -108,7 +107,6 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .row .k{color:var(--text2)}
   .row .v{color:var(--text); text-align:right}
   #cash-accounts .acctrow{align-items:baseline}
-  #cash-accounts .acctrow .k{min-width:0; overflow-wrap:anywhere}
   #cash-accounts .a-gain{color:#34D399} #cash-accounts .a-gain.neg{color:var(--danger)}   /* rate and yearly interest beside the name (under it, as one piece, when they don't fit), so the amounts line up alone on the right */
   #cash-accounts .acctrow .v{white-space:nowrap; flex:none}
   .row.acctapytot{margin-top:2px}
@@ -273,10 +271,9 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .mv, .bv, .pr-v, .dh-v, .bleg b, .row .v, .legend, .srow b, .esum, .hd .tot, input[inputmode=decimal]{font-variant-numeric:tabular-nums}
   ::selection{background:rgba(169,184,255,0.3)}
   .topbar{display:flex; gap:12px 24px; flex-wrap:wrap; margin-bottom:22px; align-items:center}
-  .topbar h1{margin:0; font-size:20px; font-weight:600; letter-spacing:-0.02em}
+  .topbar h1{margin:0; font-size:20px; font-weight:600; letter-spacing:-0.02em; overflow-wrap:break-word}   /* breaks a word only when it alone is wider than the line */
   /* names and titles you type can be long without spaces: they wrap instead of pushing the layout sideways */
   .topbar > div:first-child{min-width:0; flex:1 1 300px}
-  .topbar h1{overflow-wrap:break-word}   /* breaks a word only when it alone is wider than the line */
   .pn, .row .k, .dname, .fn, .ename{overflow-wrap:anywhere; min-width:0}
   .topbar .sub{font-size:13px; margin:2px 0 0; color:var(--text2)}
   .btn{font-size:13px; cursor:pointer; font-family:inherit; transition:background .15s,color .15s; white-space:nowrap; background:var(--surface); color:var(--text); border:none; border-radius:999px; padding:8px 16px; font-weight:500}
@@ -357,8 +354,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
   .dot{flex:none; border-radius:50%; width:9px; height:9px}
   .bar{display:flex; overflow:hidden; height:14px; border-radius:999px; background:var(--surface); margin:4px 0 14px}
   .bar > div + div{box-shadow:inset 2px 0 0 var(--card)}
-  .dhole{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:90px; height:90px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px}
-  .dhole{container-type:inline-size}
+  .dhole{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:90px; height:90px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; container-type:inline-size}
   .dh-v{font-size:min(18px, 20cqi); font-weight:600; letter-spacing:-0.02em; white-space:nowrap}   /* scales with the hole, so '182k €' fits the smaller donuts too */
   .yrbtns{display:flex; margin-bottom:12px; background:var(--surface); border-radius:999px; padding:4px; gap:2px}
   .yrbtns button{flex:1 1 auto; font-size:12px; cursor:pointer; font-family:inherit; transition:background .15s,color .15s; border:none; border-radius:999px; background:transparent; padding:7px 4px; font-weight:500; color:var(--text2)}   /* flex 1 1 auto: each label plus an equal share of the room, so the space around every label (first and last too) is the same */
@@ -1192,7 +1188,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
       </div>
     </details>
   </div>
-  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.3.0</span></footer>
+  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.3.1</span></footer>
   </div>
 
 </div>
@@ -1225,7 +1221,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
 //  layout     rows: Cash & savings | Physical assets · Pensions (full width, pillars side by side in .pilgrid) · Investments · Debts (full width) · openSection (card ✎) · syncSegs (.seg/.chip drive hidden switches)
 //             syncInputs/syncToggles/applyText · refreshAll() redraws everything · keepUndo ·
 //             floating menus newMenu/placeMenu, makeSelect (custom dropdown), attachSuggest (name suggestions) ·
-//             LISTS + buildList(): every editable list (expenses, accounts, ETFs, other investments, physical assets, debts, income)
+//             LISTS + buildList(): every editable list (expenses, accounts, ETFs, other investments, physical assets, debts, income); a new row is SHAPES + LISTS.blank
 //  wiring     inputs, toggles, reset/undo/import/export, tooltips, wide layout · boot = refreshAll() at the end
 
 const DEFAULTS = {
@@ -1410,7 +1406,6 @@ function loadBackup(){ try{ const b=localStorage.getItem(KEY_BACKUP); return b?n
 
 const sign = n => n<0 ? '−' : '';
 const rnd = n => Math.sign(n||0)*Math.round(Math.abs(n||0));   // to whole euros, a half away from zero on both sides (Math.round(−2.5) is −2)
-// Very large amounts are shown compactly (€3.45B, €1.2T) so they always fit.
 // Number fields are text fields with a decimal keyboard, so 2,5 and 2.5 both work (a browser's number field drops the
 // comma and reads 2,5 as 25). Numbers look the same in both languages. fieldNum shows a value as you'd type it; 0 shows as empty.
 const fieldNum=v=>{ const x=+(+v||0).toFixed(6); return x ? String(x) : ''; };   // never "1e-7" (typing after it would read 175)
@@ -1448,24 +1443,26 @@ const isET=()=>LANG==='et';
 const money=(sgn, x)=> sgn+'€'+x;
 const grp=a=> a.toLocaleString('en-US');      // 34,481
 const r2 = (a, unit) => String(Math.round(a/(unit/100))/100);   // a in units with up to 2 decimals, rounded half up: €1,005,000 → 1.01 (M)
+// Very large amounts are shown compactly (€3.45B, €1.2T) so they always fit.
 const big = a => a>=1e15 ? '999T+' : a>=999.995e9 ? r2(a,1e12)+'T' : r2(a,1e9)+'B';
 const eur  = n => { n=rnd(n); const a=Math.abs(n); return money(sign(n), a>=1e9 ? big(a) : grp(a)); };
 const eurS = n => { n=rnd(n); const a=Math.abs(n); return a<10000 ? eur(n) : a<999950 ? money(sign(n), (Math.round(a/100)/10).toString().replace(/\.0$/,'')+'k') : eurC(n); };   // short: €4,232 · €23.3k · €1.02M
 const eurC = n => { n=rnd(n); const a=Math.abs(n); return money(sign(n), a>=999.995e6 ? big(a) : a>=999.5e3 ? r2(a,1e6)+'M' : a>=1000 ? Math.round(a/1000)+'k' : a); };
 // to d decimals, a half away from zero; 12 significant digits first, so 0.145 (stored as 0.14499…) is a half, not below one
 const rndTo=(n,d)=>{ const f=10**d; return Math.sign(n||0)*Math.round(+(Math.abs(n||0)*f).toPrecision(12))/f; };
-const num = n => { const v=rndTo(n,1); return (v<0?'−':'')+Math.abs(v); };
+const num = n => { const v=rndTo(n,1); return sign(v)+Math.abs(v); };
 // Whole percentages that add up to exactly 100: the largest remainders get the rounding (37/46/17, not 37/46/18),
 // so a 0 stays 0. Nothing to split → all 0.
+// Whole numbers adding up to total: each rounded down, then the rest one at a time to the largest remainders (only where ok(i)).
+function roundToTotal(raw, total, ok=()=>true){ const out=raw.map(Math.floor); let left=total-out.reduce((a,b)=>a+b,0);
+  raw.map((r,i)=>[r-out[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{ if(left>0 && ok(i)){ out[i]++; left--; } }); return out; }
 function pct100(vals){ const v=vals.map(x=>Math.max(0,+x||0)), tot=v.reduce((a,x)=>a+x,0); if(!(tot>0)) return v.map(()=>0);
-  const raw=v.map(x=>x/tot*100), out=raw.map(Math.floor); let left=100-out.reduce((a,b)=>a+b,0);
-  raw.map((r,i)=>[r-out[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{ if(left>0 && v[i]>0){ out[i]++; left--; } }); return out; }
-const num2 = n => { const v=rndTo(n,2); return (v<0?'−':'')+Math.abs(v).toFixed(2); };   // fees and APYs: always two decimals (0.20%, 2.43%)
-// "Matrix" number scramble for headline figures
+  return roundToTotal(v.map(x=>x/tot*100), 100, i=>v[i]>0); }
+const num2 = n => { const v=rndTo(n,2); return sign(v)+Math.abs(v).toFixed(2); };   // fees and APYs: always two decimals (0.20%, 2.43%)
 const REDUCE_MOTION = (typeof matchMedia==='function') && matchMedia('(prefers-reduced-motion: reduce)').matches;
+let instantUpdate=false;   // set while the surplus slider moves: numbers and charts show the new state at once, so they keep up with the drag
 // "Matrix" scramble: digits flicker briefly, then settle on the new value.
 // Works on text elements and on inputs (uses .value); skips when nothing changed.
-let instantUpdate=false;   // set while the surplus slider moves: numbers and charts show the new state at once, so they keep up with the drag
 function setMatrix(el, text){
   text=t(text);
   const isInput = el.tagName==='INPUT';
@@ -1522,7 +1519,7 @@ const setTip=(el, text)=>{ if(text){ el.setAttribute('data-tip', text); el.setAt
 
 // ---- motion helpers ----
 function animHeight(el, opening, done, edge=0){   // edge: top margin when shut (negative pulls up the gap above it)
-  if(REDUCE_MOTION || !el || typeof el.animate!=='function'){ if(done) done(); return null; }
+  if(REDUCE_MOTION || !el){ if(done) done(); return null; }
   const cs=getComputedStyle(el), mt=cs.marginTop, mb=cs.marginBottom, pt=cs.paddingTop, pb=cs.paddingBottom;
   const h=el.scrollHeight+'px';
   const open={height:h, opacity:1, marginTop:mt, marginBottom:mb, paddingTop:pt, paddingBottom:pb};
@@ -1689,7 +1686,7 @@ function donutRing(sel, slices){
   const byT=Object.fromEntries(target.map(t=>[t.key,t])), byC=Object.fromEntries(st.cur.map(c=>[c.key,c]));
   const rows=keys.map(k=>{ const t=byT[k], c=byC[k]; return {key:k, from:c?c.pct:0, to:t?t.pct:0, color:(t||c).color, tip:t?t.tip:''}; });
   const settle=()=>{ st.raf=null; st.cur=target; drawDonut(svg, target); };
-  if(REDUCE_MOTION || instantUpdate || typeof requestAnimationFrame!=='function'){ settle(); return; }
+  if(REDUCE_MOTION || instantUpdate){ settle(); return; }
   const dur=560, t0=performance.now(), ease=x=> 1-Math.pow(1-x,3);
   (function step(now){
     const k=Math.min(1,Math.max(0,(now-t0)/dur)), e=ease(k);
@@ -1752,14 +1749,15 @@ function compute(){
   // "Enter my own" net pay with no gross: the gross that leaves that net, so tax, pension contributions and the yearly figures
   // follow from it (for a pensioner, with what your own state pension, or the average, leaves of the €776)
   const grossGuessed=!(state.gross>0) && !state.autoNet && state.manualNet>0;
-  const g= grossGuessed ? grossFor(state.manualNet, 1-p2rate/100-U, T, pensioner ? Math.max(0, PENSIONER_EXEMPTION-(state.statePension>0 ? state.statePension : AVG_STATE_PENSION)) : state.basicExemption||0) : state.gross||0;
+  const E= pensioner ? Math.max(0, PENSIONER_EXEMPTION-statePensionToday(0)) : state.basicExemption||0;   // a pensioner's pay gets what the state pension (own, else the average) leaves of the €776
+  const g= grossGuessed ? grossFor(state.manualNet, 1-p2rate/100-U, T, E) : state.gross||0;
   // Other income streams. "Taxed like salary" is added to salary, so it shares the single €700 basic
   // exemption and pays 2nd pillar + unemployment insurance like a real salary. "Tax-free" is kept whole.
   // "Own rate" loses the percentage you set. Monthly streams feed the monthly budget; yearly ones the annual surplus.
   // A one-time payment counts in neither: it's money you already have (in your cash), not income that comes again.
   const incList=state.incomes, recList=incList.filter(s=>s.freq!=='once');
   const isM=s=>s.freq!=='year' && s.freq!=='once';                       // recurring → monthly budget
-  const amt=s=>Math.max(0,+s.amount||0), rateOf=s=> s.tax==='biz' ? (BIZ_TAX+p2rate)/100 : Math.min(100,Math.max(0,+s.rate||0))/100;   // a business account: 20% plus your 2nd pillar rate
+  const amt=s=>Math.max(0,+s.amount||0), rateOf=s=> s.tax==='biz' ? (BIZ_TAX+p2rate)/100 : (+s.rate||0)/100;   // a business account: 20% plus your 2nd pillar rate
   const flow=s=> isM(s) ? amt(s)*(PER_YEAR[s.freq]||12)/12 : amt(s);  // per month for recurring streams, per year for yearly
   const sumOf=(m,t)=>recList.filter(s=>isM(s)===m && (s.tax||'salary')===t).reduce((a,s)=>a+flow(s),0);
   const custOf=(m,f)=>recList.filter(s=>isM(s)===m && (s.tax==='custom' || s.tax==='biz')).reduce((a,s)=>a+f(s),0);   // taxed at its own rate
@@ -1779,7 +1777,6 @@ function compute(){
   const invMonthly=invList.reduce((a,x)=>a+(+x.monthly||0),0);
   const invValue=invList.reduce((a,x)=>a+(+x.value||0),0);
   const aSal=gSal*12+(state.bonus||0)+ySal;                           // everything taxed as salary, per year
-  const E= pensioner ? Math.max(0, PENSIONER_EXEMPTION-statePensionToday(aSal)) : state.basicExemption||0;   // a pensioner's pay gets what the state pension leaves of the €776
   const p2=gSal*p2rate/100+mBizP2, p2s=gSal*p2srate/100;
   const netOf=x=>{ const a=x*p2rate/100, b=x*U; return x-a-b-Math.max(0,x-a-b-E)*T; };
   const estNet=netOf(g);                                              // main salary alone (the auto-estimate)
@@ -1805,10 +1802,11 @@ function compute(){
   const physVal=physList.reduce((a,x)=>a+(+x.value||0),0);
   const buffer=acctTotal+phys;
   const acctInt=state.accounts.map(x=>(+x.amount||0)*(+x.yield||0)/100), cashInterestYr=acctInt.reduce((a,i)=>a+i,0);   // a year, before tax
-  const cashInterestNet=acctInt.reduce((a,i)=>a+(i>0 ? i*(1-(state.taxRate||0)/100) : i),0);   // after tax, account by account (interest is taxed; a negative rate isn't a refund)
+  const cashInterestNet=acctInt.reduce((a,i)=>a+(i>0 ? i*(1-T) : i),0);   // after tax, account by account (interest is taxed; a negative rate isn't a refund)
   const cashRate= buffer>0 ? cashInterestNet/buffer*100 : 0;   // what all your cash earns a year after tax, in % (cash on hand earns nothing)
   const etfList=state.etfs, etfSumW=etfList.reduce((a,e)=>a+(+e.weight||0),0);
-  const etfAuto=state.enableEtfPlan && state.enableEtfAutoSplit;
+  const etfAuto=etfPlan && state.enableEtfAutoSplit;
+  const etfPerMo=etfList.map(e=> etfPlan ? (etfSumW>0 ? etfMonthly*(+e.weight||0)/etfSumW : 0) : etfPerFundMonthly ? +e.monthly||0 : 0);   // each fund's monthly amount
   const etfVals=etfList.map(e=> etfAuto ? (etfSumW>0 ? (state.etfTotal||0)*(+e.weight||0)/etfSumW : 0) : (+e.value||0));
   const etfVal= etfAuto ? (state.etfTotal||0) : etfVals.reduce((a,v)=>a+v,0);
   // pension value: the sum of your pension funds
@@ -1846,7 +1844,7 @@ function compute(){
   // each pension fund weighs in with its value plus a year of its share of that pillar's contributions
   const pilFees=(funds, monthly)=>{ const sh=funds.reduce((a,f)=>a+(+f.share||0),0); return funds.map(f=>[(+f.value||0)+12*monthly*(sh>0?(+f.share||0)/sh:0), +f.fee||0]); };
   const feeGroups={pen:[...pilFees(state.p2funds, p2Avg), ...pilFees(state.p3funds, t3)],
-    etf:etfList.map((e,i)=>[etfVals[i]+12*(etfPlan ? (etfSumW>0?etfMonthly*(+e.weight||0)/etfSumW:0) : (etfPerFundMonthly?(+e.monthly||0):0)), +e.fee||0]),
+    etf:etfList.map((e,i)=>[etfVals[i]+12*etfPerMo[i], +e.fee||0]),
     inv:invList.map(x=>[(+x.value||0)+12*(+x.monthly||0), +x.fee||0])};
   const feeParts=Object.fromEntries(Object.entries(feeGroups).map(([k,l])=>[k, avgFee(l)])), fundFee=avgFee(Object.values(feeGroups).flat()).fee;
   // funds with money in them (or money going in) but no yearly fee entered: they count as 0%
@@ -1860,7 +1858,7 @@ function compute(){
           // accessible investing only (ETFs + other investments), and a version excluding just the 2nd pillar
           investedNoPen:etfMonthly+invMonthly,
           savingsNoPen: net>0?(etfMonthly+invMonthly)/net*100:0,
-          etfMonthly, etfPerFundMonthly,
+          etfMonthly, etfPerFundMonthly, etfPerMo, etfSumW, outgo:expenses+debtMonthly,   // outgo: spending and loan payments a month
           savingsNoP2: net>0?cashInvested/net*100:0,
           p3Limit,p3LimitHit,
           aBase,aGross,aP2,aUnemp,aTax,aTake,aNet,aStateP2,ownNetAdj,grossGuessed};
@@ -1959,21 +1957,20 @@ function renderCalc(){
     // Paying off a loan is a guaranteed return equal to its rate; investing is an uncertain one.
     // Pension contributions are never suggested as the source: the 3rd-pillar refund and state top-up beat almost any loan.
     const note=document.getElementById('debt-note');
-    const owing=c.debtList.filter(d=>(+d.balance||0)>0).slice().sort((a,b)=>(+b.rate||0)-(+a.rate||0));
+    const owing=c.debtList.filter(d=>(+d.balance||0)>0).sort((a,b)=>(+b.rate||0)-(+a.rate||0));
     const top=owing[0];
     // what investing earns a year after fund fees and the income tax on its gains, which an investment account takes only at the end
     // (over the loan's time left, at least a year); the interest a loan saves isn't taxed
     const yrsLeft=top && top.po && top.po.months<Infinity ? Math.max(1, top.po.months/12) : 10, gr=1+projRate(c, null, 'inv').net/100, T=(state.taxRate||0)/100;
     const ret=Math.round((gr>0 ? Math.pow(Math.pow(gr, yrsLeft)*(1-T)+T, 1/yrsLeft)-1 : -1)*1000)/10;
     const extra=c.investedNoPen;                                  // ETF + other investments per month
-    const outgo=c.expenses+c.debtMonthly;
-    const bufMonths=outgo>0 ? c.buffer/outgo : 99;
+    const bufMonths=c.outgo>0 ? c.buffer/c.outgo : 99;
     let msg='', strong=false;
     if(top){
       const rate=+top.rate||0, nm=top.name||L('this debt','see laen');
       if(rate>ret && rate>0){
         strong=true;
-        const now=payoff(top.balance, rate, top.payment), fast=extra>0 ? payoff(top.balance, rate, (+top.payment||0)+extra) : null;
+        const now=top.po, fast=extra>0 ? payoff(top.balance, rate, (+top.payment||0)+extra) : null;
         msg=L(cap(nm)+' costs '+num(rate)+'% a year, more than the '+num(ret)+'% you expect from investing after fees and tax, so paying it off is a guaranteed '+num(rate)+'% return.',
               cap(nm)+': intress '+num(rate)+'% aastas on suurem kui '+num(ret)+'%, mida investeerimiselt pärast tasusid ja makse ootad, nii et laenu tagasimaksmine annab sulle kindla '+num(rate)+'% tootluse.');
         if(fast && fast.months!==Infinity){
@@ -2009,8 +2006,7 @@ function renderCalc(){
 
   // ETF bar + legend. Bar shows what you actually hold; with a target split it falls back to the targets until values are entered.
   const etfs=state.etfs;
-  const plan=state.enableEtfPlan;
-  const sumW=etfs.reduce((a,e)=>a+(+e.weight||0),0);
+  const plan=state.enableEtfPlan, sumW=c.etfSumW;
   const hasVals=c.etfVal>0;
   const bar=document.getElementById('etf-bar'), leg=document.getElementById('etf-legend');
   const ed=document.getElementById('etf-rows'); if(ed) ed.classList.toggle('noplan', !plan);
@@ -2030,7 +2026,7 @@ function renderCalc(){
       const col=ETF_COLORS[i%ETF_COLORS.length];
       const val=c.etfVals[i]||0, hold=hasVals?val/c.etfVal*100:0;
       const tgt=sumW>0?(+e.weight||0)/sumW*100:0;
-      const perMo= plan ? (sumW>0?((+e.weight||0)/sumW)*c.etfMonthly:0) : (c.etfPerFundMonthly?(+e.monthly||0):0);
+      const perMo=c.etfPerMo[i];
       const parts=[];
       if(perMo>0) parts.push(eur(perMo)+'/mo');
       if(hasVals || (plan && sumW>0)) parts.push((hasVals ? holdPct[i] : tgtPct[i])+'%');   // the target share is in the bar's hover; no shares, no %
@@ -2057,7 +2053,7 @@ function renderCalc(){
     const useRb=plan && !c.etfAuto && hasVals && c.etfMonthly>0 && etfs.length>1 && sumW>0;
     const split=useRb ? rebalanceSplit(etfs.map((e,i)=>c.etfVals[i]||0), etfs.map(e=>+e.weight||0), c.etfMonthly) : null;
     if(split){
-      const plain=etfs.map(e=>c.etfMonthly*(+e.weight||0)/sumW), onTarget=split.every((x,i)=>Math.abs(x-plain[i])<1.5);
+      const onTarget=split.every((x,i)=>Math.abs(x-c.etfPerMo[i])<1.5);   // the usual split
       rb.textContent= onTarget ? L('Your funds are on target, so keep your usual split this month.','Sinu fondide jaotus vastab sihtjaotusele, nii et jaga selle kuu sissemakse tavapäraselt.')
         : L('To rebalance, split next month\'s '+eur(c.etfMonthly)+' as: ','Tasakaalustamiseks jaga järgmise kuu sissemakse ('+eur(c.etfMonthly)+') nii: ')+etfs.map((e,i)=>split[i]>0?(e.name||L('Fund ','Fond ')+(i+1)).split(/\s[—|-]\s|\s\|/)[0]+' '+eur(split[i]):null).filter(Boolean).join(' · ');
     }
@@ -2134,7 +2130,7 @@ function renderCalc(){
   { const m=Math.round(autoPensionAge()*12), f=k=>document.querySelector('[data-key='+k+']');   // empty: by your year of birth, shown as the placeholder
     if(f('pensionAgeYears')){ f('pensionAgeYears').placeholder=Math.floor(m/12); f('pensionAgeMonths').placeholder=m%12; }
     // the state pension left empty: the estimate from your pay (or the average) as the placeholder, and a line saying so
-    const sp=f('statePension'), fromPay=c.aSal>0 && !pensionerNow(), est=fromPay ? statePensionToday(c.aSal) : AVG_STATE_PENSION, hint=document.getElementById('sp-hint');   // as the Retirement card works it out
+    const sp=f('statePension'), fromPay=statePensionFrom(c.aSal)==='pay', est=statePensionToday(c.aSal), hint=document.getElementById('sp-hint');   // as the Retirement card works it out (shown only while the field is empty)
     if(sp) sp.placeholder=Math.round(est);
     if(hint){ hint.hidden=state.statePension>0; hint.textContent= fromPay ? L('Empty: estimated from your pay, about '+eur(est)+' a month before tax.','Tühjana hinnatakse seda sinu palga põhjal: umbes '+eur(est)+' kuus enne makse.')
       : L('Empty: the national average, '+eur(est)+' a month.','Tühjana kasutatakse riigi keskmist: '+eur(est)+' kuus.'); } }
@@ -2217,8 +2213,7 @@ function renderCalc(){
     if(c.expByCats && parts.length) expLab.setAttribute('data-tip', L('Per month: ','Kuus: ')+parts.join(' · ')); else expLab.removeAttribute('data-tip');
   }
 
-  const outgo=c.expenses+c.debtMonthly;
-  const months=outgo>0 ? c.buffer/outgo : 0, m1=Math.round(months*10)/10, mo=String(!(m1>0) ? 0 : m1<10 ? m1.toFixed(1) : Math.round(months));   // 9.97 is "10", not "10.0"; under 0.05 is none
+  const months=c.outgo>0 ? c.buffer/c.outgo : 0, m1=Math.round(months*10)/10, mo=String(!(m1>0) ? 0 : m1<10 ? m1.toFixed(1) : Math.round(months));   // 9.97 is "10", not "10.0"; under 0.05 is none
   set('buffer-months', m1>0 ? '≈ '+mo+(c.debtMonthly>0?L(' months of spending + loans',' kuu kulud + laenud'):L(' months of expenses',' kuu kulud')) : '');
 
   // annual surplus + where it comes from
@@ -2259,7 +2254,7 @@ function renderCalc(){
   if(c.invMonthly>0) invParts.push(L('other investments ','muud investeeringud ')+eur(c.invMonthly));
   tipOn('tile-invested', (invParts.length?invParts.join(' + ')+'.':L('Nothing is invested monthly yet.','Igakuiselt pole veel midagi investeeritud.'))
     +(hasTop?L(' The state adds another '+eur(c.p2s)+' a month to your 2nd pillar.',' Riik lisab sinu II sambasse veel '+eur(c.p2s)+' kuus.'):'')
-    +(hasPen?L(' Excluding pensions: ',' Ilma pensionideta: ')+eur(c.investedNoPen)+'.'+(hasP2&&hasP3?L(' Excluding only the 2nd pillar: ',' Ainult ilma II sambata: ')+eur(c.invested-c.p2)+'.':''):''));
+    +(hasPen?L(' Excluding pensions: ',' Ilma pensionideta: ')+eur(c.investedNoPen)+'.'+(hasP2&&hasP3?L(' Excluding only the 2nd pillar: ',' Ainult ilma II sambata: ')+eur(c.cashInvested)+'.':''):''));
   tipOn('tile-buffer', L('All your accounts plus physical cash, which covers about '+mo+' months of expenses'+(c.debtMonthly>0?' and loan payments':'')+'. The credit card limit is not counted.',
     'Kõik sinu kontod koos sularahaga, millest jätkub umbes '+mo+' kuu kuludeks'+(c.debtMonthly>0?' ja laenumakseteks':'')+'. Krediitkaardi limiiti ei arvestata.'));
   const sParts=[L('what is left each month after expenses'+(c.debtMonthly>0?', loan payments':'')+' and investing (×12)','see, mis jääb igal kuul alles pärast kulusid'+(c.debtMonthly>0?', laenumakseid':'')+' ja investeerimist (×12)')];
@@ -2298,7 +2293,7 @@ function renderCalc(){
         r.m>0 ? L('Until you turn '+r.age+' in '+r.year+', your pension funds and investments keep growing like the Projection ('+num(net)+'% a year after fees), and your contributions continue.',
                     'Kuni saad '+r.year+'. aastal '+r.age+'-aastaseks, kasvavad sinu pensionifondid ja investeeringud nagu prognoosis ('+num(net)+'% aastas pärast tasusid) ja sissemaksed jätkuvad.')
                 : L('You\'re past retirement age, so this uses what you have today.','Oled pensioniealine, seega arvestatakse sellega, mis sul täna on.'),
-        L('Pension funds are paid out evenly over '+(state.payoutYears||20)+(state.payoutYears===1?' year':' years')+', not counting any growth while they\'re paid out (a cautious choice).','Pensionifondid makstakse välja ühtlaselt '+(state.payoutYears||20)+' aasta jooksul, arvestamata väljamaksete ajal jätkuvat kasvu (ettevaatlik valik).'),
+        L('Pension funds are paid out evenly over '+r.payYears+(r.payYears===1?' year':' years')+', not counting any growth while they\'re paid out (a cautious choice).','Pensionifondid makstakse välja ühtlaselt '+r.payYears+' aasta jooksul, arvestamata väljamaksete ajal jätkuvat kasvu (ettevaatlik valik).'),
         L('The Social Insurance Board\'s pension calculator counts the II and III pillar as growing only as fast as prices, so its figures for them are lower than these.','Sotsiaalkindlustusameti pensionikalkulaator arvestab, et II ja III sammas kasvavad ainult hindade tõusu võrra, seega on selle numbrid nende kohta siinsetest väiksemad.'),
         L('Pension fund payouts can start up to 5 years before the official pension age (3rd pillar savings started before 2021: from age 55). Money taken out earlier is taxed '+num(state.taxRate)+'%, and the 3rd pillar\'s lower rates also need at least 5 years of saving. '+(r.payAge>r.age && Math.round(r.payAge*12)===earliestPayoutM() ? 'Here they start at '+ageText(r.payAge)+', the earliest they can; until then they stay invested and keep growing, with nothing new going in.' : 'Here payouts start at your retirement age.'),
           'Pensionifondide väljamakseid saab alustada kuni 5 aastat enne ametlikku pensioniiga (enne 2021. aastat alustatud III samba kogumisel alates 55. eluaastast). Varem välja võetud raha maksustatakse '+num(state.taxRate)+'%-ga ja III samba soodsamad määrad eeldavad ka vähemalt 5-aastast kogumist. '+(r.payAge>r.age && Math.round(r.payAge*12)===earliestPayoutM() ? 'Siin algavad need '+ageText(r.payAge)+', nii vara kui võimalik; seni jäävad need investeerituks ja kasvavad edasi, uut raha lisandumata.' : 'Siin algavad väljamaksed sinu pensionile jäämise east.')),
@@ -2346,7 +2341,7 @@ function feeText(c){
 // "That looks off" notes under fields: likely typos or numbers worth a second look. They never block anything.
 function syncWarnings(c){
   const w=(id, msg)=>{ const e=document.getElementById(id); if(!e) return; if(msg) setMatrix(e, msg); e.hidden=!msg; };   // a changing figure in a note animates like any other number
-  const out=c.expenses+c.debtMonthly;
+  const out=c.outgo;
   const over3=c.t3*12-c.p3Limit;
   const inc3=c.p3LimitHit==='income';
   w('w-p3limit', c.t3>0 && c.p3LimitHit ? L('Only '+eur(c.p3Limit)+' of your '+eur(c.t3*12)+' a year gets the tax refund: the limit is '+(inc3?'15% of your income':'€6,000 a year')+'. The other '+eur(over3)+' still grows in the fund, but without tax back.',
@@ -2376,7 +2371,6 @@ function syncAdvanced(){
     if(n && !d._seen){ d.open=true; } d._seen=true; });   // first look: open it if something in it is already changed
 }
 function applyText(){
-  // default titles follow the language; titles you renamed stay exactly as you typed them
   document.querySelectorAll('[data-text]').forEach(el=>{ const k=el.dataset.text, v=state.text[k]||''; el.textContent= v===DEFAULTS.text[k] ? t(v) : v; });   // the default title follows the language; one you renamed stays as you typed it
   const rl=document.getElementById('goalsList'); if(rl) rl.innerHTML=state.text.goalsHTML;
 }
@@ -2530,18 +2524,19 @@ const dueMonthOpts=()=>[['','—'],...monthOpts()];
 const dueYears=item=>{ const y=new Date().getFullYear(), from=Math.min(y, +(item&&item.dueYear)||y); return [['','—'], ...yearRange(from, y+50)]; };   // a past deadline stays visible (and removable)
 const EXPENSE_TYPES=['Rent','Utilities','Groceries','Transport','Car tax','Phone & internet','Subscriptions','Insurance','Eating out','Gym','Holidays','Gifts','Health','Childcare','Pets'];
 const TAX_OPTS=[['salary','Taxed like salary'],['free','Tax-free'],['custom','Own rate'],['biz','Business account']];
+const firstFundGetsAll=(it,key)=>{ it.share=state[key].length ? 0 : 100; };   // a pillar's first fund gets all its contributions
 const LISTS={
-  p2funds:{box:'p2fund-rows', add:'addP2Fund', noun:'fund', ph:'Fund name', blank:{name:'', value:0, share:0, fee:0},
-    onType:(it,key)=>{ it.share=(state[key]||[]).length ? 0 : 100; },
+  p2funds:{box:'p2fund-rows', add:'addP2Fund', noun:'fund', ph:'Fund name',
+    onType:firstFundGetsAll,
     rows:[[{k:'value', cls:'pfv', label:'Current value', pre:'€'}, {k:'share', cls:'pfs', label:'Contribution', post:'%', tip:'How much of this pillar\'s contributions goes into this fund. Use 0 for an old fund you no longer pay into.'}],
           [{k:'fee', cls:'pff', label:'Yearly fee (optional)', post:'%/yr', tip:'The fund\'s yearly management fee, e.g. 0.3 for 0.3%.'}]]},   // fee on its own line, like ETF rows
-  p3funds:{box:'p3fund-rows', add:'addP3Fund', noun:'fund', ph:'Fund name', blank:{name:'', value:0, share:0, fee:0},
-    onType:(it,key)=>{ it.share=(state[key]||[]).length ? 0 : 100; },
+  p3funds:{box:'p3fund-rows', add:'addP3Fund', noun:'fund', ph:'Fund name',
+    onType:firstFundGetsAll,
     rows:[[{k:'value', cls:'pfv', label:'Current value', pre:'€'}, {k:'share', cls:'pfs', label:'Contribution', post:'%', tip:'How much of your 3rd pillar contributions goes into this fund. Use 0 for an old fund you no longer pay into.'}],
           [{k:'fee', cls:'pff', label:'Yearly fee (optional)', post:'%/yr', tip:'The fund\'s yearly management fee, e.g. 0.3 for 0.3%.'}]]},   // fee on its own line, like ETF rows
   targets:{box:'tgt-rows', add:'addTarget', noun:'target', rowCls:'tgtedit', typeTop:{k:'kind', select:()=>TARGET_KINDS},
-    blank:{name:'', kind:'cash', amount:0, rate:4, current:0, spend:0, dueMon:'', dueYear:'', health:'yes'},
-    onType:t=>{ if(t.kind==='cash' && !(t.amount>0)){ const c=compute(); t.amount=Math.round((c.expenses+c.debtMonthly)*6/100)*100; } },   // emergency fund: 6 months of outgoings to start
+    blank:{health:'yes'},
+    onType:t=>{ if(t.kind==='cash' && !(t.amount>0)){ const c=compute(); t.amount=Math.round(c.outgo*6/100)*100; } },   // emergency fund: 6 months of outgoings to start
     rows:[[{k:'name', type:'text', cls:'tname', label:'Name (optional)', ph:'Uses the type if empty'}],
           [{k:'amount', cls:'tamt', label:'Target', pre:'€', hideIf:['kind','fire']},
            {k:'spend', cls:'tspend', label:'Yearly spending', post:'/yr', pre:'€', hideUnless:['kind','fire'], tip:'What you would spend per year once financially independent. Leave empty to use your current expenses × 12.'},
@@ -2553,22 +2548,22 @@ const LISTS={
            {k:'dueYear', cls:'tdy', label:'Year', select:dueYears}]]},
   expenseItems:{box:'exp-rows', add:'addExp', noun:'expense', rowCls:'expedit', suggest:()=>EXPENSE_TYPES,
     onPick:(item,row)=>{ if(item.name===t('Car tax') && item.freq==='month'){ item.freq='year'; row.querySelector('.exfreq').value='year'; } },   // car tax is billed once a year
-    after:'expmo', ph:'e.g. Rent, groceries, subscriptions', blank:{name:'', amount:0, freq:'month'},
+    after:'expmo', ph:'e.g. Rent, groceries, subscriptions',
     rows:[[{k:'amount', cls:'examt', label:'Amount', pre:'€'}, {k:'freq', cls:'exfreq', label:'How often', select:()=>FREQS}]]},
-  accounts:{box:'acct-rows', add:'addAcct', noun:'account', ph:'Account name (e.g. Emergency fund)', blank:{name:'New account', amount:0, yield:0},
+  accounts:{box:'acct-rows', add:'addAcct', noun:'account', ph:'Account name (e.g. Emergency fund)', blank:{name:'New account'},
     rows:[[{k:'amount', cls:'acctamt', label:'Amount', pre:'€'},
            {k:'yield', cls:'acctyield', label:'APY (optional)', post:'%/yr', tip:'Annual percentage yield: the yearly interest rate the account pays, including compounding. Used to estimate your interest per year.'}]]},
-  etfs:{box:'etf-rows', add:'addEtf', noun:'fund', rowCls:'etfedit', dot:true, ph:'Fund name', blank:{name:'New fund', weight:0, value:0, monthly:0},
+  etfs:{box:'etf-rows', add:'addEtf', noun:'fund', rowCls:'etfedit', dot:true, ph:'Fund name', blank:{name:'New fund'},
     rows:[[{k:'value', cls:'etfv', label:'Current value', pre:'€'},
            {k:'weight', cls:'etfw', label:'Target share', post:'%', wrap:'etf-target'},
            {k:'monthly', cls:'etfm', label:'Monthly', post:'/mo', pre:'€', wrap:'etf-monthly', tip:"What you put into this fund each month. Leave empty if you don't buy it regularly."}],
           [{k:'fee', cls:'etffee', label:'Yearly fee (optional)', post:'%/yr', tip:"The fund's ongoing charge (TER), e.g. 0.19 for 0.19% a year. Used to take fees off the projection."}]]},
-  investments:{box:'inv-rows', add:'addInv', noun:'holding', ph:'Name (e.g. stocks, gold, crypto)', blank:{name:'New holding', monthly:0, value:0},
+  investments:{box:'inv-rows', add:'addInv', noun:'holding', ph:'Name (e.g. stocks, gold, crypto)', blank:{name:'New holding'},
     rows:[[{k:'monthly', cls:'invmonthly', label:'Monthly contribution', post:'/mo', pre:'€'}, {k:'value', cls:'invvalue', label:'Current value', pre:'€'}],
           [{k:'fee', cls:'invfee', label:'Yearly fee (optional)', post:'%/yr', tip:'Any yearly fund or platform fee on this holding. Leave empty for plain stocks.'}]]},
-  physAssets:{box:'phys-rows', add:'addPhys', noun:'asset', rowCls:'physedit', suggest:()=>ASSET_TYPES, ph:'e.g. Car, computer, coins', blank:{name:'', value:0},
+  physAssets:{box:'phys-rows', add:'addPhys', noun:'asset', rowCls:'physedit', suggest:()=>ASSET_TYPES, ph:'e.g. Car, computer, coins',
     rows:[[{k:'value', cls:'pval', label:'Value today', pre:'€'}]]},
-  debts:{box:'debt-rows', add:'addDebt', noun:'debt', rowCls:'debtedit', suggest:()=>DEBT_TYPES, ph:'e.g. Mortgage, car loan', blank:{name:'', balance:0, rtype:'fixed', rate:0, margin:0, payment:0, asset:0},
+  debts:{box:'debt-rows', add:'addDebt', noun:'debt', rowCls:'debtedit', suggest:()=>DEBT_TYPES, ph:'e.g. Mortgage, car loan',
     rows:[[{k:'rtype', cls:'drtype', label:'Rate', select:()=>[['fixed','Fixed'],['euribor','Euribor + margin']], tip:'Most Estonian home loans follow Euribor: the rate is Euribor plus your bank\'s margin and is usually reset every 6 months.'},
            {k:'rate', cls:'drate', label:'Interest', post:'%/yr', hideIf:['rtype','euribor']},
            {k:'margin', cls:'dmargin', label:'Margin', post:'%/yr', hideUnless:['rtype','euribor'], tip:'Your bank\'s fixed margin on top of Euribor, from your loan contract.'}],
@@ -2577,7 +2572,7 @@ const LISTS={
           [
 {k:'asset', cls:'dasset', label:'Worth (optional)', pre:'€', tip:'What the home, car or other thing the loan is for is worth today. It counts as an asset, so your net worth shows your equity.'}]]},
   incomes:{box:'income-rows', add:'addIncome', noun:'income', rowCls:'incedit', suggest:()=>INCOME_TYPES, after:'incnet',
-    onPick:item=>{ const d=INCOME_TAX[INCOME_TYPES.find(n=>t(n)===item.name)]; if(d && (item.tax||'salary')==='salary' && !(+item.rate>0)){ [item.tax, item.rate]=d; buildList('incomes'); } }, ph:'e.g. Freelance, rent, allowance', blank:{name:'', amount:0, freq:'month', tax:'salary', rate:0},
+    onPick:item=>{ const d=INCOME_TAX[INCOME_TYPES.find(n=>t(n)===item.name)]; if(d && (item.tax||'salary')==='salary' && !(+item.rate>0)){ [item.tax, item.rate]=d; buildList('incomes'); } }, ph:'e.g. Freelance, rent, allowance',
     rows:[[{k:'amount', cls:'inamt', label:'Amount', pre:'€'}, {k:'freq', cls:'infreq', label:'How often', select:()=>INCOME_FREQS}],
           [{k:'tax', cls:'intax', label:'Tax', select:()=>TAX_OPTS}, {k:'rate', cls:'inrate', label:'Tax rate', post:'%', wrap:'incrate', hideUnless:['tax','custom']}]]}
 };
@@ -2653,13 +2648,13 @@ function moveItem(key, i, dir){
 }
 for(const [key,L] of Object.entries(LISTS)){
   const b=document.getElementById(L.add);
-  if(b) b.addEventListener('click', ()=>{ if(state[key].length>=listMax(key)) return; const it=clone(L.blank); if(it.name) it.name=t(it.name); if(L.onType) L.onType(it, key); state[key].push(it); save(); buildList(key); renderCalc(); animateNewRow(L.box); });   // new rows get their type's defaults
+  if(b) b.addEventListener('click', ()=>{ if(state[key].length>=listMax(key)) return; const it={...clone(SHAPES[key]), ...L.blank}; if(it.name) it.name=t(it.name); if(L.onType) L.onType(it, key); state[key].push(it); save(); buildList(key); renderCalc(); animateNewRow(L.box); });   // the list's fields with their defaults plus what a new row starts with; new rows get their type's defaults
 }
 // "+ Add past month": the month before the earliest one you have (or last month), to fill in the chart backwards
 document.getElementById('addHist').addEventListener('click', ()=>{
   if(state.history.length>=listMax('history')) return;
   const earliest=state.history.length?state.history[0].m:thisMonth(), [y,m]=earliest.split('-').map(Number), d=new Date(y, m-2, 1);
-  state.history.push({m:ym(d), nw:0, assets:0, debt:0, auto:0});
+  state.history.push({...SHAPES.history, m:ym(d)});
   state.history.sort((a,b)=>a.m<b.m?-1:1); save(); buildHistRows(); renderCalc(); animateNewRow('hist-rows');
 });
 const INCOME_TYPES=['Second job','Freelance work','Side business','Rental income','Dividends','Travel allowance','Royalties','Child benefit'];
@@ -2695,8 +2690,7 @@ document.querySelectorAll('[data-toggle]').forEach(cb=>{
     if(item && item.classList.contains('always')) item.classList.toggle('on', cb.checked);   // always shown: nothing to open or close
     else if(item){
       if(cb.checked){ item.classList.add('on'); animHeight(body, true); }
-      else if(body && !REDUCE_MOTION){ animHeight(body, false, ()=> item.classList.remove('on')); }
-      else { item.classList.remove('on'); }
+      else animHeight(body, false, ()=> item.classList.remove('on'));
     }
     save(); renderCalc();
   });
@@ -2736,14 +2730,12 @@ function rebalanceSplit(values, weights, m){
   const T=values.reduce((a,v)=>a+v,0)+m;
   const need=values.map((v,i)=>Math.max(0, T*weights[i]/sw - v)), S=need.reduce((a,x)=>a+x,0);
   const raw= S>=m ? need.map(x=>m*x/S) : need.map((x,i)=>x+(m-S)*weights[i]/sw);
-  const out=raw.map(Math.floor); let left=Math.round(m)-out.reduce((a,b)=>a+b,0);
-  raw.map((r,i)=>[r-out[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{ if(left>0){ out[i]++; left--; } });
-  return out;
+  return roundToTotal(raw, Math.round(m));
 }
 // Target shares scaled to whole numbers adding up to 100 (a fund at 0% stays at 0%); all zero → an even split.
 function scaleTo100(ws){ return ws.some(w=>w>0) ? pct100(ws) : pct100(ws.map(()=>1)); }
 document.getElementById('balanceEtf').addEventListener('click', ()=>{
-  const w=scaleTo100(state.etfs.map(e=>Math.max(0,+e.weight||0)));
+  const w=scaleTo100(state.etfs.map(e=>e.weight));
   state.etfs.forEach((e,i)=>{ e.weight=w[i]; });
   save(); buildList('etfs'); renderCalc();
 });
@@ -3080,7 +3072,7 @@ document.querySelectorAll('#pathbtns button').forEach(b=>b.addEventListener('cli
   const mark=e=>{ const i=e.type==='pointerover' ? e.target.closest('[data-i]')?.dataset.i : null; document.querySelectorAll('#path-card [data-i]').forEach(x=>x.classList.toggle('on', x.dataset.i===i)); };
   el.addEventListener('pointerover', mark); el.addEventListener('pointerout', mark); });
 function renderHistory(){
-  const H=state.history.filter(e=>e.m), box=document.getElementById('hist-chart'); if(!box) return;
+  const H=state.history, box=document.getElementById('hist-chart'); if(!box) return;
   const last=H[H.length-1], prev=H[H.length-2], first=H[0], sg=v=>(v>=0?'+':'')+eurS(v);
   set('hist-tag', H.length>=2 ? sg(last.nw-prev.nw)+L(' vs ',' võrreldes kuuga ')+monthLabel(prev.m)+' · '+sg(last.nw-first.nw)+L(' since ',' alates ')+monthLabel(first.m) : '');
   set('hist-note', !H.length ? L('Your history starts once you have entered some numbers. One snapshot is kept per month.','Ajalugu algab, kui oled numbrid sisestanud. Igast kuust hoitakse üht hetkeseisu.')
@@ -3244,7 +3236,7 @@ function renderTargets(c){
   showHide('debtsw', c.debtList.some(d=>(+d.balance||0)>0));
   const R=projRate(c);
   const ip=inflPct(), sip=surplusPct(), has=k=>T.some(t=>t.kind===k);
-  set('tgt-assume', (ip ? L('Goals in today\'s money','Eesmärgid tänases rahas') : L('Goals in future euros','Eesmärgid tulevastes eurodes'))+(state.enableProjNet && T.some(t=>t.kind==='invested'||t.kind==='networth'||t.kind==='fire') ? L(' · after tax',' · pärast makse') : ''));
+  set('tgt-assume', (ip ? L('Goals in today\'s money','Eesmärgid tänases rahas') : L('Goals in future euros','Eesmärgid tulevastes eurodes'))+(state.enableProjNet && ['invested','networth','fire'].some(has) ? L(' · after tax',' · pärast makse') : ''));
   showHide('tgt-how', items.length>0);
   // a paid-off loan's payment is split like the surplus; with a shortfall, it covers that first
   const nwp=netWorthParts(c), short=c.surplus<0, frees= !nwp.cashFrees ? ''
@@ -3347,10 +3339,6 @@ function growParts(c, gross, months){
   const freed=(p, q)=>({y:p.y, val:p.val+q.inv, put:p.put+q.invPut, putR:p.putR+q.invPutR}), end=F(months);
   return {pen, inv:{pts:inv.pts.map(p=>freed(p, F(p.y*12))), ...freed({y:months/12, val:inv.final, put:inv.put, putR:inv.putR}, end), final:inv.final+end.inv}, invStart:o.invStart};
 }
-// Pensions and investments month by month (0..months): pen[i], and inv(extra)[i] with `extra` more invested a month; grown like
-// the Projection, inv including the invested share of paid-off loans' payments. tax (After tax): what you'd keep if you cashed out
-// then, as afterTaxPts() works it out: pensions minus the payout tax, investments minus income tax on the gains above what
-// you put in; growth is never taxed along the way. real: your own numbers even with "Try other numbers" on.
 // After tax, in words (Projection, Your path, Targets); custom: the Projection with "Try other numbers" on.
 function taxNote(custom=false){
   const pen=payoutTaxPct(payoutAge()), kept=L(' Growth isn\'t taxed along the way, only what you take out.',' Kasvu vahepeal ei maksustata, ainult seda, mis välja võtad.');
@@ -3360,6 +3348,10 @@ function taxNote(custom=false){
     : L('Tax: '+num(state.taxRate)+'% income tax on investment gains above your deposits is taken off; pension payouts are tax-free, as Retirement pays them out.',
         'Maks: '+num(state.taxRate)+'% tulumaks investeeringute kasvult üle sissemaksete on maha arvatud; pensioni väljamaksed on maksuvabad, nagu Pensioni kaardil.'))+kept;
 }
+// Pensions and investments month by month (0..months): pen[i], and inv(extra)[i] with `extra` more invested a month; grown like
+// the Projection, inv including the invested share of paid-off loans' payments. tax (After tax): what you'd keep if you cashed out
+// then, as afterTaxPts() works it out: pensions minus the payout tax, investments minus income tax on the gains above what
+// you put in; growth is never taxed along the way. real: your own numbers even with "Try other numbers" on.
 function moneyByMonth(c, months, {real=false, tax=false}={}){ return cached(c, 'money'+months+real+tax, ()=>{
   const g=state.projGrowth, parts=netWorthParts(c), inc= tax ? (state.taxRate||0)/100 : 0, pt= tax ? payoutTaxPct(payoutAge())/100 : 0;
   const track=(s0, m0, R, gr=g)=>{ const v=[s0], p=[s0]; grow(s0, m0, R, gr, months, (x,put)=>{ v.push(x); p.push(put); }); return {v,p}; };
@@ -3392,7 +3384,8 @@ const AVG_STATE_PENSION=860;   // average old-age pension from April 2026 (Socia
 const I_PILLAR={base:399.24, year:10.477, avgPay:5092.70/0.2, minPay:886*12, from:20};
 const iPillarUnit=aSal=> (state.enableP2 ? 0.8 : 1)*(Math.min(1, aSal/I_PILLAR.minPay)+aSal/I_PILLAR.avgPay)/2;   // one year's unit at this pay
 const iPillarYears=()=> Math.max(0, retireAge()-I_PILLAR.from);
-const statePensionToday=aSal=> state.statePension>0 ? state.statePension : aSal>0 && !pensionerNow() ? I_PILLAR.base+I_PILLAR.year*iPillarUnit(aSal)*iPillarYears() : AVG_STATE_PENSION;   // already of pension age: the average, as today's pay doesn't show what you earned
+const statePensionFrom=aSal=> state.statePension>0 ? 'own' : aSal>0 && !pensionerNow() ? 'pay' : 'avg';   // where the figure comes from (Retirement and the field's hint say so); already of pension age: the average, as today's pay doesn't show what you earned
+const statePensionToday=aSal=>{ const from=statePensionFrom(aSal); return from==='own' ? state.statePension : from==='pay' ? I_PILLAR.base+I_PILLAR.year*iPillarUnit(aSal)*iPillarYears() : AVG_STATE_PENSION; };
 // Remaining life expectancy at a given age: 19.3 years at 65 (Statistics Estonia, 2025), about 0.8 less per year older.
 const lifeLeft=age=> Math.max(1, (193-8*(age-65))/10);
 // Tax on pension fund payouts that start at `age`: income tax when that's more than 5 years before pension age; otherwise
@@ -3428,7 +3421,7 @@ function retirement(c){
   // the state pension starts at pension age: retiring a year or more earlier means living without it until then (not in the
   // total); a gap of months is counted, and the card says how long it is (stateGap, in months)
   const spa=statePensionAge(), stateLater=payAge<=spa-1, stateGap=Math.max(0, Math.round((spa-payAge)*12));
-  const stateToday=statePensionToday(c.aSal), stateFrom=state.statePension>0 ? 'own' : c.aSal>0 && !pensionerNow() ? 'pay' : 'avg', stateUnit=iPillarUnit(c.aSal), stateGross=stateToday, exemption=PENSIONER_EXEMPTION, stateTax=tax*Math.max(0, stateGross-exemption);
+  const stateToday=statePensionToday(c.aSal), stateFrom=statePensionFrom(c.aSal), stateUnit=iPillarUnit(c.aSal), stateGross=stateToday, exemption=PENSIONER_EXEMPTION, stateTax=tax*Math.max(0, stateGross-exemption);
   // a withdrawal is part your own deposits (tax-free) and part growth (taxed); the shares are the same in any money
   const invVal=m?inv.final:invStart, gainShare=invVal>0 ? Math.max(0, invVal-invDeposits(invStart, m?inv.put:invStart))/invVal : 0;
   const invGross=invAt*0.04/12, invTax=invGross*gainShare*tax;
@@ -3440,7 +3433,7 @@ function retirement(c){
 }
 // One inflation switch for every forecast (projection, targets, retirement): off counts as 0%.
 const inflPct=()=> onVal('projInflation'), surplusPct=()=> Math.round(onVal('projSurplusPct')*10)/10;   // the share as shown (num() keeps one decimal), so 99.96% is 100% everywhere
-const projYears=()=> Math.max(1, Math.round(state.projYears||20));   // the projection's timeframe, at least a year
+const projYears=()=> Math.max(1, Math.round(state.projYears||20));   // the projection's timeframe in years; empty or 0 means 20
 const inflAfter=months=> Math.pow(1+inflPct()/100, months/12);   // how much prices have risen after `months`
 const deflate=(val,y)=> val/inflAfter(y*12);
 let projHover=null;
@@ -3520,7 +3513,7 @@ function renderProjection(c){
   // data for reading values under the pointer
   projHover={yrs, ys, total:pts.map(p=>p.val), put:putPts.map(p=>p.val), lo:lo?lo.map(p=>p.val):null, hi:hi?hi.map(p=>p.val):null};
   if(projState && projState.raf){ cancelAnimationFrame(projState.raf); projState.raf=null; }
-  if(REDUCE_MOTION || instantUpdate || typeof requestAnimationFrame!=='function' || !projState){ el.innerHTML=projSVG(target, yrs); projState={cur:target}; return; }
+  if(REDUCE_MOTION || instantUpdate || !projState){ el.innerHTML=projSVG(target, yrs); projState={cur:target}; return; }
   const from=projState.cur, dur=480, t0=performance.now(), ease=x=> 1-Math.pow(1-x,3);
   projState.raf=requestAnimationFrame(function step(now){
     const k=Math.min(1,(now-t0)/dur), e=ease(k);

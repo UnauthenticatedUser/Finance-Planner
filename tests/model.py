@@ -87,17 +87,6 @@ def by_month(start, monthly, rate, months, g=0, stop=math.inf):
     return vs, ps
 
 
-def months_to(start, monthly, rate, g, reached, cap=720, stop=math.inf):
-    """First month in which reached(month, value) holds, or infinity within `cap` months; no deposits after `stop`."""
-    rm = max(0, 1 + rate / 100) ** (1 / 12) - 1; v = start; m = monthly
-    if reached(0, v): return 0
-    for i in range(1, cap + 1):
-        v = v * (1 + rm) + (m if i <= stop else 0)
-        if reached(i, v): return i
-        if i % 12 == 0: m *= 1 + g / 100
-    return math.inf
-
-
 def life_left(age):
     """Remaining life expectancy: 19.3 years at 65 (Statistics Estonia, 2025), 0.8 less per year older, at least 1."""
     return max(1, 19.3 - 0.8 * (age - 65))
