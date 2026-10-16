@@ -7,12 +7,15 @@ this after editing a script, from the repository folder:
     python tools/update_csp.py
 
 It rewrites the script-src part of the rule. With --check it changes nothing and fails if the rule is out of date
-(the tests do the same check)."""
+(the tests do the same check). The page has exactly two inline scripts (the frame guard and the tool itself); a third
+one is refused rather than approved, since it could be something that got in by mistake. Adding one on purpose means
+changing SCRIPTS below."""
 import base64, hashlib, re, sys
 from html.parser import HTMLParser
 from pathlib import Path
 
 PAGE = Path(__file__).resolve().parent.parent / 'index.html'
+SCRIPTS = 2   # inline scripts the page is meant to have
 
 
 class _Scripts(HTMLParser):
@@ -41,8 +44,9 @@ def script_src(html):
 
 
 if __name__ == '__main__':
-    html = PAGE.read_text(encoding='utf-8')
-    want = ' '.join(fingerprints(html)); m = script_src(html)
+    html = PAGE.read_text(encoding='utf-8'); fps = fingerprints(html)
+    if len(fps) != SCRIPTS: sys.exit(f'index.html has {len(fps)} inline scripts, not {SCRIPTS}, so nothing was approved. Check the page by hand.')
+    want = ' '.join(fps); m = script_src(html)
     if m.group(2) == want: print('Script fingerprints are up to date.'); sys.exit(0)
     if '--check' in sys.argv: sys.exit('Script fingerprints are out of date: run python tools/update_csp.py')
     PAGE.write_text(html[:m.start(2)] + want + html[m.end(2):], encoding='utf-8')

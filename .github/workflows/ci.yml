@@ -1,6 +1,7 @@
 # CI/CD for Estonian Finance Planner.
 #   test:   runs every test in tests/ on each push to main and each pull request, in Chromium, Firefox and WebKit
-#           (Safari's engine). All three must pass. Release tags don't run it again: a tag points at a commit on main
+#           (Safari's engine). All three must pass. In Chromium the tests that depend on the date also run as if it
+#           were 31 December, 1 January, a day in March and one in August, so a year change can't turn them red. Release tags don't run it again: a tag points at a commit on main
 #           that was already tested.
 #   deploy: publishes index.html to GitHub Pages, only from main and only when the tests passed.
 # Actions are pinned to exact commits (the version is in the comment); Dependabot proposes updates as pull requests.
@@ -39,6 +40,14 @@ jobs:
           python -m playwright install --with-deps ${{ matrix.browser }}
       - name: Run the tests
         run: python tests/run_all.py
+      - name: Run the date-dependent tests on hard days
+        if: matrix.browser == 'chromium'
+        run: |
+          y=$(date +%Y); rc=0
+          for d in "$y-12-31" "$((y+1))-01-01" "$((y+1))-03-15" "$((y+1))-08-15"; do   # every day runs, even after one fails
+            python tests/run_all.py --date "$d" --skip reference editor accessibility broken_files security privacy || rc=1
+          done
+          exit $rc
 
   deploy:
     needs: test

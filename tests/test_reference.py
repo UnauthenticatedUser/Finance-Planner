@@ -2,12 +2,12 @@
 
 The other tests compare the tool with a Python model written from the same reading of the rules, so a misread rule
 would pass them. Here every expected number comes from an official page, quoted next to it, never from our own
-formulas. Each example starts from the tool's defaults (a blank tool), so it also checks that those are the current
+formulas; a few are plain arithmetic on the quoted figures (44 × 22%, 399.24 + 45 × 10.477), shown with the quote. Each example starts from the tool's defaults (a blank tool), so it also checks that those are the current
 rules: 22% income tax, the EUR 700 basic exemption, 1.6% unemployment insurance and a 2% 2nd pillar.
 Update these in January, together with the yearly rule check.
 Run: python tests/test_reference.py"""
 from playwright.sync_api import sync_playwright
-from helpers import PAGE, finish, launch
+from helpers import PAGE, finish, launch, shown
 
 TSD = 'https://www.emta.ee/node/330/main_chapter/13293/pdf'   # Tax and Customs Board, "Deklaratsiooni TSD esitamine", updated 19.01.2026
 P3 = 'https://www.pensionikeskus.ee/en/iii-pillar/contributions/questions-and-answers-about-the-iii-pillar-tax-refund/'
@@ -98,9 +98,10 @@ def main():
     with sync_playwright() as p:
         b = launch(p); pg = b.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
         pg.goto(PAGE); pg.wait_for_timeout(300)
+        if not shown(pg): fails.append('the page is hidden')
         for what, changes, key, expected, source, words in CASES:
             got = pg.evaluate(READ, changes).get(key)
-            ok = got is not None and abs(got - expected) < 0.005 + 1e-9
+            ok = got is not None and abs(got - expected) < (1e-5 if key == 'unit' else 0.005 + 1e-9)   # euros to the half cent; a year's unit to 0.001% (the quoted average pay is rounded to the cent)
             print(f"  {'ok  ' if ok else 'FAIL'} {what}: {got if got is None else round(got, 4)} (expected {expected})")
             if not ok: fails.append(f'{what}\n      source: {source}\n      {words}')
         b.close()

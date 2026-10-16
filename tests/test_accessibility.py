@@ -2,18 +2,19 @@
 every section of the editor open.
 
 - the page language is set, and there is a "Skip to content" link that leads to the dashboard
-- every button, input, dropdown and link has a name a screen reader can announce
+- every button, input, dropdown and link has a name a screen reader can announce (a placeholder that's only a number isn't one)
 - no two elements share an id, and every aria reference points to an element that exists
 - text has enough contrast against its background (4.5:1, or 3:1 for large text)
-- keyboard focus is visible on every button and field
+- keyboard focus is visible on every button, field, link, section header, editable text, help you can Tab to and switch:
+  it looks different focused than not; a name has letters or digits ("×" alone isn't one)
 Run: python tests/test_accessibility.py"""
 from playwright.sync_api import sync_playwright
 from helpers import PAGE, finish, launch
 
 CHECK = r"""()=>{
   const out=[], vis=e=>!!(e.offsetWidth||e.offsetHeight||e.getClientRects().length) && getComputedStyle(e).visibility!=='hidden';
-  const name=e=>(e.getAttribute('aria-label')||'').trim() || (e.getAttribute('aria-labelledby')||'').split(/\s+/).map(i=>document.getElementById(i)?.textContent||'').join(' ').trim()
-    || (e.labels && [...e.labels].map(l=>l.textContent).join(' ').trim()) || (e.textContent||'').trim() || (e.getAttribute('title')||'').trim() || (e.getAttribute('placeholder')||'').trim();
+  const name=e=>[(e.getAttribute('aria-label')||'').trim() || (e.getAttribute('aria-labelledby')||'').split(/\s+/).map(i=>document.getElementById(i)?.textContent||'').join(' ').trim()
+    || (e.labels && [...e.labels].map(l=>l.textContent).join(' ').trim()) || (e.textContent||'').trim() || (e.getAttribute('title')||'').trim() ].find(n=>/[\p{L}\p{N}]/u.test(n)) || [(e.getAttribute('placeholder')||'').trim()].find(n=>/\p{L}/u.test(n)) || '';   // a name has letters or digits ("×" or "↑" alone isn't one); a placeholder needs letters (a number there is an automatic value)
   if(!document.documentElement.lang) out.push('page language missing');
   const skip=document.querySelector('a.skiplink'); if(!skip || !document.querySelector(skip.getAttribute('href'))) out.push('skip link missing or broken');
   document.querySelectorAll('button, input:not([type=hidden]), select, textarea, a[href], [role=button], [role=switch], [contenteditable=true]').forEach(e=>{
@@ -41,13 +42,18 @@ CHECK = r"""()=>{
     if(ratio<need){ const k=e.textContent.trim().slice(0,30)+' '+ratio.toFixed(2); if(!seen.has(k)){ seen.add(k); out.push('low contrast '+ratio.toFixed(2)+': "'+e.textContent.trim().slice(0,40)+'"'); } } });
   return out; }"""
 
-FOCUS = r"""()=>{ const out=[];
-  document.querySelectorAll('button, input[type=text], a[href]').forEach(e=>{
-    if(!(e.offsetWidth||e.offsetHeight) || e.disabled) return;
-    e.focus({focusVisible:true}); const cs=getComputedStyle(e);
-    const shown=(cs.outlineStyle!=='none' && parseFloat(cs.outlineWidth)>0) || cs.boxShadow!=='none' || cs.borderColor!==getComputedStyle(document.body).borderColor;
-    if(!shown && document.activeElement===e) out.push('no visible focus: '+e.outerHTML.slice(0,80)); e.blur(); });
-  return out.slice(0,10); }"""
+FOCUS = r"""()=>{ const out=[], still=document.createElement('style');   // no transitions, so a style is read as it ends up
+  still.textContent='*,*::before,*::after{transition:none!important; animation:none!important}'; document.head.append(still);
+  // the browser's own ring (outline "auto": thin and dark, lost on this dark page) doesn't count, only the tool's own focus style
+  const look=e=>{ const cs=getComputedStyle(e); return [/^(none|auto)$/.test(cs.outlineStyle) || !parseFloat(cs.outlineWidth) ? 'none' : cs.outlineStyle+' '+cs.outlineWidth+' '+cs.outlineColor, cs.boxShadow, cs.borderColor, cs.backgroundColor, cs.color, cs.opacity, cs.top].join('|'); };   // top: the skip link comes onto the screen
+  // buttons, fields, links, section headers, editable text, help you can Tab to, and switches (their track shows it)
+  document.querySelectorAll('button, input[type=text], a[href], summary, [contenteditable=true], [tabindex="0"], .switch input').forEach(e=>{
+    const shows=e.matches('.switch input') ? e.nextElementSibling : e;
+    if(!(shows.offsetWidth||shows.offsetHeight) || e.disabled) return;
+    e.blur(); const before=look(shows); e.focus({focusVisible:true});
+    if(document.activeElement===e && e.matches(':focus-visible') && look(shows)===before) out.push('no visible focus: '+e.outerHTML.slice(0,80));   // a browser that doesn't show keyboard focus here isn't judged
+    e.blur(); });
+  still.remove(); return out.slice(0,10); }"""
 
 problems = []
 with sync_playwright() as p:

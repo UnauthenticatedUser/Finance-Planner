@@ -2,36 +2,41 @@
 
 Each month: pensions and investments grow like the Projection, cash earns its interest and adds the part of the yearly
 surplus that isn't invested, loans shrink by their payments (one without a payment stays as it is) and a paid-off loan's
-payment is split like the surplus between cash and investments; saving stops when you retire; property keeps its euro value,
-and everything is in today's money when inflation is on. Milestone dots sit at the dates the Targets card gives (or,
-with "Try other numbers" on, where the path itself reaches the goal). Also: the zoom buttons, Retire only with a year of
-birth, a loan that never gets paid off, Estonian, hover values, the wide layout and phone widths.
+payment is split like the surplus between cash and investments; saving stops when you retire; property bought with a loan keeps up with prices, other property its euro value; pensions and investments grow at their own fees;
+and everything is in today's money when inflation is on, also beyond 30 years on the Retire zoom, for pensioners too.
+Milestone dots sit exactly at the dates the Targets card gives (or, with "Try other numbers" on, where the path itself
+reaches the goal). Also: the zoom buttons, Retire only with a year of birth and rounded up to whole years (also on a day
+where that differs from rounding off), a loan that never gets paid off, Estonian, hover values, the wide layout and phone
+widths.
 Run: python tests/test_path.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, datetime
 from helpers import PAGE, fixture, finish, launch
-from model import surplus_invested, savings, save_months, payout_tax, pension_age
+from model import surplus_invested, savings, save_months, payout_tax, pension_age, payout_age
 
 
 def pick(*a): return random.choice(a)
 
 
-def model_path(c, st, net, months):
+def model_path(c, st, net_p, net_i, months):
     """Net worth and its parts for months 0..months, in today's money when inflation is on; saving stops when you retire.
-    After tax on: pensions minus the payout tax, investments minus income tax on gains above what was put in."""
-    rm = max(0, 1 + net / 100) ** (1 / 12) - 1; g = st['projGrowth'] / 100; stop = save_months(st, datetime.date.today().year)
+    Pensions and investments grow at their own fees (net_p, net_i); what was bought with a loan keeps up with prices, other
+    property keeps its euro value. After tax on: pensions minus the payout tax, investments minus income tax on gains above
+    what was put in."""
+    rp, rm = (max(0, 1 + n / 100) ** (1 / 12) - 1 for n in (net_p, net_i)); g = st['projGrowth'] / 100; stop = save_months(st, datetime.date.today().year)
     infl = (st['projInflation'] if st['enableProjReal'] else 0) / 100
     pen, inv = c['pension'], c['etfVal'] + c['invValue']; mp, mi = c['penMonthly'], c['investedNoPen'] + surplus_invested(st, c['surplus'])
-    cash, owed, inv_f, inv_put = savings(c['debts'], months, st, c['surplus'], net, c['buffer'], stop); out = []
+    cash, owed, inv_f, inv_put = savings(c['debts'], months, st, c['surplus'], net_i, c['buffer'], stop); out = []
     i0 = inv; put = inv; tax = st['enableProjNet']; inc = st['taxRate'] / 100 if tax else 0
-    now = datetime.date.today().year; pt = payout_tax(max(st['retireAge'] or 65, now - st['birthYear'] if st['birthYear'] else 0), st['payoutYears'], st['taxRate'], pension_age(st)) / 100 if tax else 0
+    pt = payout_tax(payout_age(st), st['payoutYears'], st['taxRate'], pension_age(st)) / 100 if tax else 0
     for i in range(months + 1):
         if i:
-            pen = pen * (1 + rm) + (mp if i <= stop else 0); inv = inv * (1 + rm) + (mi if i <= stop else 0); put += mi if i <= stop else 0
+            pen = pen * (1 + rp) + (mp if i <= stop else 0); inv = inv * (1 + rm) + (mi if i <= stop else 0); put += mi if i <= stop else 0
             if i % 12 == 0: mp *= 1 + g; mi *= 1 + g
         defl = (1 + infl) ** (i / 12); val = inv + inv_f[i]; dep = (st['invDeposits'] if st['invDeposits'] > 0 else i0) + (put - i0) + inv_put[i]
         inv_all = val - inc * max(0, val - dep); pen_k = pen * (1 - pt)
-        out.append(dict(pen=pen_k / defl, inv=inv_all / defl, cash=cash[i] / defl, debt=owed[i] / defl, nw=(c['phys'] + pen_k + inv_all + cash[i] - owed[i]) / defl))
+        phys = c['physVal'] + c['debtAssets'] * defl
+        out.append(dict(pen=pen_k / defl, inv=inv_all / defl, cash=cash[i] / defl, debt=owed[i] / defl, nw=(phys + pen_k + inv_all + cash[i] - owed[i]) / defl))
     return out
 
 
@@ -52,25 +57,27 @@ def main():
             s.update(projReturn=pick(7, 0, -5, 15, random.uniform(-20, 30)), projInflation=pick(2.5, 0, 6), projGrowth=pick(0, 3, -5),
                      enableProjSurplus=pick(True, False), projSurplusPct=pick(100, 60, 0, random.uniform(0, 100)), enableProjFee=pick(True, False), projFee=pick(0, 0.5),
                      enableProjReal=pick(True, False), expenses=pick(1600, 500, 4000, 9000), euribor=pick(2.6, 0), enableDebtTargets=pick(True, False),
-                     enableProjCustom=pick(False, False, True), projStart=pick(0, 50000), projMonthly=pick(0, 800), birthYear=pick(None, 1975, 1990, 2005), gross=pick(3800, 8000, 15000),
+                     enableProjCustom=pick(False, False, True), projStart=pick(0, 50000), projMonthly=pick(0, 800), birthYear=pick(None, 1958, 1975, 1990, 2005), gross=pick(3800, 8000, 15000),   # 1958: already a pensioner
                      enableProjNet=pick(True, False), invDeposits=pick(0, 0, 30000), payoutYears=pick(20, 10))   # higher pay: a surplus left, so paid-off loans get invested too
             for a in s['accounts']: a['yield'] = pick(a['yield'], 0, 4.5, -0.5)   # cash earns its interest after tax
             s['debts'] = [{'name': 'd' + str(j), 'balance': pick(5000, 150000, 300000), 'rtype': pick('fixed', 'euribor'), 'rate': pick(0, 3, 8, 25), 'margin': pick(0.5, 2),
                            'payment': pick(0, 100, 950, 3000), 'asset': pick(0, 200000)} for j in range(random.randint(0, 3))]
             s['targets'] = [{'name': 'nw', 'kind': 'networth', 'amount': pick(1e5, 5e5, 2e6)}, {'name': 'inv', 'kind': 'invested', 'amount': pick(1e5, 1e6)},
                             {'name': 'cash', 'kind': 'cash', 'amount': pick(5000, 30000, 200000)}, {'name': 'fire', 'kind': 'fire', 'amount': 0, 'rate': 4, 'spend': 0, 'health': 'no'}]
-            r = pg.evaluate("""s=>{ state=normalize(s); pathSpan='30'; refreshAll(); const c=compute(), R=projRate(c), H=pathHover;
-                return {net:R.net, st:{...state}, c:{pension:c.pension, penMonthly:c.penMonthly, etfVal:c.etfVal, invValue:c.invValue, investedNoPen:c.investedNoPen, surplus:c.surplus,
-                          buffer:c.buffer, networth:c.networth, phys:c.physVal+c.debtAssets, debts:c.debtList.filter(d=>(+d.balance||0)>0).map(d=>({B:+d.balance, r:(+d.rate||0)/1200, P:Math.max(0,+d.payment||0)}))},
+            sm = save_months(s, datetime.date.today().year); far = 360 < sm < math.inf   # retiring more than 30 years ahead: the Retire zoom shows beyond 30 years
+            r = pg.evaluate("""a=>{ const s=a[0]; state=normalize(s); pathSpan=a[1]; refreshAll(); const c=compute(), R=projRate(c), H=pathHover;
+                return {net:R.net, netPen:projRate(c,null,'pen').net, netInv:projRate(c,null,'inv').net, st:{...state}, c:{pension:c.pension, penMonthly:c.penMonthly, etfVal:c.etfVal, invValue:c.invValue, investedNoPen:c.investedNoPen, surplus:c.surplus,
+                          buffer:c.buffer, networth:c.networth, physVal:c.physVal, debtAssets:c.debtAssets, debts:c.debtList.filter(d=>(+d.balance||0)>0).map(d=>({B:+d.balance, r:(+d.rate||0)/1200, P:Math.max(0,+d.payment||0)}))},
                         pts:H.pts.map(p=>({pen:p.pen, inv:p.inv, cash:p.cash+p.short, debt:p.debt, nw:p.nw})), ms:H.ms.map(m=>({name:m.name, m:m.m})),
                         eta:state.targets.map(t=>targetStatus(t,c).eta), dots:document.querySelectorAll('#path-svg .pdot-ms').length, rows:document.querySelectorAll('#path-list .row').length,
-                        later:document.querySelectorAll('#path-list .row.later').length, note:document.getElementById('path-note').textContent}; }""", s)
+                        later:document.querySelectorAll('#path-list .row.later').length, note:document.getElementById('path-note').textContent}; }""", [s, 'ret' if far else '30'])
             st, c = r['st'], r['c']
-            full = model_path(c, st, r['net'], 720); want = full[:361]
-            if len(r['pts']) != 361: fails += 1; print(k, 'path has', len(r['pts']), 'months, want 361')
+            full = model_path(c, st, r['netPen'], r['netInv'], 720); n = math.ceil(sm / 12) * 12 if far else 360; want = full[:n + 1]
+            if len(r['pts']) != n + 1: fails += 1; print(k, 'path has', len(r['pts']), 'months, want', n + 1)
             if not st['enableProjNet'] and not close(r['pts'][0]['nw'], c['networth']):   # after tax, today's gains count as cashed out
                 fails += 1; print(k, 'path starts at', r['pts'][0]['nw'], 'but net worth is', c['networth'])
-            for i in (0, 1, 11, 12, 13, 59, 120, 240, 360):
+            for i in (0, 1, 11, 12, 13, 59, 120, 240, 360, 361, 480, n):
+                if i > n or i >= len(r['pts']): continue
                 got, w = r['pts'][i], want[i]
                 bad = [x for x in w if not close(got[x], w[x])]
                 if bad: fails += 1; print(k, 'month', i, ', '.join(f'{x} {got[x]:.2f} want {w[x]:.2f}' for x in bad)); break
@@ -84,12 +91,12 @@ def main():
                 name = t['name']
                 if 0 < eta < math.inf:
                     if name not in ms: fails += 1; print(k, 'no milestone for', name, 'due in', eta); continue
-                    if abs(ms[name] - eta) > (1 if st['enableProjCustom'] else 0): fails += 1; print(k, name, 'at month', ms[name], 'want', eta)
+                    if ms[name] != eta: fails += 1; print(k, name, 'at month', ms[name], 'want', eta)
                 elif name in ms: fails += 1; print(k, 'milestone for', name, 'which is', 'reached' if eta == 0 else 'never reached')
             # a cash goal is reached when the path's cash gets there (spare cash plus the payments of loans paid off)
             ca = s['targets'][2]['amount']; want_c = next((i for i, q in enumerate(full) if q['cash'] >= ca - 1e-6), math.inf)
             got_c = math.inf if r['eta'][2] is None or r['eta'][2] > 1e300 else r['eta'][2]
-            if not (got_c == want_c or (want_c < math.inf and abs(got_c - want_c) <= 1)): fails += 1; print(k, 'cash goal at month', got_c, 'want', want_c)
+            if got_c != want_c: fails += 1; print(k, 'cash goal at month', got_c, 'want', want_c)
             loans = [m for m in r['ms'] if m['name'].endswith('paid off')]
             if not st['enableDebtTargets'] and loans: fails += 1; print(k, 'loan payoffs shown with the switch off')
             if r['dots'] != r['rows'] - r['later']: fails += 1; print(k, r['dots'], 'dots but', r['rows'] - r['later'], 'rows inside the chart')
@@ -116,8 +123,12 @@ def main():
         for span in ('5', '10', '20', '30'):
             m = int(span) * 12
             if y[span] != [m, m, True]: fails += 1; print('zoom', span, y[span])
-        ry = (y['year'] - now) * 12
+        ry = math.ceil(save_months(s, now) / 12) * 12   # the Retire zoom: the months to retirement, rounded up to whole years
         if y['ret'][:3] != [ry, ry, True] or y['label'] != 'Retire': fails += 1; print('zoom to retirement', y['ret'], y['year'], y['label'])
+        # and on 15 March, when the months to retirement aren't whole years plus 6 or more (rounding up and rounding off differ)
+        q = getattr(b, '_b', b).new_page(); q.clock.set_fixed_time('2027-03-15T12:00:00'); q.goto(PAGE); q.wait_for_timeout(300)
+        got = q.evaluate("s=>{ state=normalize(s); pathSpan='ret'; refreshAll(); return Math.round((pathHover.t1-pathHover.t0)*12); }", s); q.close()
+        if got != math.ceil(save_months(s, 2027, 2) / 12) * 12: fails += 1; print('zoom to retirement on 15 March', got, 'want', math.ceil(save_months(s, 2027, 2) / 12) * 12)
         # zoomed in so retirement is past the end: the note doesn't promise its dot, and says why its row is dimmed
         pg.click('#pathbtns [data-span="5"]'); pg.wait_for_timeout(100)
         note = pg.evaluate("document.getElementById('path-note').textContent")

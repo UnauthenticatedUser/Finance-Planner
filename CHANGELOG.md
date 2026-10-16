@@ -2,6 +2,54 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.3.0] – 2026-10-17
+
+New: the business account as a tax type, property bought with a loan keeping up with prices, pension funds growing until their payouts start, and pasting numbers with thousands separators. Also a clearer state pension field and fixes from independent reviews.
+
+- **Pensions and investments grow at their own fees.** One average fee was used for both, so an expensive pension fund slowed your ETFs (and a FIRE date that only depends on them), and cheap ETFs sped up your pensions.
+- **Paid-off loans count the same everywhere.** Your path and Targets invested a paid-off loan's payment (as your yearly surplus is split), but the Projection and Retirement didn't; now they do. With "Try other numbers" on, your real loans were added on top of the numbers you tried; not any more.
+- **After you retire, loan payments come out of your cash.** Loans were paid down with no money leaving, adding net worth from nowhere. A cash target past retirement now says nothing new goes in.
+- **No 3rd pillar refund on business account income.** Business account (ettevõtluskonto) is now its own tax type: 20% plus your 2nd pillar rate, and like the Tax and Customs Board says, it allows no deductions, so it no longer gives a 3rd pillar refund. Its 2nd pillar part (2, 4 or 6%) goes into your 2nd pillar fund, as the law says, so it counts as pension savings, not tax. Freelance work and side business start with it.
+- **Pension payouts start 5 years before pension age at the earliest.** Retiring at 60 with a pension age of 65 years and 4 months taxed all payouts at 22%; they now start 4 months later, at 10% or tax-free.
+- **"+€X/mo would make it" is a flat amount.** With deposit growth on, it was quietly assumed to rise every year, so the amount shown wasn't enough.
+- **Property bought with a loan keeps up with prices.** Everything kept its euro value, so in today's money a home lost about half its value over 30 years. Other things you own still keep their euro value.
+- **Working pensioners:** the pensioner tax rules start at the general pension age, not at an earlier pension age of your own (for example for raising children); and without your own state pension, the average is used, not an estimate from your pay today.
+- Interest is taxed account by account, so a negative rate on one account no longer lowers the tax on another.
+- −€2.50 rounds to −€3, like €2.50 to €3 (it showed −€2).
+- A switch saved as the text "false" in a backup is off (it was on).
+- Inflation off now says prices are taken to stay the same; the 2029 pension age is called planned; the I pillar's "average pay" is called the 2026 figure its formula uses; the 2nd pillar help says contributions end when its payouts start; the Your path note no longer says property shrinks "a little".
+- Lists have limits (50 targets and loans, 50 funds per pillar, 100 of most others), so a crafted backup with huge lists can't freeze the page; "+ Add" stops there.
+- The loan advice counts the tax on investment gains as an investment account does: only at the end.
+- The example's "behind" target has a June deadline, so it stays behind with these changes.
+- **Inflation off no longer grows the state pension.** Typing 0% inflation (or turning After inflation off) still grew the state pension with the earlier 2.5% on the Retirement card, overstating it by about €900 a month for someone retiring in 30 years. Off now counts as 0% everywhere, as on the other cards.
+- **FIRE health insurance only until pension age.** It was added to every FIRE goal forever, about €81,600 at 4%, even for people already past pension age. It's now counted only while you'd still be below pension age, so reaching FIRE after it needs less, and the card says so. A FIRE target counts as reached only once you could stop working: holding the smaller goal of later isn't enough today.
+- **Your own net pay carries through.** With "Enter my own" net pay, Yearly income still showed the estimate from gross; it now uses your net pay, and the breakdown shows the difference. With no gross pay entered, the gross is worked out from your net pay, so the bonus is taxed correctly and the 2nd pillar, the 3rd pillar refund and the state pension estimate follow your pay.
+- **No jump on 1 January.** Time until retirement was counted in whole calendar years, so the Retirement figure and target dates jumped overnight on 1 January. It's now counted in months, to the middle of the year you retire. Your age is taken the same way (birthday mid-year), so someone already retired no longer has their pension tax jump on 1 January either.
+- **Undo after Reset and Import brings back your data,** not the blank tool, also after a display choice like "30y" in between.
+- **A history month in the future is dropped from an imported backup.** It broke "vs last month". Your own data keeps every month, so opening the tool once with a wrong computer clock costs no history.
+- Retirement's How it's worked out says pension funds are paid out without further growth (a cautious choice), and the Pensions card says "for retirement" instead of "locked until retirement", as the 2nd and 3rd pillar can be taken out early (taxed).
+- Advice on paying a loan early compares its rate with investing's return after fees and the tax on gains.
+- Retirement age and payout years take whole numbers only (a half year showed as "2055.5").
+- The state pension age's two boxes have names for screen readers; travel allowance is tax-free within its daily limits; the pension age can be a month or two later for people born late in the year (both in the help).
+- The example's names switch language with the rest of the tool.
+- **A backup that breaks while loading is no longer called "not a backup".** The message said nothing was changed, though the file had already been loaded (Undo brought your data back). Only a file that can't be read is refused now.
+- **Pasting numbers:** "12,345.67", "1.234,56" or "€1,500" pasted into a field keeps its value (they became 12.34, 1.23 and 1.50), and the tool's own minus sign "−" counts when pasted.
+- **FIRE withdrawal rate:** a FIRE target from the example or an older backup showed an empty rate while using 4%; it shows 4% now, and an emptied field shows a gray 4. It and an own tax rate stay between 0% and 100%; a loan's rate can still go higher.
+- With only your net pay entered, the Income summary said €0/mo; it shows the gross worked out from it, and the backup reminder now comes for this too.
+- A field's help near the bottom of the screen covered the field; it goes above it now. Links and the help texts you can Tab to show the same focus ring as buttons, and moving a row to the top or bottom with the keyboard keeps the focus on it.
+- In Estonian, your own names in tooltips stay as typed ("Gold 2y" became "Gold 2a").
+- Wording: "1 year" and "1 month" instead of "1 years"; a loss in the Projection shows as one ("−€63k growth", it said "+€0"); a negative yearly surplus is "short / year", not "unassigned"; a loan with nothing owned no longer says "100% of your assets"; a target you track yourself no longer says "until you retire"; FIRE without spending asks for it instead of an amount.
+- Rounding: −2.25% shows as −2.3% (like 2.25% as 2.3%), no "−0.00", no red "−€0" leftover, "≈ 10 months" instead of "10.0" and no "≈ 0.0 months"; fees like 0.145% show as 0.15% (it showed 0.14%); the donut's tooltips use the legend's percentages, and the history chart keeps its €0 label.
+- The projection's years are whole numbers, so a 10/20/30/40 button lights up; Undo of a removed row says the list is full instead of bringing back a row that would disappear on the next load.
+- **Retiring before pension payouts can start:** your pension funds stay invested until they do (up to 5 years before pension age), so they keep growing, with nothing new going in; Retirement used what they held on the day you retired (less than half as much in one example), while Your path already grew them.
+- **A loan still running when you retire** is counted in today's money on the Retirement card (it was in future euros, so "covers X% of your spending" was too low).
+- **Notes could be emptied:** an edit that took Goals & notes over their 20,000-character limit put back an empty box, which was then saved. The edit is now just refused.
+- **FIRE without any spending entered** asks for it; before, health insurance alone (€81.6k) became the goal and could even show as reached.
+- History: this month's snapshot follows your net worth down to €0 (it stayed at the last amount above zero).
+- A backup's odd values are made ones the editor can show: a deadline in the year 9999 is cleared, years and ages are whole (a birth year 1990.5 showed "in 2055.5"), a card title left empty gets its name back, and a tiny value no longer shows as "1e-7".
+- In Estonian, "weekly", "quarterly" and "yearly" on other income are translated, and so is FIRE's "/yr" for screen readers. The 3rd pillar refund's tooltip and the payout note use your tax rate, not a fixed 22%. The wide layout button works when the browser blocks saving.
+- **The state pension field says what it is.** It's now called "State pension (I pillar)" instead of "State pension forecast (optional)". Left empty, it shows the figure the tool uses in gray, and a line under it says where it comes from: estimated from your pay, or the national average when no pay is entered.
+
 ## [1.2.2] – 2026-10-16
 
 - **A richer example.** "Show an example" now has a target already reached ("50K invested") and one behind its deadline ("250K net worth", with the extra per month that would make it), next to one on track and FIRE, so every kind of target status can be seen. It also has rental income under Other income, taxed 17.6%. The README screenshots show the new example, and Your path has its own screenshot.
