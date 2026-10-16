@@ -15,7 +15,7 @@ A cash account's rate and interest stay together: beside a short name, or as one
 The example's names follow the language you switch to, and your own names stay as typed ("Gold 2y").
 Run: python tests/test_editor.py"""
 from playwright.sync_api import sync_playwright
-from helpers import PAGE, finish, launch
+from helpers import BROWSER, PAGE, finish, launch
 
 # button id -> the list in the saved data it adds to
 ADD = {'addIncome': 'incomes', 'addExp': 'expenseItems', 'addAcct': 'accounts', 'addP2Fund': 'p2funds', 'addP3Fund': 'p3funds',
@@ -155,14 +155,18 @@ with sync_playwright() as p:
     # pasting a number with thousands separators: the last point is the decimal one when both kinds are there, else they group thousands
     pg2.evaluate("()=>document.querySelectorAll('.editor details').forEach(d=>d.open=true)"); pg2.wait_for_timeout(300)
     PASTE = """a=>{ const f=document.querySelector(a[0]), dt=new DataTransfer(); dt.setData('text/plain', a[1]); f.focus(); f.select();
-      const ev=new ClipboardEvent('paste', {clipboardData:dt, bubbles:true, cancelable:true}); if(!ev.clipboardData) return null;   // a browser that can't make one isn't judged
+      // Chromium and WebKit take clipboardData; Firefox ignores it and makes its own (writable) one from data and dataType
+      const ev=new ClipboardEvent('paste', {clipboardData:dt, data:a[1], dataType:'text/plain', bubbles:true, cancelable:true});
+      try { if(ev.clipboardData && ev.clipboardData.getData('text/plain')!==a[1]) ev.clipboardData.setData('text/plain', a[1]); } catch(e) {}
+      if(ev.clipboardData?.getData('text/plain')!==a[1]) return null;   // the event doesn't carry the text: this browser can't fake a paste
       if(f.dispatchEvent(ev)) document.execCommand('insertText', false, a[1]);   // not taken over: the browser's own paste, done by hand
       return f.value; }"""
     for sel, typed, want in (('[data-key=gross]', '12,345.67', '12345.67'), ('[data-key=gross]', '1.234,56', '1234,56'), ('[data-key=gross]', '1,234,567', '1234567'),
                              ('[data-key=gross]', '12,5', '12,5'), ('[data-key=gross]', '−5', '5'), ('[data-key=gross]', '1,500', '1500'), ('[data-key=gross]', '€2,400', '2400'),
                              ('#acct-rows .acctamt', '3.200', '3200'), ('[data-key=projInflation]', '1,500', '1,500')):   # one point before 3 digits: thousands where cents can't be 3 digits
         got = pg2.evaluate(PASTE, [sel, typed])
-        if got is not None and got != want: problems.append(f'pasting {typed!r} into {sel} gave {got!r}, want {want!r}')
+        if got is None and BROWSER != 'webkit': problems.append(f'pasting {typed!r}: {BROWSER} could not fake the paste, so it was not checked')
+        elif got is not None and got != want: problems.append(f'pasting {typed!r} into {sel} gave {got!r}, want {want!r}')
     # own limits in a list: a loan's rate can be high, an own tax rate or a withdrawal rate can't; a FIRE target without one uses 4% (its field shows that)
     lim = pg2.evaluate("[clampNum(300,'rate','incomes'), clampNum(-5,'rate','incomes'), clampNum(-50,'rate','targets'), clampNum(300,'rate','debts'), normalize({targets:[{kind:'fire'}]}).targets[0].rate, document.querySelector('#tgt-rows .trate').placeholder]")
     if lim != [100, 0, 0, 300, 4, '4']: problems.append(f'list limits {lim}, want [100, 0, 0, 300, 4, "4"]')
