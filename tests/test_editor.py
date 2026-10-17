@@ -260,11 +260,13 @@ with sync_playwright() as p:
     pg3.click('.langtabs [data-lang=en]'); pg3.wait_for_timeout(150)
     full = pg3.evaluate("()=>{ state.targets=Array.from({length:listMax('targets')}, (_,i)=>({name:'t'+i, kind:'cash', amount:1})); refreshAll(); const b=document.getElementById('addTarget'); b.focus(); return [b.getAttribute('aria-disabled'), document.activeElement===b, (b.getAttribute('aria-description')||'').length>0]; }")
     if full != ['true', True, True]: problems.append(f'"+ Add" at the limit: {full}')
-    # a field tapped on a touch screen doesn't show its label's help over the field below; one reached with Tab moves with its
-    # field when that scrolls (here the editor panel scrolls: a page scroll can leave the sticky editor where it is, as in WebKit)
+    # a field tapped on a touch screen doesn't show its label's help over the field below; one reached with Tab sits next to its
+    # field (above it here, wherever the last tip was) and moves with it when that scrolls (here the editor panel scrolls: a page
+    # scroll can leave the sticky editor where it is, as in WebKit)
     tp = pg3.evaluate("""async ()=>{ const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip'), ed=document.querySelector('.editor'); document.dispatchEvent(new PointerEvent('pointerdown', {pointerType:'touch', bubbles:true}));
         f.focus({focusVisible:true}); const tapped=getComputedStyle(tip).display; document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true}));
-        f.blur(); f.focus({focusVisible:true}); const a0=f.getBoundingClientRect().top;
+        f.blur(); tip.style.left=(innerWidth-120)+'px'; f.scrollIntoView({block:'end'}); await new Promise(r=>setTimeout(r, 100));   // the last tip near the right edge, the field low: its tip goes above it
+        f.focus({focusVisible:true}); const a0=f.getBoundingClientRect().top;
         // next to its field: just below it, or just above it when there's no room below (where it sits can flip as it moves)
         const gap=()=>{ const t=tip.getBoundingClientRect(), r=f.getBoundingClientRect(); return Math.round(Math.min(Math.abs(t.top-r.bottom), Math.abs(r.top-t.bottom))); }, g0=gap();
         const scrolled=new Promise(r=>addEventListener('scroll', ()=>requestAnimationFrame(()=>r()), {once:true, capture:true}));

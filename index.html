@@ -31,7 +31,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-G75es4j0K7S7i32GcvofILE8jhExYgtnqacyCuvVsvg='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-k8hBP+lOW0VSveoh6u2Yx7SR1LwH9DLFXN/o+tc+PvM='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
 <meta name="referrer" content="no-referrer">   <!-- links out (source code, license) don't tell the other site which page you came from -->
 <meta name="color-scheme" content="dark">   <!-- the page is already dark: stops browser auto-dark modes (and the darkreader-lock line, the Dark Reader extension) from recoloring it -->
 <meta name="darkreader-lock">
@@ -3554,6 +3554,7 @@ const TIPPED='[data-tip]:not([data-tip=""])';   // an empty one (a fund with no 
 let tipTarget=null, tipTimer=null, tipReady=false, tipX=0, tipY=0, tipTop=0;   // tipTop: where a tip that doesn't fit below goes above (the pointer, or a field's top)
 function placeTip(){
   const raw=tipTarget.getAttribute('data-tip'); tip.textContent= raw===tipTarget.__fixedTip ? tf(raw) : t(raw); tip.style.display='block';   // the rules' figures go only into the tool's own texts, never into your names
+  tip.style.left=tip.style.top='0px';   // measured at full width: where the last tip sat (near an edge, squeezed) would make it too tall to place above
   let x=tipX+12, y=tipY+12;
   if(x+tip.offsetWidth>window.innerWidth-8) x=tipX-tip.offsetWidth-12;
   if(y+tip.offsetHeight>window.innerHeight-8) y=tipTop-tip.offsetHeight-12;

@@ -18,6 +18,7 @@ Fixes from four independent reviews (every point checked before changing anythin
 - **Wording:** "Your funds are on target" only when they are; the cash buffer without spending; "96,000%" and "<1%" on the debt ring; no "+€0/yr"; payouts "start now" when you're past your retirement age; Estonian "1 aasta"; the largest amounts in order; no split warning for a pillar nothing goes into; a note when inflation is below 0.
 - **Keyboard and screen readers:** the dashboard's explanations can be reached with Tab and are read aloud; a field's help is read with it; buttons in a row say which row; the keyboard stays in place after ✎, a new type, a picked suggestion or a removed row; dropdowns close when you click elsewhere (also in Safari) and stay open when you press their own scroll bar; the ☰ menu closes when you Tab out; "+ Add" on a full list looks off and says why; the ✎ buttons show a clear focus ring.
 - **Phones:** tapping a field no longer covers the next one with its help, and help shown under a field moves with the page.
+- **Help above a field** sits right next to it. After a tooltip near the screen's right edge, the next one shown above a field could float up to 100px over it.
 - Faster with many FIRE targets, and Your path and the cards no longer work out the same forecasts twice.
 - Reduced motion also stops the target bars; the invested share's box is easier to tap at 0%; two Estonian labels end with "…" on narrow phones; switching language keeps an Undo note.
 
