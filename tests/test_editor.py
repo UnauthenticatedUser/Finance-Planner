@@ -293,15 +293,17 @@ with sync_playwright() as p:
     bm = pg3.evaluate("[state.birthMonth, document.getElementById('bmonth').textContent, document.activeElement.id]")
     if bm != [2, 'Feb', 'bmonth']: problems.append(f'month of birth picked with the keyboard (value, shown, focus): {bm}')
     if w5 != 'debts part' or ad != ['open', True]: problems.append(f'focus after ✎ with only fixed-rate loans {w5}; typing after an arrow pick (list, points at the highlighted one) {ad}')
-    # a tooltip whose field scrolls out of sight goes, instead of staying at the edge of the screen (a fresh phone-width page: the
-    # page itself scrolls, the same in every browser)
+    # a tooltip whose field goes out of sight goes too, instead of staying at the edge of the screen: the field is moved off the
+    # screen directly (a transform) and a scroll event sent, so it doesn't depend on how far a page can scroll in each browser
+    # (following the field on a real scroll is checked above)
     pg6 = b.new_page(viewport={'width': 390, 'height': 844}, reduced_motion='reduce'); watch_errors(pg6, errs, n=150); pg6.goto(PAGE); pg6.wait_for_timeout(300)
-    gone = pg6.evaluate("""async ()=>{ document.querySelectorAll('.editor details').forEach(d=>d.open=true); const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip');
+    gone = pg6.evaluate("""()=>{ document.querySelectorAll('.editor details').forEach(d=>d.open=true); const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip');
         f.scrollIntoView({block:'center'}); document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true})); f.focus({focusVisible:true}); const shown=getComputedStyle(tip).display;
-        const away=new Promise(r=>addEventListener('scroll', ()=>requestAnimationFrame(()=>r()), {once:true, capture:true})); window.scrollBy(0, f.getBoundingClientRect().bottom+100);
-        await Promise.race([away, new Promise(r=>setTimeout(r, 1000))]); return [shown, getComputedStyle(tip).display, Math.round(f.getBoundingClientRect().bottom)]; }""")
+        window.dispatchEvent(new Event('scroll')); const still=getComputedStyle(tip).display;   // in sight: it stays
+        f.style.transform='translateY(-3000px)'; window.dispatchEvent(new Event('scroll')); const out=[shown, still, getComputedStyle(tip).display, Math.round(f.getBoundingClientRect().bottom)];
+        f.style.transform=''; return out; }""")
     pg6.close()
-    if gone[:2] != ['block', 'none'] or gone[2] >= 0: problems.append(f'tooltip after its field scrolled off the screen (before, after, field bottom): {gone}')
+    if gone[:3] != ['block', 'block', 'none'] or gone[3] >= 0: problems.append(f'tooltip with its field in sight, then off the screen (before, in sight, off, field bottom): {gone}')
     # the target type dropdown is read with its value; a target's buttons follow its name, unnamed ones say which row
     acc = pg3.evaluate("""()=>{ state.targets=[{name:'', kind:'cash', amount:1}, {name:'', kind:'cash', amount:2}]; save(); refreshAll();
         const s=document.querySelector('#tgt-rows .cselect.ttype'), nm=(s.getAttribute('aria-labelledby')||'').split(' ').map(id=>(document.getElementById(id)||{}).textContent).join(' ');
