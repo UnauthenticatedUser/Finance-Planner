@@ -264,11 +264,13 @@ with sync_playwright() as p:
     # field when that scrolls (here the editor panel scrolls: a page scroll can leave the sticky editor where it is, as in WebKit)
     tp = pg3.evaluate("""async ()=>{ const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip'), ed=document.querySelector('.editor'); document.dispatchEvent(new PointerEvent('pointerdown', {pointerType:'touch', bubbles:true}));
         f.focus({focusVisible:true}); const tapped=getComputedStyle(tip).display; document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true}));
-        f.blur(); f.focus({focusVisible:true}); const y0=tip.getBoundingClientRect().top, a0=f.getBoundingClientRect().top;
+        f.blur(); f.focus({focusVisible:true}); const a0=f.getBoundingClientRect().top;
+        // next to its field: just below it, or just above it when there's no room below (where it sits can flip as it moves)
+        const gap=()=>{ const t=tip.getBoundingClientRect(), r=f.getBoundingClientRect(); return Math.round(Math.min(Math.abs(t.top-r.bottom), Math.abs(r.top-t.bottom))); }, g0=gap();
         const scrolled=new Promise(r=>addEventListener('scroll', ()=>requestAnimationFrame(()=>r()), {once:true, capture:true}));
         ed.scrollBy(0, ed.scrollTop>=60 ? -60 : 60); await Promise.race([scrolled, new Promise(r=>setTimeout(r, 1000))]);
-        return [tapped, getComputedStyle(tip).display, Math.round(tip.getBoundingClientRect().top-y0), Math.round(f.getBoundingClientRect().top-a0)]; }""")
-    if tp[0] != 'none' or tp[1] == 'none' or not tp[3] or abs(tp[2] - tp[3]) > 2: problems.append(f'field help: tapped {tp[0]}, tabbed {tp[1]}, moved {tp[2]}px with its field moving {tp[3]}px')
+        return [tapped, getComputedStyle(tip).display, g0, gap(), Math.round(f.getBoundingClientRect().top-a0)]; }""")
+    if tp[0] != 'none' or tp[1] == 'none' or not tp[4] or tp[2] > 14 or tp[3] > 14: problems.append(f'field help: tapped {tp[0]}, tabbed {tp[1]}, {tp[2]}px from its field, {tp[3]}px after the field moved {tp[4]}px')
     # every loan fixed-rate: ✎ skips the hidden Euribor field and goes to the first control shown
     pg3.evaluate("()=>{ state.debts=[{name:'Car', balance:5000, rtype:'fixed', rate:5, margin:0, payment:200, asset:0}]; save(); refreshAll(); }"); pg3.wait_for_timeout(100)
     pg3.focus('[data-edit="property:debts"]'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(100); w5 = in_debts()
