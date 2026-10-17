@@ -260,12 +260,15 @@ with sync_playwright() as p:
     pg3.click('.langtabs [data-lang=en]'); pg3.wait_for_timeout(150)
     full = pg3.evaluate("()=>{ state.targets=Array.from({length:listMax('targets')}, (_,i)=>({name:'t'+i, kind:'cash', amount:1})); refreshAll(); const b=document.getElementById('addTarget'); b.focus(); return [b.getAttribute('aria-disabled'), document.activeElement===b, (b.getAttribute('aria-description')||'').length>0]; }")
     if full != ['true', True, True]: problems.append(f'"+ Add" at the limit: {full}')
-    # a field tapped on a touch screen doesn't show its label's help over the field below; one reached with Tab moves with the page
-    tp = pg3.evaluate("""async ()=>{ const f=document.querySelector('[data-key=projInflation]'); document.dispatchEvent(new PointerEvent('pointerdown', {pointerType:'touch', bubbles:true}));
-        f.focus({focusVisible:true}); const tapped=getComputedStyle(document.getElementById('tip')).display; document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true}));
-        f.blur(); f.focus({focusVisible:true}); const y0=document.getElementById('tip').getBoundingClientRect().top; window.scrollBy(0, 60); await new Promise(r=>setTimeout(r, 50));
-        return [tapped, getComputedStyle(document.getElementById('tip')).display, Math.round(y0-document.getElementById('tip').getBoundingClientRect().top)]; }""")
-    if tp[0] != 'none' or tp[1] == 'none' or abs(tp[2] - 60) > 2: problems.append(f'field help: tapped {tp[0]}, tabbed {tp[1]}, moved {tp[2]} of 60px with the page')
+    # a field tapped on a touch screen doesn't show its label's help over the field below; one reached with Tab moves with its
+    # field when that scrolls (here the editor panel scrolls: a page scroll can leave the sticky editor where it is, as in WebKit)
+    tp = pg3.evaluate("""async ()=>{ const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip'), ed=document.querySelector('.editor'); document.dispatchEvent(new PointerEvent('pointerdown', {pointerType:'touch', bubbles:true}));
+        f.focus({focusVisible:true}); const tapped=getComputedStyle(tip).display; document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true}));
+        f.blur(); f.focus({focusVisible:true}); const y0=tip.getBoundingClientRect().top, a0=f.getBoundingClientRect().top;
+        const scrolled=new Promise(r=>addEventListener('scroll', ()=>requestAnimationFrame(()=>r()), {once:true, capture:true}));
+        ed.scrollBy(0, ed.scrollTop>=60 ? -60 : 60); await Promise.race([scrolled, new Promise(r=>setTimeout(r, 1000))]);
+        return [tapped, getComputedStyle(tip).display, Math.round(tip.getBoundingClientRect().top-y0), Math.round(f.getBoundingClientRect().top-a0)]; }""")
+    if tp[0] != 'none' or tp[1] == 'none' or not tp[3] or abs(tp[2] - tp[3]) > 2: problems.append(f'field help: tapped {tp[0]}, tabbed {tp[1]}, moved {tp[2]}px with its field moving {tp[3]}px')
     # every loan fixed-rate: ✎ skips the hidden Euribor field and goes to the first control shown
     pg3.evaluate("()=>{ state.debts=[{name:'Car', balance:5000, rtype:'fixed', rate:5, margin:0, payment:200, asset:0}]; save(); refreshAll(); }"); pg3.wait_for_timeout(100)
     pg3.focus('[data-edit="property:debts"]'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(100); w5 = in_debts()
