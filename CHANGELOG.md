@@ -2,6 +2,16 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.5.1] – 2026-10-17
+
+Fixes from a final review of v1.5.0, two of them for changes v1.5.0 made.
+
+- **History with a clock set back.** A computer clock set far in the past (1970, 2000) added that month to your history, and with a full history a month added this way pushed out your oldest real month (new in v1.5.0). A missing month is now added only when what's saved fits one start with the clock ahead: just one later month, less than a year ahead. The example records nothing, and Reset, Import and Undo start from your data's newest month.
+- **An early pension in the year you reach the general pension age.** With an own pension age before the general one (for example for raising children), the pension has been paid all year and takes the €776 every month, but v1.5.0 gave your pay the €776 for the months before the general age: about €1,000 to €1,700 too little tax that year (new in v1.5.0).
+- An emptied retirement age or payout period no longer counts as your data, so a later Reset keeps your Undo copy. ☰ closes again when you click it with the keyboard in its menu.
+- **Screen readers:** every dropdown is read with the choice it shows; the ✎ buttons' names aren't read twice; an unnamed row's arrows say "Move up", not "Move up 1"; the month of birth is read with the field's help.
+- The month of birth's "Not given (July)" is no longer cut off on narrow screens (the year box takes only what four digits need). Under a year tax-free, Retirement no longer says "after about 12 months … €0"; reaching pension age in December says unemployment insurance is taken all year.
+
 ## [1.5.0] – 2026-10-17
 
 A month of birth for exact pension-age timing, the official rule for the €776 in the year you reach pension age, and fixes from a fifth independent review (of v1.4.0).
@@ -267,6 +277,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.5.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.5.1
 [1.5.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.5.0
 [1.4.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.4.0
 [1.3.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.3.1

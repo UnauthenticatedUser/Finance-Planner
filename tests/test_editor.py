@@ -303,14 +303,22 @@ with sync_playwright() as p:
         f.style.transform='translateY(-3000px)'; window.dispatchEvent(new Event('scroll')); const out=[shown, still, getComputedStyle(tip).display, Math.round(f.getBoundingClientRect().bottom)];
         f.style.transform=''; return out; }""")
     pg6.close()
+    # the narrowest phones: "Not given (July)" and its Estonian fit beside the year
+    pg7 = b.new_page(viewport={'width': 320, 'height': 700}); watch_errors(pg7, errs, n=150); pg7.goto(PAGE); pg7.wait_for_timeout(300)
+    cut = []
+    for lang in ('en', 'et'):
+        pg7.evaluate("l=>document.querySelector('.langtabs [data-lang='+l+']').click()", lang); pg7.wait_for_timeout(150)   # in the ☰ menu at this width
+        if pg7.evaluate("()=>{ const s=document.getElementById('bmonth'); return s.scrollWidth>s.clientWidth; }"): cut.append(lang)
+    pg7.close()
+    if cut: problems.append(f'"Not given (July)" cut off at 320px in: {cut}')
     if gone[:3] != ['block', 'block', 'none'] or gone[3] >= 0: problems.append(f'tooltip with its field in sight, then off the screen (before, in sight, off, field bottom): {gone}')
     # the target type dropdown is read with its value; a target's buttons follow its name, unnamed ones say which row
     acc = pg3.evaluate("""()=>{ state.targets=[{name:'', kind:'cash', amount:1}, {name:'', kind:'cash', amount:2}]; save(); refreshAll();
         const s=document.querySelector('#tgt-rows .cselect.ttype'), nm=(s.getAttribute('aria-labelledby')||'').split(' ').map(id=>(document.getElementById(id)||{}).textContent).join(' ');
         const dels=()=>[...document.querySelectorAll('#tgt-rows .iconbtn:not(.mv)')].map(b=>b.getAttribute('aria-label')), before=dels();
         const i=document.querySelector('#tgt-rows .invsub input[type=text]'); i.value='Gamma'; i.dispatchEvent(new Event('input', {bubbles:true}));
-        return [nm==='Type '+s.textContent, before, dels()[0]]; }""")
-    if acc != [True, ['Remove target 1', 'Remove target 2'], 'Remove target “Gamma”']: problems.append(f'target type name with its value, unnamed and renamed buttons: {acc}')
+        return [nm==='Type '+s.textContent, before, dels()[0], [...document.querySelectorAll('#tgt-rows .mv')].slice(2).map(b=>b.getAttribute('aria-label'))]; }""")
+    if acc != [True, ['Remove target 1', 'Remove target 2'], 'Remove target “Gamma”', ['Move up', 'Move down']]: problems.append(f'target type name with its value, unnamed and renamed buttons, an unnamed row\'s arrows: {acc}')
     # name suggestions closed with Escape open again with ArrowDown
     pg3.evaluate("()=>{ state.incomes=[{name:'', amount:500, freq:'month', tax:'salary', rate:0}]; save(); refreshAll(); }")
     pg3.focus('#income-rows .invname'); pg3.keyboard.press('Escape'); pg3.keyboard.press('ArrowDown')
@@ -335,7 +343,9 @@ with sync_playwright() as p:
     left = pg4.evaluate("document.querySelector('.topbar').classList.contains('menu-open') && !document.getElementById('tbMenu').contains(document.activeElement)")
     pg4.click('#moreBtn'); pg4.focus('#tbMenu [data-lang=et]'); pg4.keyboard.press('Enter'); pg4.wait_for_timeout(200)
     after = pg4.evaluate("document.activeElement.id")
-    if left or after != 'moreBtn': problems.append(f'☰ menu: open after Tab left it {left}, focus after an action in it {after!r}')
+    pg4.click('#moreBtn'); pg4.focus('#tbMenu [data-lang=en]'); pg4.click('#moreBtn'); pg4.wait_for_timeout(100)   # with the keyboard in it, ☰ still closes it
+    shut = not pg4.evaluate("document.querySelector('.topbar').classList.contains('menu-open')")
+    if left or after != 'moreBtn' or not shut: problems.append(f'☰ menu: open after Tab left it {left}, focus after an action in it {after!r}, closed by ☰ with the keyboard in it {shut}')
     pg4.close()
     # a touch screen: tapping into a list-row field (its label with the help wraps it) shows no help over the next row, while
     # tapping the label's words still does

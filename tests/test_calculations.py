@@ -15,7 +15,7 @@ Run: python tests/test_calculations.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, sys, datetime
 from helpers import PAGE, finish, launch, on_day, watch_errors
-from model import state_pension, pensioner as of_pension_age, unemp_months
+from model import state_pension, pensioner as of_pension_age, unemp_months, birth_month, months, pension_age
 PY={'week':52,'month':12,'quarter':4,'year':1}
 def R(a,b,z=0.25): return 0 if random.random()<z else round(random.uniform(a,b))
 def user():
@@ -40,7 +40,8 @@ def model(s):
     g=s['gross']; T=s['taxRate']/100; U=s['unemployment']/100; E=s['basicExemption']
     pensioner=of_pension_age(s, datetime.date.today().year)
     um=unemp_months(s, datetime.date.today().year); U*=um/12   # the year you reach pension age: until that month, spread over the year
-    pen_months=13-um if um else 12   # that year the state pension is paid from that month on, and takes its part of the €776 only then
+    by=s['birthYear']; ps=by*12+birth_month(s)+months(pension_age(s)) if 1000<=by<=datetime.date.today().year else None   # the pension starts at your own pension age
+    pen_months=12 if ps is None else max(0, min(12, (datetime.date.today().year+1)*12-ps))   # it takes its part of the €776 only for this year's months it's paid
     pen_E=lambda p: (776*12-min(p, 776)*pen_months)/12   # a pensioner's pay: what the pension leaves of €776 a month, over the year
     joined=s['enableP2'] and s['p2rate']>0
     p2r=s['p2rate'] if joined else 0
@@ -140,7 +141,7 @@ RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementBy
   // the net pay difference row: shown when it isn't €0, within a euro of rounding of the real difference (it takes the rounding the €0 rows can't)
   const adj=document.getElementById('row-y-ownnet').style.display==='none' ? 0 : eu(txt('out-y-ownnet')); if(Math.abs(adj-c.ownNetAdj)>=1.5 || adj===0 && document.getElementById('row-y-ownnet').style.display!=='none') out.push('net pay difference row: '+adj+' for '+c.ownNetAdj);
   // each deduction row: never below €0, within a euro of its exact value
-  [['out-y-p2',c.aP2],['out-y-unemp',c.aUnemp],['out-y-tax',c.aTax],['out-y-custtax',c.aCustTax]].forEach(([id,x])=>{ const d=-v(id); if(!isNaN(d) && (d<0 || Math.abs(d-x)>=1)) out.push('breakdown: '+id+' shows '+txt(id)+' for '+x.toFixed(2)); });
+  [['out-y-p2',c.aP2],['out-y-unemp',c.aUnemp],['out-y-tax',c.aTax],['out-y-custtax',c.aCustTax]].forEach(([id,x])=>{ const d=-v(id); if(/[−-]\\s*[−-]/.test(txt(id)||'') || !isNaN(d) && (d<0 || Math.abs(d-x)>=1)) out.push('breakdown: '+id+' shows '+txt(id)+' for '+x.toFixed(2)); });   // "−−€1" is a row below €0
   const g=v('out-y-base')+v('out-y-bonus')+[...document.querySelectorAll('#y-other-rows .v')].reduce((a,e)=>a+eu(e.textContent),0);
   if(!isNaN(g) && g!==v('out-y-gross')) out.push('breakdown: the gross rows add up to '+g+', the total shows '+txt('out-y-gross'));
   const th=v('out-y-gross')+v('out-y-p2')+v('out-y-unemp')+v('out-y-tax')+(document.getElementById('row-y-custtax').style.display==='none' ? 0 : v('out-y-custtax'))+(document.getElementById('row-y-ownnet').style.display==='none' ? 0 : v('out-y-ownnet'));
@@ -183,6 +184,11 @@ def main():
         r=pg.evaluate("s=>{ state=normalize(s); refreshAll(); }", {'gross':2787.72, 'enableP2':False, 'bonus':1438.34, 'autoNet':False, 'manualNet':2891.43, 'birthYear':1960, 'expenses':1000,
                       'incomes':[{'name':'y', 'amount':190.51, 'freq':'year', 'tax':'free', 'rate':0}]}); rec=pg.evaluate(RECON)
         if rec: fails+=1; print('breakdown with an empty hidden row:', rec[:3])
+        # an early pension (own pension age 63) is paid all year when you reach the general age (65, July 2026), so it takes the
+        # €776 every month and the pay keeps none: (30,000 − 7 × 40 unemployment insurance) × 22%
+        q=on_day(b.new_page(), '2026-10-17'); q.goto(PAGE); q.wait_for_timeout(200)
+        got=q.evaluate("()=>{ state=normalize({birthYear:1961, pensionAgeYears:63, gross:2500, enableP2:false, statePension:800}); return Math.round(compute().aTax*100)/100; }"); q.close()
+        if got!=6538.40: fails+=1; print('pay tax with an early pension, the year of the general age:', got, 'want 6538.40')
         # the pensioner tax year with an own pension age of years and 6+ months, in whole months: born 1960 (July) with 66y8m reaches it
         # in March 2027, so the pensioner rules start on 1 January 2027, not in 2026 (66.67 years as a decimal used to land in 2026)
         for day, want in (('2026-12-31', False), ('2027-01-01', True)):
@@ -191,8 +197,9 @@ def main():
             if got!=want: fails+=1; print('pensioner on', day, 'with 66y8m, born 1960:', got)
         # your own net pay: the deductions' total is made of three rounded figures, so it can be 2 more than income tax alone
         # rounded down (it takes both euros), or €1 when every deduction is €0 (the difference to your net pay takes it)
-        for g, n in ((1533.30, 1279.77), (510.53, 959.07), (0.51, 0.21)):
-            pg.evaluate("s=>{ state=normalize(s); refreshAll(); }", {'gross':g, 'enableP2':False, 'unemployment':0, 'autoNet':False, 'manualNet':n}); rec=pg.evaluate(RECON)
+        # (and a tiny salary with the default unemployment insurance, where a row showed "−−€1")
+        for g, n, u in ((1533.30, 1279.77, 0), (510.53, 959.07, 0), (0.51, 0.21, 1.6)):
+            pg.evaluate("s=>{ state=normalize(s); refreshAll(); }", {'gross':g, 'enableP2':False, 'unemployment':u, 'autoNet':False, 'manualNet':n}); rec=pg.evaluate(RECON)
             if rec: fails+=1; print(f'breakdown with your own net pay {n}:', rec[:3])
         rtt=pg.evaluate("[roundToTotal([0, 0, 13165.912, 0], 13167), roundToTotal([291.912, 220.8], 514), roundToTotal([5.4, 0], 2), roundToTotal([0, 0], 1)]")
         if rtt!=[[0, 0, 13167, 0], [293, 221], [2, 0], [0, 0]]: fails+=1; print('rounding to a total with a gap bigger than its rows:', rtt)
@@ -205,6 +212,7 @@ def main():
           c=go({gross:2000, birthYear:y-66, birthMonth:2, pensionAgeYears:66, enableP2:false}); if(c.uMonths!==2 || !/until your state pension starts/.test(tip('#tile-net'))) out.push('unemployment insurance with a February birthday: '+c.uMonths+' months, '+tip('#tile-net'));   // the month of birth, when given, replaces July
           const p08=r=>{ go({gross:3000, enableP2:true, p2rate:r, birthYear:1990}); return /0\\.8 of it in the II pillar/.test(document.getElementById('ret-note').textContent); };
           if(p08(0) || !p08(2)) out.push('the I pillar note says "0.8 of it in the II pillar" only when in it: rate 0 '+p08(0)+', rate 2 '+p08(2));
+          c=go({gross:2000, birthYear:y-66, birthMonth:12, pensionAgeYears:66, enableP2:false}); if(c.uMonths!==12 || !/all year, as you reach it in December/.test(tip('#tile-net'))) out.push('a December pension age: '+c.uMonths+', '+tip('#tile-net'));
           c=go({gross:2000, birthYear:y-67}); if(c.uMonths!==0 || document.getElementById('row-y-unemp').style.display!=='none') out.push('no unemployment insurance after pension age: '+c.uMonths);
           go({debts:[{name:'d', balance:96000, payment:100, rate:1}], accounts:[{name:'a', amount:100, yield:0}]}); if(!tip('#alloc-svg .dring').includes('96,000%')) out.push('debt ring: '+tip('#alloc-svg .dring'));
           go({debts:[{name:'d', balance:1, payment:1, rate:1}], accounts:[{name:'a', amount:140000, yield:0}]}); if(!tip('#alloc-svg .dring').includes('<1%')) out.push('debt ring: '+tip('#alloc-svg .dring'));

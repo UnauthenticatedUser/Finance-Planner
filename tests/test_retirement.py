@@ -144,6 +144,8 @@ def main():
         zero=pg.evaluate(rd, {**inv_base, 'taxRate':0, 'invDeposits':1})[1]
         lo, hi=[pg.evaluate(rd, {**inv_base, 'birthYear':1955, 'enableProjReal':False, 'etfs':etf(100000), 'invDeposits':d})[0] for d in (3960, 4040)]
         put=pg.evaluate(rd, {**inv_base, 'invDeposits':50000})[1]
+        near=pg.evaluate(rd, {**inv_base, 'birthYear':1955, 'enableProjReal':False, 'etfs':etf(100000), 'invDeposits':3920})[1]   # 0.98 years: "about 1 year", not "after about 12 months"
+        if 'about 12 months' in near or 'about 1 year here' not in near: fails+=1; print('investment account at 0.98 tax-free years:', near[near.find('investment account'):][:120])
         if 'investment account' in zero or abs(hi-lo)>2 or 'more than you put in (€50,000)' not in put:
             fails+=1; print('investment account: at 0% tax', 'investment account' in zero, '| 0.99 vs 1.01 years', lo, hi, '|', put[put.find('investment account'):][:110])
         print('page errors:', errs[:3] or 'none')

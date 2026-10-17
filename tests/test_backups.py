@@ -169,6 +169,13 @@ with sync_playwright() as p:
     pg.close(); pg=on_day(ctx.new_page(), '2026-10-17'); pg.goto(PAGE); pg.wait_for_timeout(300)
     q=pg.evaluate("()=>{ state.accounts[0].amount=12345; save(); refreshAll(); return state.history.map(e=>e.m+':'+e.nw); }")
     if q!=['2026-09:9000', '2026-10:12345', '2027-01:9000']: fails.append(('after one start with the clock ahead, this month is recorded and follows your numbers', q))
+    # a clock set far back adds no past month: 1970 or 2000 with months saved, nor one with just one month saved; a full history
+    # (October 1926 to October 2026 without August 2026) with the clock in its gap isn't filled at the cost of its oldest month
+    H=lambda *ms: [{'m':m, 'nw':900, 'assets':900, 'debt':0, 'auto':1} for m in ms]
+    for day, hist in (('2000-01-15', H('2026-09','2026-10')), ('1970-01-15', H('2026-10')), ('2026-08-20', H(*[m for m in (f'{1926+(i+9)//12}-{(i+9)%12+1:02d}' for i in range(1201)) if m!='2026-08']))):
+        pg.close(); pg=on_day(ctx.new_page(), day); pg.goto(PAGE); pg.wait_for_timeout(200)
+        q=pg.evaluate("h=>{ localStorage.removeItem(KEY_META); state=normalize({accounts:[{name:'a', amount:1234, yield:0}], history:h}); const n=state.history.length, first=state.history[0].m; recordHistory(compute()); return [state.history.length===n, state.history[0].m===first, state.history.some(e=>e.m===thisMonth())]; }", hist)
+        if q!=[True, True, False]: fails.append((f'history with the clock set back to {day} (same length, same oldest, no month added)', q))
     # Reset, then only monthly saving entered, then Reset again: Undo brings back that saving; Reset on an empty tool offers no Undo
     pg.close(); pg=ctx.new_page(); pg.goto(PAGE); pg.wait_for_timeout(300)
     q=pg.evaluate("""()=>{ localStorage.clear(); backup=null; state=normalize({gross:3000}); refreshAll(); document.getElementById('resetBtn').click();
@@ -176,6 +183,22 @@ with sync_playwright() as p:
         const kept=[state.etfMonthly, state.thirdPillar]; localStorage.clear(); backup=null; state=blankState(state); refreshAll(); document.getElementById('resetBtn').click();
         return [kept, !!backup, getComputedStyle(document.getElementById('revertBtn')).display]; }""")
     if q!=[[300, 100], False, 'none']: fails.append(('Undo after Reset: saving lost, or an empty Undo offered', q))
+    # Reset, then the example on and off, then Undo: a past month of your history stays as it was (the example records nothing)
+    q=pg.evaluate("""()=>{ localStorage.clear(); backup=null; state=normalize({accounts:[{name:'a', amount:1234, yield:0}], history:[{m:'2026-08', nw:800, assets:800, debt:0, auto:1}]}); save(); refreshAll();
+        const before=state.history.filter(e=>e.m<thisMonth()).map(e=>e.m+':'+e.nw).join(); document.getElementById('resetBtn').click(); showExample(true); showExample(false); document.getElementById('revertBtn').click();
+        return state.history.filter(e=>e.m<thisMonth()).map(e=>e.m+':'+e.nw).join()===before; }""")
+    if not q: fails.append(('Reset, the example, Undo: a past history month changed', q))
+    # each part of that on its own: showing the example leaves the month recorded last alone, and after Undo it's the newest
+    # month of the data that came back
+    # (recording off for your data, so the month recorded last stays August; the example and the blank tool do record)
+    q=pg.evaluate("""()=>{ localStorage.clear(); backup=null; writeJSON(KEY_META, {lastRec:'2026-08'}); state=normalize({accounts:[{name:'a', amount:1234, yield:0}], enableHistory:false, history:[{m:'2026-08', nw:800, assets:800, debt:0, auto:1}]}); save(); refreshAll();
+        const meta=()=>readJSON(KEY_META).lastRec||null; showExample(true); const inEx=meta(); showExample(false);
+        document.getElementById('resetBtn').click(); state.accounts[0].amount=50; save(); refreshAll(); const blank=meta(); document.getElementById('revertBtn').click();
+        return [inEx, blank===thisMonth(), meta()]; }""")
+    if q!=['2026-08', True, '2026-08']: fails.append(('the month recorded last (in the example, the blank tool recorded this month, after Undo)', q))
+    # an emptied retirement age or payout period is the default the tool uses (65, 20 years), not your data
+    q=pg.evaluate("()=>{ state=blankState(state); state.retireAge=0; state.payoutYears=0; return hasOwnData(); }")
+    if q: fails.append(('an emptied retirement age and payout period counted as your data', q))
     # a fresh tool stays a fresh tool after switching language (its two accounts keep the names it started with): the example is still offered
     q=pg.evaluate("()=>{ localStorage.clear(); backup=null; state=blankState(state); refreshAll(); document.querySelector('.langtabs [data-lang=et]').click(); const r=[hasOwnData(), document.getElementById('exampleBar').hidden]; document.querySelector('.langtabs [data-lang=en]').click(); return r; }")
     if q!=[False, False]: fails.append(('a fresh tool after a language switch counted as your data (yours, example offer hidden)', q))

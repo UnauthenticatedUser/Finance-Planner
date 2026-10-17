@@ -13,8 +13,9 @@ every section of the editor open.
   language buttons are pressed buttons
 - with reduced motion nothing moves (the target bars too), and the invested share's box is at least 24px wide at 0%
 Run: python tests/test_accessibility.py"""
+import re
 from playwright.sync_api import sync_playwright
-from helpers import PAGE, finish, launch
+from helpers import BROWSER, PAGE, finish, launch
 
 CHECK = r"""()=>{
   const out=[], vis=e=>!!(e.offsetWidth||e.offsetHeight||e.getClientRects().length) && getComputedStyle(e).visibility!=='hidden';
@@ -50,6 +51,11 @@ CHECK = r"""()=>{
 SEMANTICS = r"""()=>{ const out=[], vis=e=>!!e.getClientRects().length;
   document.querySelectorAll('.main [data-tip]:not([data-tip=""])').forEach(e=>{ if(!vis(e) || e.matches('button, .dseg, .dring, .hdot, .fn, .bar *')) return;
     if(e.tabIndex<0 || !e.getAttribute('aria-description')) out.push('mouse-only explanation: '+(e.id||e.className||e.tagName)+' '+e.textContent.trim().slice(0,30)); });
+  // a description that repeats the name is read twice; every dropdown is read with the choice it shows, and one in a field with help gets that help
+  document.querySelectorAll('[aria-label][aria-description]').forEach(e=>{ if(e.getAttribute('aria-label')===e.getAttribute('aria-description')) out.push('read twice: '+e.getAttribute('aria-label')); });
+  document.querySelectorAll('.editor .cselect').forEach(s=>{ const nm=(s.getAttribute('aria-labelledby')||'').split(' ').map(id=>(document.getElementById(id)||{}).textContent||'').join(' ');
+    if(!nm.endsWith(s.textContent)) out.push('dropdown named without its choice: '+s.className+' "'+nm+'"');
+    const l=s.closest('.field') && s.closest('.field').querySelector(':scope > label[data-tip]'); if(l && !s.getAttribute('aria-description')) out.push('dropdown without its field\'s help: '+s.className); });
   document.querySelectorAll('.main .chip[data-tip], .topbar button[data-tip]').forEach(e=>{ if(vis(e) && !e.getAttribute('aria-description')) out.push('a button\'s explanation not read: '+(e.id||e.textContent.trim())); });
   document.querySelectorAll('[data-tip][aria-description]').forEach(e=>{ if(e.getAttribute('data-tip')!==e.__fixedTip && e.getAttribute('aria-description')!==e.getAttribute('data-tip')) out.push('screen readers hear an old tip: '+(e.id||e.className)); });
   document.querySelectorAll('.editor label[data-tip] input, .editor .field > label[data-tip] + .inwrap input').forEach(i=>{ if(!i.getAttribute('aria-description')) out.push('field help not read: '+(i.id||i.className)); });
@@ -77,6 +83,23 @@ FOCUS = r"""()=>{ const out=[], still=document.createElement('style');   // no t
     e.blur(); });
   still.remove(); return out.slice(0,10); }"""
 
+def dropdown_names(pg):
+    """[(choice shown, accessible name)] for the editor's visible dropdowns."""
+    sel = pg.locator('.editor .cselect'); shown = [sel.nth(i).text_content().strip() for i in range(sel.count())]
+    if BROWSER == 'chromium':
+        cdp = pg.context.new_cdp_session(pg)
+        try:
+            root = cdp.send('DOM.getDocument', {'depth': -1})['root']['nodeId']
+            ids = [cdp.send('DOM.describeNode', {'nodeId': n})['node']['backendNodeId'] for n in cdp.send('DOM.querySelectorAll', {'nodeId': root, 'selector': '.editor .cselect'})['nodeIds']]
+            ax = {n.get('backendDOMNodeId'): n for n in cdp.send('Accessibility.getFullAXTree')['nodes']}
+            return [(t, (ax[i].get('name') or {}).get('value', '')) for t, i in zip(shown, ids) if i in ax and not ax[i].get('ignored')]
+        finally: cdp.detach()
+    out = []
+    for i, t in enumerate(shown):
+        m = re.match(r'- button "([^"]*)"', sel.nth(i).aria_snapshot() or '')
+        if m: out.append((t, m.group(1)))   # none: in a hidden part
+    return out
+
 problems = []
 with sync_playwright() as p:
     b = launch(p)
@@ -91,6 +114,11 @@ with sync_playwright() as p:
                 for issue in pg.evaluate(CHECK) + pg.evaluate(FOCUS) + pg.evaluate(SEMANTICS):   # both views: some controls are only on Progress
                     msg = f'{lang} {"example" if example else "empty"} {view}: {issue}'
                     if msg not in problems: problems.append(msg)
+            # every dropdown shown is read with the choice it shows, as the browser names it: Chromium's own accessibility tree
+            # (it names a button that points at itself by the label it sits in, which Playwright's reading doesn't), else Playwright's
+            if example:
+                for shown, name in dropdown_names(pg):
+                    if not name.endswith(shown): problems.append(f'{lang}: dropdown read as {name!r}, shows {shown!r}'); break
             # a tip that changes with your numbers is read as it is now (the 3rd pillar's, with a 20% tax rate and over its limit)
             p3 = pg.evaluate("()=>{ state=normalize({gross:1000, taxRate:20, thirdPillar:500}); refreshAll(); const e=document.getElementById('out-p3'); return [e.getAttribute('aria-description'), e.getAttribute('data-tip')]; }")
             if not p3[0] or p3[0] != p3[1] or '20%' not in p3[0]: problems.append(f'{lang}: screen readers hear an old or no 3rd pillar tip: {str(p3[0])[:50]!r}')

@@ -2,7 +2,8 @@
 
 The other tests compare the tool with a Python model written from the same reading of the rules, so a misread rule
 would pass them. Here every expected number comes from an official page, quoted next to it, never from our own
-formulas; a few are plain arithmetic on the quoted figures (44 × 22%, 399.24 + 45 × 10.477), shown with the quote. Each example starts from the tool's defaults (a blank tool), so it also checks that those are the current
+formulas; a few are plain arithmetic on the quoted figures (44 × 22%, 399.24 + 45 × 10.477), shown with the quote, and two apply a
+quoted rule to an example's or round figures where no worked yearly figure is published, marked "derived" or said so. Each example starts from the tool's defaults (a blank tool), so it also checks that those are the current
 rules: 22% income tax, the EUR 700 basic exemption, 1.6% unemployment insurance and a 2% 2nd pillar.
 Update these in January, together with the yearly rule check.
 Run: python tests/test_reference.py"""
@@ -52,8 +53,9 @@ CASES = [
     # general one doesn't decide the month), earns €2,500, isn't in the II pillar, and her €800 pension starts in February.
     ('reaching pension age in February: the year\'s unemployment insurance', {'birthYear': YEAR - 66, 'birthMonth': 2, 'pensionAgeYears': 66, 'gross': 2500, 'enableP2': False, 'statePension': 800}, 'aUnemp', 80, TSD4,
      '40 euros (2,500 × 1.6%) in January and February, "not withheld from March": 2 × 40'),
-    ('reaching pension age in February: the year\'s income tax on pay', {'birthYear': YEAR - 66, 'birthMonth': 2, 'pensionAgeYears': 66, 'gross': 2500, 'enableP2': False, 'statePension': 800}, 'aTax', 6411.68, TSD4,
-     'January "((2500 – 40 – 776 ) × 22%)" = 370.48; from March "2500 × 22%" = 550; the €776 is the pay\'s only until the pension takes it in February, so February is (2500 – 40) × 22%: 370.48 + 541.20 + 10 × 550'),
+    ('reaching pension age in February: the year\'s income tax on pay (derived)', {'birthYear': YEAR - 66, 'birthMonth': 2, 'pensionAgeYears': 66, 'gross': 2500, 'enableP2': False, 'statePension': 800}, 'aTax', 6411.68, TSD4 + ' and ' + WORKING,
+     'Derived, not on the page (which gives monthly withholding: January "((2500 – 40 – 776 ) × 22%)", from March "2500 × 22%"): the yearly '
+     'rule, €9,312 from 1 January of that year with the pension taking its €776 for its 11 months, leaves the pay €776 for the year: (30,000 − 2 × 40 − 776) × 22%'),
 
     # The investment account: withdrawals are taxed once they pass what was put in. No authority publishes worked figures, so this is
     # the quoted rule on round ones: retired, €100,000 invested, 4% a year (€4,000, €333.33 a month), inflation off.
