@@ -6,7 +6,7 @@ your own text), no event handler or javascript: link, nothing in the notes keeps
 Run: python tests/test_security.py"""
 import json, copy, os, tempfile
 from playwright.sync_api import sync_playwright
-from helpers import PAGE, fixture, finish, launch, shown
+from helpers import PAGE, finish, fixture, launch, shown, watch_errors
 base=fixture('example.json')
 P=['<img src=x onerror="window.__pwned=1">','<svg onload=window.__pwned=1>','"><script>window.__pwned=1</script>',"'><iframe srcdoc='<script>parent.__pwned=1</script>'>",
    'javascript:window.__pwned=1','<a href="javascript:window.__pwned=1">x</a>','{{constructor.constructor("window.__pwned=1")()}}','${window.__pwned=1}',
@@ -40,7 +40,7 @@ with sync_playwright() as p:
             data['text']={k:pl for k in TEXT}; data['text']['goalsHTML']='<p>'+pl+'</p>'
             data['__proto__']={'polluted':1}; data['constructor']={'x':1}; data['history']=[{'m':pl,'nw':1},{'m':'2025-01','nw':5}]
             raw=json.dumps(data)
-            pg=b.new_page(viewport={'width':1360,'height':900}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:120])); pg.add_init_script(VIOLATIONS)
+            pg=b.new_page(viewport={'width':1360,'height':900}); errs=watch_errors(pg, n=120); pg.add_init_script(VIOLATIONS)
             pg.on('dialog', lambda d: d.dismiss())
             pg.goto(PAGE); pg.wait_for_timeout(200)
             if how=='storage':

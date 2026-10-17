@@ -107,10 +107,26 @@ def pension_age(s):
     return auto_pension_age(s)
 
 
-def pensioner(s, now):
-    """Of pension age this year, for the tax rules: from the general age (an earlier pension of your own doesn't count)."""
+def reach_month(s):
+    """The year and month (1-12) you reach the general pension age (an earlier own age doesn't count), the birthday taken as
+    1 July: born 1962 with 66 years 8 months, that's March 2029. None without a year of birth."""
     by = s.get('birthYear') or 0
-    return bool(by) and by <= now and by + math.floor(max(pension_age(s), auto_pension_age(s))) <= now
+    if not by: return None
+    total = by * 12 + 6 + months(max(pension_age(s), auto_pension_age(s)))   # months since January of year 0
+    return total // 12, total % 12 + 1
+
+
+def pensioner(s, now):
+    """Of pension age this year, for the tax rules: from 1 January of the year you reach the general age."""
+    r = reach_month(s)
+    return r is not None and (s.get('birthYear') or 0) <= now and r[0] <= now
+
+
+def unemp_months(s, now):
+    """Months of this year with unemployment insurance: it's withheld until the end of the month you reach pension age."""
+    r = reach_month(s)
+    if r is None or (s.get('birthYear') or 0) > now or r[0] > now: return 12
+    return 0 if r[0] < now else r[1]
 
 
 def months(age):

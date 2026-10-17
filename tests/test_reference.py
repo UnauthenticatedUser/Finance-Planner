@@ -7,7 +7,7 @@ rules: 22% income tax, the EUR 700 basic exemption, 1.6% unemployment insurance 
 Update these in January, together with the yearly rule check.
 Run: python tests/test_reference.py"""
 from playwright.sync_api import sync_playwright
-from helpers import PAGE, finish, launch, shown
+from helpers import PAGE, finish, launch, shown, watch_errors
 
 TSD = 'https://www.emta.ee/node/330/main_chapter/13293/pdf'   # Tax and Customs Board, "Deklaratsiooni TSD esitamine", updated 19.01.2026
 P3 = 'https://www.pensionikeskus.ee/en/iii-pillar/contributions/questions-and-answers-about-the-iii-pillar-tax-refund/'
@@ -96,7 +96,7 @@ READ = """s=>{ state=normalize(s); refreshAll(); const c=compute(), r=retirement
 def main():
     fails = []
     with sync_playwright() as p:
-        b = launch(p); pg = b.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
+        b = launch(p); pg = b.new_page(); errs=watch_errors(pg, n=150)
         pg.goto(PAGE); pg.wait_for_timeout(300)
         if not shown(pg): fails.append('the page is hidden')
         for what, changes, key, expected, source, words in CASES:

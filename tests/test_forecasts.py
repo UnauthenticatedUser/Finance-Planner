@@ -8,7 +8,7 @@ saying what the headline says), "Try other numbers" with and without tax, and ho
 Run: python tests/test_forecasts.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, datetime
-from helpers import PAGE, finish, launch
+from helpers import PAGE, finish, launch, watch_errors
 from model import grow, payout_tax, surplus_invested, save_months, pension_age, payout_age, savings
 from test_calculations import user, model
 def amort(B,rate,P):
@@ -27,7 +27,7 @@ def bad(i,msg):
 def main():
     random.seed(11); N=int(sys.argv[1]) if len(sys.argv)>1 else 150
     with sync_playwright() as p:
-        b=launch(p); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
+        b=launch(p); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=watch_errors(pg, n=150)
         pg.goto(PAGE); pg.wait_for_timeout(500)
         # short amounts: thousands with one decimal (eurS) or none (eurC) and millions, rounding up to the next unit
         for n,want in [(999499,'€999k'),(999500,'€1M'),(999999,'€1M'),(1234567,'€1.23M'),(-999600,'−€1M')]:

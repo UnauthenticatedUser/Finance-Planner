@@ -2,6 +2,25 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.4.0] – 2026-10-17
+
+Fixes from four independent reviews (every point checked before changing anything), and three rules brought closer to how they really work.
+
+- **Investment withdrawals in retirement follow the investment account rule.** What you take out is tax-free until it adds up to more than you put in, and fully taxed after that (Tax and Customs Board). Retirement taxed every withdrawal's growth part from the start; it now counts the tax-free years and says when the tax starts and what's left then.
+- **Unemployment insurance until the month you reach pension age.** It stopped on 1 January of that year; it's now taken until your birthday month (birthday taken as mid-year, as everywhere), spread over the year.
+- **Monthly saving rises with prices by default.** "Yearly deposit increase" now starts at 2.5% (like inflation), so what you put in each month keeps its value in today's money; at 0% the same euros buy less every year. Your saved setting stays as it is; only a fresh start or Reset uses the new default, so forecasts there come out higher than before.
+- **A paid-off loan takes no payment.** A loan with nothing left to pay but its monthly payment still filled in lowered your surplus, targets and Your path, while the Debts card said "Paid off".
+- **A decimal typed into a year or age field is ignored.** A retirement age of "64.5" became 120 and a birth year of "1980.5" became 2100; the point now stays and nothing after it counts.
+- **Reset and Undo keep your data.** Monthly saving entered after a Reset wasn't counted as your data, so a second Reset kept the older copy; Reset on an empty tool offered an Undo that later wiped what you'd entered.
+- **The state pension a year after you retire is left out in whole months** (an own pension age like 64 years 1 month counted it), and the pensioner tax rules with an own pension age of x years and 6 months or more start in the right year.
+- The yearly breakdown and the budget add up to their totals to the euro, with no "−€0" rows; a 2nd pillar rate of 0% from a backup counts as not joined (no state top-up); a backup's value that isn't a number gets its default (not 0% income tax); a deadline month picked before its year stays; the pension block no longer disappears after a quick retype; pasting "0,500" or "12.500" (into a share) keeps it a decimal; the cursor stays in place when a character is refused; notes that were at their limit when loaded can be edited.
+- **History:** a month you saved is never overwritten when your computer's clock is behind, a full history with the clock behind isn't saved over and over, years before 1900 are dropped from files, and an automatic €0 month no longer says "entered by you".
+- **Wording:** "Your funds are on target" only when they are; the cash buffer without spending; "96,000%" and "<1%" on the debt ring; no "+€0/yr"; payouts "start now" when you're past your retirement age; Estonian "1 aasta"; the largest amounts in order; no split warning for a pillar nothing goes into; a note when inflation is below 0.
+- **Keyboard and screen readers:** the dashboard's explanations can be reached with Tab and are read aloud; a field's help is read with it; buttons in a row say which row; the keyboard stays in place after ✎, a new type, a picked suggestion or a removed row; dropdowns close when you click elsewhere (also in Safari) and stay open when you press their own scroll bar; the ☰ menu closes when you Tab out; "+ Add" on a full list looks off and says why; the ✎ buttons show a clear focus ring.
+- **Phones:** tapping a field no longer covers the next one with its help, and help shown under a field moves with the page.
+- Faster with many FIRE targets, and Your path and the cards no longer work out the same forecasts twice.
+- Reduced motion also stops the target bars; the invested share's box is easier to tap at 0%; two Estonian labels end with "…" on narrow phones; switching language keeps an Undo note.
+
 ## [1.3.1] – 2026-10-17
 
 A code cleanup with no changes in how the tool works or what it shows.
@@ -233,6 +252,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.4.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.4.0
 [1.3.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.3.1
 [1.3.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.3.0
 [1.2.2]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.2.2

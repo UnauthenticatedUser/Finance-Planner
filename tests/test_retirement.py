@@ -7,20 +7,20 @@ funds growing until payouts start when you retire before they can, the state pen
 (the state pension a year or more after retiring left out, 11 months counted), payout periods shorter and longer than life
 expectancy (19.3 years at 65, 0.8 fewer per later year), inflation on and off, the state pension estimated from pay (or the
 average without pay, or for someone already a pensioner, and the hint saying so), the pensioners' EUR 776 tax-free
-amount, the growth share of investment withdrawals (with net deposits entered or not), no jump overnight on 1 January
+amount, investment account withdrawals tax-free until they add up to more than was put in and taxed in full after that
+(with net deposits entered or not; the years it takes, counted year by year, and what's left once it's taxed), no jump overnight on 1 January
 (also for someone already retired), loan payments still running at retirement in today's money (one paid off in that very
 month isn't; one with no payment, or one that never pays off), a half-year retirement age from an old file, ages written
 "65y 1m", never "1 years", and huge numbers that must never show NaN or Infinity.
 Run: python tests/test_retirement.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, re
-from helpers import PAGE, fixture, finish, launch
+from helpers import PAGE, finish, fixture, launch, on_day, pick, watch_errors
 from model import grow, life_left, payout_tax, surplus_invested, pension_age, state_pension, save_months, retire_age, payout_age, savings, months, age_now
-def pick(*a): return random.choice(a)
 def main():
     random.seed(int(sys.argv[2]) if len(sys.argv)>2 else 5); N=int(sys.argv[1]) if len(sys.argv)>1 else 200
     with sync_playwright() as p:
-        b=launch(p); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
+        b=launch(p); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=watch_errors(pg, n=200)
         pg.goto(PAGE); pg.wait_for_timeout(300); pg.click('.viewtabs [data-view=progress]')
         base=fixture('example.json'); fails=0; shown_bad=0
         for i in range(N):
@@ -45,7 +45,7 @@ def main():
                 const runs=c.debtList.map(d=>{ const q=payoff(d.balance, d.rate, d.payment); return {P:+d.payment||0, n:q?q.months:0}; });
                 return {r, runs, st:{...state}, c:{aSal:c.aSal,pension:c.pension,penM:c.t3+(c.aP2+c.aStateP2)/12,etfVal:c.etfVal,invValue:c.invValue,etfMonthly:c.etfMonthly,invMonthly:c.invMonthly,surplus:c.surplus,expenses:c.expenses,debtMonthly:c.debtMonthly, buffer:c.buffer}, netPen:projRate(c,null,'pen').net, netInv:projRate(c,null,'inv').net,
                   debts:c.debtList.filter(d=>(+d.balance||0)>0).map(d=>({B:+d.balance, r:(+d.rate||0)/1200, P:Math.max(0,+d.payment||0)})), total:document.getElementById('ret-total').textContent, now:new Date().getFullYear(), txt,
-                  visible:!document.getElementById('ret-body').hidden && !!document.getElementById('ret-body').getClientRects().length || document.getElementById('view-progress').hidden}; }""", s)
+                  visible:!document.getElementById('ret-body').hidden && !!document.getElementById('ret-body').getClientRects().length}; }   // Progress is open""", s)
             st, c, got = r['st'], r['c'], r['r']
             by=st['birthYear']
             if not by or by>r['now']:
@@ -65,10 +65,12 @@ def main():
             s1=state_pension(st, c['aSal'], r['now'])              # inflation off counts as 0%, so it's today's amount either way
             s1-=tx*max(0,s1-776)                                   # state pension: taxed above the pensioner's €776 a month
             dep=(st['invDeposits'] if st['invDeposits']>0 else start)+(put-start)
-            gs=max(0,inv-dep)/inv if inv>0 else 0                  # share of a withdrawal that is growth (taxed)
+            ig=1+(st['projInflation'] if st['enableProjReal'] else 0)/100; w=inv*0.04; took=0; free_years=0   # 4% a year, rising with prices
+            while inv>0 and dep>0 and free_years<200 and took+w*ig**free_years<=dep: took+=w*ig**free_years; free_years+=1   # whole years before what's taken out passes what was put in
+            inv_kept=invAt*0.04/12*(1 if free_years>=1 else 1-tx)   # tax-free while it lasts (what the total counts); taxed in full from the start otherwise
             py=st['payoutYears'] or 20
             penPart=penAt/(py*12)*(1-payout_tax(pay_age, py, st['taxRate'] or 0, spa)/100)
-            tot=(s1 if months(pay_age)>months(spa)-12 else 0)+penPart+invAt*0.04/12*(1-tx*gs)   # not counted when it starts a year or more after retiring
+            tot=(s1 if months(pay_age)>months(spa)-12 else 0)+penPart+inv_kept   # not counted when it starts a year or more after retiring
             spend=c['expenses']+sum(d['P'] for d in r['runs'] if d['n']>m)/defl   # loans still being paid at retirement: a fixed payment, less in today's money
             if got is None: fails+=1; print(i,'no result'); continue
             if not r['visible']: shown_bad+=1; print(i,'the Retirement card is hidden although there is a result')
@@ -80,10 +82,30 @@ def main():
                 ok= abs(got['total']-tot)<=max(0.01,abs(tot)*1e-9)
             if not ok: fails+=1; print(i,'total',got['total'],'want',tot, {k:st[k] for k in ['birthYear','retireAge','payoutYears','projInflation','projReturn','projGrowth']})
             if abs(got['spend']-spend)>0.01: fails+=1; print(i,'spending',got['spend'],'want',spend)
+            if math.isfinite(tot) and abs(tot)<1e12:
+                fy=got['invFreeYears'] if got['invFreeYears'] is not None else math.inf   # JSON turns Infinity into null
+                if free_years<100 and not (free_years<=fy<free_years+1+1e-9) or free_years>=100 and fy<100: fails+=1; print(i,'tax-free years',fy,'want',free_years)   # over 100 years counts as never
+                if abs(got['fromInvLater']-invAt*0.04/12*(1-tx))>max(0.01,abs(invAt)*1e-9): fails+=1; print(i,'after the tax-free years',got['fromInvLater'],'want',invAt*0.04/12*(1-tx))
             if abs(got['lifeYears']-life_left(pay_age))>1e-9: fails+=1; print(i,'life expectancy',got['lifeYears'],'want',life_left(pay_age))
             if any(w in r['txt'] for w in ['NaN','undefined','Infinity','e+','null']) : shown_bad+=1; print(i,'shows:',r['txt'][:300])
             if re.search(r'\dy \d+ months?\b', r['txt']): shown_bad+=1; print(i,'mixed short and long age:', re.search(r'.{0,20}\dy \d+ months?', r['txt']).group(0))
             if re.search(r'(?<![\d.])1 (years|months)\b', r['txt']): shown_bad+=1; print(i,'plural for one:', re.search(r'.{0,40}(?<![\d.])1 (years|months)\b', r['txt']).group(0))
+        # already retired with payouts starting now, exactly 12 months before an own pension age: the state pension isn't in the
+        # total. Tried in every month of the year, as only some month counts (64y1m, 64y4m…) went wrong when compared in decimals.
+        for mo in range(1, 13):
+            q=on_day(getattr(b, '_b', b).new_page(), '2027-%02d-15' % mo); q.goto(PAGE); q.wait_for_timeout(200)
+            late=q.evaluate("""()=>{ const by=1963, k=Math.round(((new Date().getFullYear()-by)+(new Date().getMonth()-6)/12)*12)+12;   // your age now in months, plus a year
+              state=normalize({birthYear:by, retireAge:60, pensionAgeYears:Math.floor(k/12), pensionAgeMonths:k%12, gross:2000}); refreshAll(); const r=retirement(compute());
+              return [r.stateLater, Math.round((r.payAge)*12), k]; }""")
+            if not late[0]: fails+=1; print('payouts now, 12 months before pension age', late[2], 'in month', mo, ': the state pension is counted')
+            q.close()
+        # the wording: past your retirement age, payouts start now (not "at your retirement age"); one year of payouts is
+        # "1 aasta" in Estonian; investment withdrawals say how long they're tax-free and what's left after that
+        words=pg.evaluate("""()=>{ const y=new Date().getFullYear(), note=()=>document.getElementById('ret-note').textContent;
+          state=normalize({birthYear:y-66, retireAge:58, gross:2000, etfs:[{name:'A', value:100000, weight:100}], enableEtfPlan:false, invDeposits:60000}); refreshAll(); const en=note();
+          state.payoutYears=1; LANG='et'; refreshAll(); const et=note(); LANG='en'; refreshAll(); return [en, et]; }""")
+        if 'start now' not in words[0] or 'at your retirement age' in words[0] or 'tax-free until' not in words[0] or '1 aastat' in words[1] or '1 aasta ' not in words[1]:
+            fails+=1; print('retirement wording:', words[0][:120], '|', words[1][:120])
         # a loan paid off in the very month you retire isn't spending in retirement; one a month longer is
         for extra, want in ((0, 0), (1, 100)):
             sp=pg.evaluate("""a=>{ state=normalize(a[0]); refreshAll(); const m=saveMonths();

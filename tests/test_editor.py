@@ -12,10 +12,16 @@ and moving the slider shows new numbers at once (with the glow) instead of rolli
 back at the card, whether you tap it or scroll up yourself, and moves up above an Undo note instead of sitting under it.
 Scrolling into the editor yourself shows the same pill as "Back to top", which takes you up; desktops (editor beside) get none.
 A cash account's rate and interest stay together: beside a short name, or as one piece under a long one.
-The example's names follow the language you switch to, and your own names stay as typed ("Gold 2y").
+The example's names follow the language you switch to, and your own names stay as typed ("Gold 2y", "My {YEAR} fund").
+A decimal typed into a year or age field is ignored, and a refused character leaves the cursor in place. The keyboard stays
+where it was after ✎ (the part's first control), a new type, a picked suggestion or a removed row, and no suggestion list
+opens by itself; a dropdown stays open when its own box is pressed and closes on a press outside, also unfocused (Safari);
+the compact ☰ menu closes when Tab leaves it. An Estonian default title stays the default, a pillar block shown again while
+it closes stays, a full list's "+ Add" can still be reached, switching language keeps an Undo note, and a field's help shows
+with Tab (moving with the page) but not after a tap.
 Run: python tests/test_editor.py"""
 from playwright.sync_api import sync_playwright
-from helpers import BROWSER, PAGE, finish, launch
+from helpers import BROWSER, PAGE, finish, launch, watch_errors, fixture
 
 # button id -> the list in the saved data it adds to
 ADD = {'addIncome': 'incomes', 'addExp': 'expenseItems', 'addAcct': 'accounts', 'addP2Fund': 'p2funds', 'addP3Fund': 'p3funds',
@@ -26,7 +32,7 @@ with sync_playwright() as p:
     b = launch(p)
     for lang, car_tax, yearly in (('en', 'Car tax', 'Once a year'), ('et', 'Automaks', 'Kord aastas')):
         pg = b.new_page(viewport={'width': 1360, 'height': 900}, reduced_motion='reduce'); errs = []
-        pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
+        watch_errors(pg, errs, n=150)
         pg.goto(PAGE); pg.evaluate("l=>{ localStorage.clear(); localStorage.setItem(KEY_UI, JSON.stringify({lang:l})); }", lang); pg.reload(); pg.wait_for_timeout(400)
         pg.evaluate("()=>{ document.querySelectorAll('.editor details').forEach(d=>d.open=true); document.querySelectorAll('.editor .seg button[data-v=\"1\"], .editor input[type=checkbox][data-toggle]').forEach(x=>{ if(x.tagName==='BUTTON') x.click(); else if(!x.checked) x.click(); }); }")
         pg.wait_for_timeout(400)
@@ -68,15 +74,22 @@ with sync_playwright() as p:
                 pg.fill(sel, ''); pg.locator(sel).first.fill(t); pg.wait_for_timeout(100)
                 got = pg.evaluate(f"()=>{key}")
                 if got != want: problems.append(f'{lang}: typing {t} in {sel} gave {got}')
-        # decimals stop where the field's do; a second point is ignored
+        # decimals stop where the field's do; a second point is ignored; a whole-number field keeps the point and nothing after it
         for sel, typed, want in (('[data-key=gross]', '3,826189648712', '3,82'), ('[data-key=projInflation]', '49.2394791862', '49.239'),
-                                 ('[data-key=birthYear]', '1990.75', '1990'), ('[data-key=retireAge]', '65.5', '65'), ('[data-key=payoutYears]', '20,5', '20'), ('#sr-inv-pct', '33.3333', '33.3'), ('[data-key=gross]', '1.2.3', '1.23'),
+                                 ('[data-key=birthYear]', '1990.75', '1990.'), ('[data-key=retireAge]', '65.5', '65.'), ('[data-key=payoutYears]', '20,5', '20,'), ('#sr-inv-pct', '33.3333', '33.3'), ('[data-key=gross]', '1.2.3', '1.23'),
                                  ('#acct-rows .acctyield', '1,23456', '1,234'), ('[data-key=gross]', 'abc12x.3y4z5', '12.34'),
                                  ('[data-key=projInflation]', '-2,5', '-2,5'), ('[data-key=projInflation]', '2-5', '25'), ('[data-key=gross]', '-5', '5'),
                                  ('[data-key=projInflation]', '-.,-,-.,,-.,,-,,,,-', '-.'), ('#sr-inv-pct', '-.,-,-.,,-.,,-,,,,-', '.'),
-                                 ('[data-key=projInflation]', '−2,5', '-2,5'), ('[data-key=projYears]', '12.5', '12')):   # the minus sign the tool shows; whole years
+                                 ('[data-key=projInflation]', '−2,5', '-2,5'), ('[data-key=projYears]', '12.5', '12.')):   # the minus sign the tool shows; whole years
             pg.locator(sel).first.fill(typed); pg.wait_for_timeout(80); got = pg.locator(sel).first.input_value()
             if got != want: problems.append(f'{lang}: typing {typed} in {sel} shows {got!r}, want {want!r}')
+        # typed key by key, a decimal in a year or age field is just ignored: 64.5 was 645, held at 120
+        for sel, typed, key, want in (('[data-key=retireAge]', '64.5', 'retireAge', 64), ('[data-key=birthYear]', '1980.5', 'birthYear', 1980), ('[data-key=projYears]', '12.7', 'projYears', 12)):
+            f=pg.locator(sel).first; f.fill(''); f.press_sequentially(typed); pg.wait_for_timeout(80); got=pg.evaluate(f"state.{key}"); f.blur(); pg.wait_for_timeout(80)
+            if got != want or f.input_value() != str(want): problems.append(f'{lang}: typing {typed} key by key in {sel} gave {got} and shows {f.input_value()!r} after leaving, want {want}')
+        # a character the field refuses leaves the cursor where it was, so the next digit lands there (1x000 then 5: 15000)
+        f=pg.locator('[data-key=gross]'); f.fill('1000'); f.evaluate("e=>e.setSelectionRange(1,1)"); f.press('x'); f.press('5'); pg.wait_for_timeout(80)
+        if f.input_value()!='15000': problems.append(f'{lang}: a refused character moved the cursor: {f.input_value()!r}, want 15000')
         pg.locator('[data-key=projInflation]').fill('-.'); pg.locator('[data-key=projInflation]').blur(); pg.wait_for_timeout(80)   # nothing but signs: empty once you leave
         if pg.locator('[data-key=projInflation]').input_value() != '': problems.append(f'{lang}: a field with only "-." keeps it after leaving')
         # the surplus slider: its value is the cash share; all the way to Cash is 0% invested (switched off), to Investments 100%
@@ -103,7 +116,7 @@ with sync_playwright() as p:
         pg.close()
     # phone: the back pill after a card's pencil
     pg = b.new_page(viewport={'width': 390, 'height': 844}, reduced_motion='reduce'); errs = []
-    pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
+    watch_errors(pg, errs, n=150)
     pg.goto(PAGE); pg.evaluate("localStorage.clear()"); pg.reload(); pg.wait_for_timeout(300)
     pg.evaluate("showExample(true)"); pg.wait_for_timeout(300)
     PILL = "()=>!document.getElementById('backpill').hidden"
@@ -139,7 +152,7 @@ with sync_playwright() as p:
     if rows[0][1] != rows[0][2] or rows[0][1] - rows[0][0] < 10: problems.append(f'phone: long cash row split its rate and interest {rows[0]}')
     if max(rows[1]) - min(rows[1]) > 8: problems.append(f'phone: short cash row not on one line {rows[1]}')
     # numbers: the slider shows the new value at once with the glow; typing elsewhere still rolls them
-    pg2 = b.new_page(viewport={'width': 1360, 'height': 900}); pg2.on('pageerror', lambda e: errs.append(str(e)[:150])); pg2.goto(PAGE); pg2.evaluate("localStorage.clear()"); pg2.reload(); pg2.wait_for_timeout(300)
+    pg2 = b.new_page(viewport={'width': 1360, 'height': 900}); watch_errors(pg2, errs, n=150); pg2.goto(PAGE); pg2.evaluate("localStorage.clear()"); pg2.reload(); pg2.wait_for_timeout(300)
     pg2.evaluate("()=>{ showExample(true); openSection('savings:surplus'); }"); pg2.wait_for_timeout(1200)
     frame = "new Promise(ok=>requestAnimationFrame(()=>ok()))"   # the slider redraws on the next frame (once per frame while dragging)
     first = pg2.evaluate("async ()=>{ const r=document.getElementById('surplusRange'), e=document.getElementById('proj-big'); r.value=0; r.dispatchEvent(new Event('input')); await "+frame+"; return [e.textContent, e.classList.contains('mtx')]; }")
@@ -163,7 +176,8 @@ with sync_playwright() as p:
       return f.value; }"""
     for sel, typed, want in (('[data-key=gross]', '12,345.67', '12345.67'), ('[data-key=gross]', '1.234,56', '1234,56'), ('[data-key=gross]', '1,234,567', '1234567'),
                              ('[data-key=gross]', '12,5', '12,5'), ('[data-key=gross]', '−5', '5'), ('[data-key=gross]', '1,500', '1500'), ('[data-key=gross]', '€2,400', '2400'),
-                             ('#acct-rows .acctamt', '3.200', '3200'), ('[data-key=projInflation]', '1,500', '1,500')):   # one point before 3 digits: thousands where cents can't be 3 digits
+                             ('#acct-rows .acctamt', '3.200', '3200'), ('[data-key=projInflation]', '1,500', '1,500'),   # one point before 3 digits: thousands where cents can't be 3 digits
+                             ('[data-key=gross]', '0,500', '0,50'), ('#sr-inv-pct', '12.500', '12.5')):   # but not after a 0, nor beyond what the field holds
         got = pg2.evaluate(PASTE, [sel, typed])
         if got is None and BROWSER != 'webkit': problems.append(f'pasting {typed!r}: {BROWSER} could not fake the paste, so it was not checked')
         elif got is not None and got != want: problems.append(f'pasting {typed!r} into {sel} gave {got!r}, want {want!r}')
@@ -198,7 +212,78 @@ with sync_playwright() as p:
     pg2.evaluate("window.scrollTo(0, document.body.scrollHeight)"); pg2.wait_for_timeout(200)   # desktop: the editor is beside the cards, no pill
     if not pg2.evaluate("document.getElementById('backpill').hidden"): problems.append('desktop: a back pill showed')
     pg2.close()
+    # keyboard and screen: a default title in Estonian stays the default; a pillar block shown again while it closes stays;
+    # an unnamed fund's tooltip isn't an empty box; a dropdown stays open when its own box is pressed and closes on a press
+    # outside (also when its button never got the focus, as in Safari); the keyboard stays where it was after ✎, a new type,
+    # a picked suggestion or a removed row; the language switch keeps an Undo note; a full list's "+ Add" can still be reached
+    pg3 = b.new_page(viewport={'width': 1360, 'height': 900}); watch_errors(pg3, errs, n=150); pg3.goto(PAGE); pg3.evaluate("localStorage.clear()"); pg3.reload(); pg3.wait_for_timeout(300)
+    pg3.evaluate("s=>localStorage.setItem(KEY, JSON.stringify(s))", fixture('example.json')); pg3.reload(); pg3.wait_for_timeout(300)   # as your own data, not the example
+    pg3.evaluate("()=>document.querySelectorAll('.editor details').forEach(d=>d.open=true)"); pg3.wait_for_timeout(300)
+    pg3.click('.langtabs [data-lang=et]'); pg3.wait_for_timeout(150)
+    ttl = pg3.locator('[data-text=titleDebt]'); ttl.click(); pg3.keyboard.press('End'); pg3.keyboard.type('x'); pg3.keyboard.press('Backspace'); pg3.keyboard.press('Enter')
+    pg3.click('.langtabs [data-lang=en]'); pg3.wait_for_timeout(150)
+    if pg3.evaluate("state.text.titleDebt") != pg3.evaluate("DEFAULTS.text.titleDebt") or ttl.text_content() != pg3.evaluate("DEFAULTS.text.titleDebt"): problems.append(f'an Estonian default title was saved as your own: {ttl.text_content()!r}')
+    blk = pg3.evaluate("""async s=>{ state=normalize({gross:3000}); save(); refreshAll(); await new Promise(r=>setTimeout(r, 400));   // only pay: the block shows while there's pay
+        const f=document.querySelector('[data-key=gross]'), set=v=>{ f.value=v; f.dispatchEvent(new Event('input', {bubbles:true})); };
+        set('0'); await new Promise(r=>setTimeout(r, 60)); set('4000'); await new Promise(r=>setTimeout(r, 500)); const d=getComputedStyle(document.getElementById('p2-block')).display;
+        state=normalize(s); save(); refreshAll(); return d; }""", fixture('example.json'))
+    if blk == 'none': problems.append('the 2nd pillar block stayed hidden after a quick retype')
+    pg3.evaluate("()=>{ state.p2funds[0].name=''; refreshAll(); }"); pg3.wait_for_timeout(200)
+    pg3.hover('#p2-funds .fn'); pg3.wait_for_timeout(600)
+    if pg3.evaluate("getComputedStyle(document.getElementById('tip')).display") != 'none': problems.append('an unnamed fund shows an empty tooltip box')
+    pg3.mouse.move(5, 5); pg3.evaluate("()=>{ state.p2funds[0].name='My {YEAR} fund'; refreshAll(); }"); pg3.wait_for_timeout(200)   # the rules' figures never go into your own names
+    pg3.hover('#p2-funds .fn'); pg3.wait_for_timeout(600)
+    if pg3.evaluate("document.getElementById('tip').textContent") != 'My {YEAR} fund': problems.append(f'your fund name changed in its tooltip: {pg3.evaluate("document.getElementById(\'tip\').textContent")!r}')
+    sel = pg3.locator('#tgt-rows .cselect.ttype').first; sel.click(); pg3.wait_for_timeout(100)
+    box = pg3.evaluate("()=>{ const m=document.getElementById(document.querySelector('#tgt-rows .cselect.ttype').getAttribute('aria-controls')); m.style.paddingBottom='6px'; const r=m.getBoundingClientRect(); return [r.left+r.width/2, r.bottom-2]; }")
+    pg3.mouse.move(*box); pg3.mouse.down(); pg3.mouse.up(); open1 = pg3.evaluate("document.querySelector('#tgt-rows .cselect.ttype').getAttribute('aria-expanded')")
+    pg3.mouse.click(5, 5); open2 = pg3.evaluate("document.querySelector('#tgt-rows .cselect.ttype').getAttribute('aria-expanded')")
+    pg3.evaluate("()=>{ document.activeElement.blur(); document.querySelector('#tgt-rows .cselect.ttype').click(); }"); pg3.mouse.click(5, 5)   # opened without the focus
+    open3 = pg3.evaluate("document.querySelector('#tgt-rows .cselect.ttype').getAttribute('aria-expanded')")
+    if [open1, open2, open3] != ['true', 'false', 'false']: problems.append(f'dropdown: open after pressing its box {open1}, after a press outside {open2}, unfocused {open3}')
+    pg3.evaluate("()=>{ state.incomes=[{name:'', amount:500, freq:'month', tax:'salary', rate:0}]; save(); refreshAll(); }"); pg3.wait_for_timeout(200)
+    where = lambda: pg3.evaluate("()=>{ const a=document.activeElement; return (a.closest('[id]')||{}).id+' '+a.tagName+'.'+a.className; }")
+    pg3.focus('[data-edit="property:debts"]'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(100)
+    in_debts = lambda: pg3.evaluate("()=>{ const a=document.activeElement, h=document.querySelector('[data-part=debts]'); return a.closest('.editor') && a.tagName!=='SUMMARY' && a.getClientRects().length && h.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING ? 'debts part' : a.tagName+'.'+a.className; }")
+    w1 = in_debts()   # the part's first control
+    pg3.focus('#tgt-rows .cselect.ttype'); pg3.keyboard.press('Enter'); pg3.keyboard.press('ArrowDown'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(100); w2 = where()
+    pg3.focus('#income-rows .invname'); pg3.keyboard.press('ArrowDown'); pg3.keyboard.press('ArrowDown'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(100); w3 = where()   # Freelance work: its tax rebuilds the row
+    picked_open = pg3.evaluate("document.querySelectorAll('body > .suggest:not([hidden])').length")   # the rebuilt row's list stays shut
+    pg3.focus('#debt-rows .iconbtn:not(.mv)'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(500)   # a loan removed: the next loan's name gets the focus, its list stays shut
+    picked_open += pg3.evaluate("document.querySelectorAll('body > .suggest:not([hidden])').length")
+    pg3.focus('#etf-rows .iconbtn:not(.mv)'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(500); w4 = where()
+    menus = picked_open + pg3.evaluate("document.querySelectorAll('body > .suggest:not([hidden])').length")   # moving the focus in code opens no name suggestions
+    if w1 != 'debts part' or 'tgt-rows' not in w2 or 'income-rows' not in w3 or 'etf-rows' not in w4 or menus:
+        problems.append(f'focus after ✎ {w1}, a new type {w2}, a suggestion {w3}, a removed row {w4}; suggestion lists open: {menus}')
+    pg3.click('.langtabs [data-lang=et]'); pg3.wait_for_timeout(150)
+    if pg3.evaluate("document.querySelector('.toast').hidden"): problems.append('switching language closed the Undo note')
+    pg3.click('.langtabs [data-lang=en]'); pg3.wait_for_timeout(150)
+    full = pg3.evaluate("()=>{ state.targets=Array.from({length:listMax('targets')}, (_,i)=>({name:'t'+i, kind:'cash', amount:1})); refreshAll(); const b=document.getElementById('addTarget'); b.focus(); return [b.getAttribute('aria-disabled'), document.activeElement===b, (b.getAttribute('aria-description')||'').length>0]; }")
+    if full != ['true', True, True]: problems.append(f'"+ Add" at the limit: {full}')
+    # a field tapped on a touch screen doesn't show its label's help over the field below; one reached with Tab moves with the page
+    tp = pg3.evaluate("""async ()=>{ const f=document.querySelector('[data-key=projInflation]'); document.dispatchEvent(new PointerEvent('pointerdown', {pointerType:'touch', bubbles:true}));
+        f.focus({focusVisible:true}); const tapped=getComputedStyle(document.getElementById('tip')).display; document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true}));
+        f.blur(); f.focus({focusVisible:true}); const y0=document.getElementById('tip').getBoundingClientRect().top; window.scrollBy(0, 60); await new Promise(r=>setTimeout(r, 50));
+        return [tapped, getComputedStyle(document.getElementById('tip')).display, Math.round(y0-document.getElementById('tip').getBoundingClientRect().top)]; }""")
+    if tp[0] != 'none' or tp[1] == 'none' or abs(tp[2] - 60) > 2: problems.append(f'field help: tapped {tp[0]}, tabbed {tp[1]}, moved {tp[2]} of 60px with the page')
+    # every loan fixed-rate: ✎ skips the hidden Euribor field and goes to the first control shown
+    pg3.evaluate("()=>{ state.debts=[{name:'Car', balance:5000, rtype:'fixed', rate:5, margin:0, payment:200, asset:0}]; save(); refreshAll(); }"); pg3.wait_for_timeout(100)
+    pg3.focus('[data-edit="property:debts"]'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(100); w5 = in_debts()
+    # a suggestion picked with the arrows is let go when you type on: the field never points at an option that isn't highlighted
+    pg3.fill('#income-rows .invname', ''); pg3.keyboard.type('r'); pg3.keyboard.press('ArrowDown'); pg3.keyboard.press('ArrowDown'); pg3.keyboard.type('e')
+    ad = pg3.evaluate("()=>{ const i=document.querySelector('#income-rows .invname'), id=i.getAttribute('aria-activedescendant'), m=document.getElementById(i.getAttribute('aria-controls')); return [m.hidden ? 'shut' : 'open', !id || document.getElementById(id).classList.contains('act')]; }")
+    pg3.keyboard.press('Escape')
+    if w5 != 'debts part' or ad != ['open', True]: problems.append(f'focus after ✎ with only fixed-rate loans {w5}; typing after an arrow pick (list, points at the highlighted one) {ad}')
+    pg3.close()
+    # the compact top bar: its ☰ menu closes when Tab leaves it, and an action in it leaves the focus on ☰
+    pg4 = b.new_page(viewport={'width': 400, 'height': 800}); watch_errors(pg4, errs, n=150); pg4.goto(PAGE); pg4.wait_for_timeout(300)
+    pg4.click('#moreBtn'); pg4.focus('#tbMenu .langtabs [data-lang=en]'); pg4.keyboard.press('Tab'); pg4.keyboard.press('Tab'); pg4.wait_for_timeout(50)
+    left = pg4.evaluate("document.querySelector('.topbar').classList.contains('menu-open') && !document.getElementById('tbMenu').contains(document.activeElement)")
+    pg4.click('#moreBtn'); pg4.focus('#tbMenu [data-lang=et]'); pg4.keyboard.press('Enter'); pg4.wait_for_timeout(200)
+    after = pg4.evaluate("document.activeElement.id")
+    if left or after != 'moreBtn': problems.append(f'☰ menu: open after Tab left it {left}, focus after an action in it {after!r}')
+    pg4.close()
     if errs: problems.append(f'phone and desktop: page errors {errs[:2]}')
     b.close()
 
-finish('editor', problems, f'{len(ADD)} add buttons, the car tax default, decimals with a comma or a dot and the surplus slider, in 2 languages, and the back pill: ' + ('all fine' if not problems else str(problems)))
+finish('editor', problems, f'{len(ADD)} add buttons, the car tax default, decimals with a comma or a dot and the surplus slider, in 2 languages, the back pill, keyboard focus and menus: ' + ('all fine' if not problems else str(problems)))

@@ -11,11 +11,10 @@ widths.
 Run: python tests/test_path.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, datetime
-from helpers import PAGE, fixture, finish, launch
+from helpers import PAGE, finish, fixture, launch, pick, watch_errors
 from model import surplus_invested, savings, save_months, payout_tax, pension_age, payout_age
 
 
-def pick(*a): return random.choice(a)
 
 
 def model_path(c, st, net_p, net_i, months):
@@ -47,7 +46,7 @@ def main():
     random.seed(int(sys.argv[2]) if len(sys.argv) > 2 else 11); N = int(sys.argv[1]) if len(sys.argv) > 1 else 40
     fails = 0
     with sync_playwright() as p:
-        b = launch(p); pg = b.new_page(viewport={'width': 1300, 'height': 900}); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
+        b = launch(p); pg = b.new_page(viewport={'width': 1300, 'height': 900}); errs=watch_errors(pg, n=200)
         pg.goto(PAGE); pg.wait_for_timeout(300)
         pg.evaluate("document.querySelector('.viewtabs [data-view=progress]').click()")
         base = fixture('example.json')

@@ -10,7 +10,7 @@ must be stopped by the security rule itself, not just fail because there's no ne
 Run: python tests/test_privacy.py"""
 from playwright.sync_api import sync_playwright
 import sys
-from helpers import PAGE, ROOT, finish, launch
+from helpers import PAGE, ROOT, finish, launch, watch_errors, import_file
 sys.path.insert(0, str(ROOT / 'tools'))
 from update_csp import fingerprints
 
@@ -26,7 +26,7 @@ with sync_playwright() as p:
     ctx.on('page', lambda q: opened.append(q))
     pg = ctx.new_page(); opened.clear(); pg.add_init_script("document.addEventListener('securitypolicyviolation', e=>(window.__csp=window.__csp||[]).push(e.violatedDirective))")
     pg.on('framenavigated', lambda f: away.append(f.url) if f == pg.main_frame and f.url not in (PAGE, 'about:blank') else None)
-    pg.on('pageerror', lambda e: errs.append(str(e)[:150]))
+    watch_errors(pg, errs, n=150)
     pg.goto(PAGE); pg.wait_for_timeout(300)
 
     csp = pg.evaluate("document.querySelector('meta[http-equiv=Content-Security-Policy]')?.content || ''")
@@ -48,7 +48,7 @@ with sync_playwright() as p:
             pg.click(f'.viewtabs [data-view={view}]'); pg.wait_for_timeout(300)
     pg.evaluate("document.querySelectorAll('details').forEach(d=>d.open=true)"); pg.wait_for_timeout(300)
     with pg.expect_download() as d: pg.click('#exportBtn')
-    pg.set_input_files('#importFile', d.value.path()); pg.wait_for_timeout(400)
+    import_file(pg, d.value.path())
 
     # the page's own code is blocked from reaching the network even when it tries
     blocked = pg.evaluate("""async()=>{ try{ await fetch('https://example.com/'); return false; }catch(e){ await new Promise(ok=>setTimeout(ok, 300)); return (window.__csp||[]).includes('connect-src'); } }""")   # the rule reports it just after

@@ -5,7 +5,7 @@ BROWSER environment variable says firefox or webkit) and checks the tool's own r
 separately in Python. Nothing is fetched from the internet. With the TODAY environment variable (for example
 TODAY=2027-01-01) the tests run as if it were that day: the page's clock and the Python models' date.today() both say so
 (only date.today(): tests use that, not datetime.now())."""
-import json, os, sys
+import json, os, random, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,6 +54,23 @@ def shown(pg):
     """The page is on screen: its guard against being shown inside another site has let it show (a hidden page would pass
     every check for bad text, as nothing is visible)."""
     return pg.evaluate("()=>!document.getElementById('framed') && getComputedStyle(document.documentElement).display!=='none'")
+
+
+def pick(*a): return random.choice(a)
+
+
+def watch_errors(pg, errs=None, n=200):
+    """The page's script errors, as they happen, in a list (a new one, or added to errs)."""
+    errs = [] if errs is None else errs
+    pg.on('pageerror', lambda e: errs.append(str(e)[:n])); return errs
+
+
+def import_file(pg, path, timeout=20000):
+    """Import a file through the Import button and wait until the tool has dealt with it: your data replaced, or a note saying
+    why not. Waiting for that, not a fixed time, so a slow machine can't check too early."""
+    pg.evaluate("()=>{ window.__was=state; document.querySelector('.toast').hidden=true; }")
+    pg.set_input_files('#importFile', str(path))
+    pg.wait_for_function("()=>state!==window.__was || !document.querySelector('.toast').hidden", timeout=timeout)   # an arrow function: the page's security rule refuses a bare string
 
 
 def fixture(name):

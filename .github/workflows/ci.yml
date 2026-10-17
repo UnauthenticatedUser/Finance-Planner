@@ -3,7 +3,8 @@
 #           (Safari's engine). All three must pass. In Chromium the tests that depend on the date also run as if it
 #           were 31 December, 1 January, a day in March and one in August, so a year change can't turn them red. Release tags don't run it again: a tag points at a commit on main
 #           that was already tested.
-#   deploy: publishes index.html to GitHub Pages, only from main and only when the tests passed.
+#   deploy: publishes index.html to GitHub Pages, only from main, only when the tests passed, and only if the commit is still
+#           the newest on main (two pushes close together: the older one's tests can finish last, and would put it back).
 # Actions are pinned to exact commits (the version is in the comment); Dependabot proposes updates as pull requests.
 name: Tests
 
@@ -63,17 +64,30 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Check this is still the newest commit on main
+        id: newest
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          tip=$(git ls-remote "https://github.com/$REPO" refs/heads/main | cut -f1)
+          if [ "$tip" = "$SHA" ]; then echo "deploy=yes" >> "$GITHUB_OUTPUT"; else echo "main has moved on to $tip, whose own run publishes it, so $SHA isn't published."; fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.newest.outputs.deploy == 'yes'
         with:
           persist-credentials: false
       - name: Collect the site (only the tool itself is published)
+        if: steps.newest.outputs.deploy == 'yes'
         run: |
           mkdir _site
           cp index.html _site/
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        if: steps.newest.outputs.deploy == 'yes'
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: steps.newest.outputs.deploy == 'yes'
         with:
           path: _site
       - name: Publish to GitHub Pages
+        if: steps.newest.outputs.deploy == 'yes'
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

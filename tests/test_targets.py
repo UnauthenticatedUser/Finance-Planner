@@ -14,9 +14,8 @@ becoming 100%.
 Run: python tests/test_targets.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, datetime, calendar
-from helpers import PAGE, FIXTURES, fixture, finish, launch
+from helpers import FIXTURES, PAGE, finish, fixture, launch, pick, watch_errors, import_file
 from model import surplus_invested, savings, save_months, by_month, payout_tax, pension_age, payout_age
-def pick(*a): return random.choice(a)
 def eur(v):   # whole euros, a half away from zero
     n=int(math.floor(abs(v)+0.5)); return ('−' if v<0 and n else '')+'€{:,}'.format(n)
 def months_label(m):   # "1y 2m"
@@ -38,7 +37,7 @@ def need_problem(n, makes):
 def main():
     random.seed(int(sys.argv[2]) if len(sys.argv)>2 else 7); N=int(sys.argv[1]) if len(sys.argv)>1 else 120
     with sync_playwright() as p:
-        b=launch(p); pg=b.new_page(reduced_motion='reduce'); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
+        b=launch(p); pg=b.new_page(reduced_motion='reduce'); errs=watch_errors(pg, n=200)
         pg.goto(PAGE); pg.wait_for_timeout(300)
         base=fixture('example.json'); fails=0
         for k in range(N):
@@ -169,7 +168,7 @@ def main():
         if pg.evaluate("document.getElementById('surplus-det').open"): fails+=1; print('the tile stayed open after a click elsewhere')
         # older backups, imported: the surplus switch on means all of it (v1.1.6 file), off means none (v1.1.0 file); the slider's value is the cash share
         for name, want in (('backup-v1.1.6.json', [100,'0']), ('backup-v1.1.0.json', [0,'100'])):
-            pg.set_input_files('#importFile', str(FIXTURES/name)); pg.wait_for_timeout(300)
+            import_file(pg, FIXTURES/name)
             got=pg.evaluate("()=>[surplusPct(), document.getElementById('surplusRange').value]")
             if got!=want: fails+=1; print('old backup', name, 'gave', got, 'want', want)
         # a payment that fits the balance exactly takes exactly that many months (not one more from rounding)
@@ -227,6 +226,14 @@ def main():
         # "Try other numbers" doesn't move FIRE: it follows your own investments
         e=[pg.evaluate("s=>{ state=normalize(s); refreshAll(); return targetStatus(state.targets[0], compute()).eta; }", {**st8, 'birthYear':1990, 'enableProjCustom':on, 'projStart':2e6, 'projMonthly':5000}) for on in (False, True)]
         if e[0]!=e[1]: fails+=1; print('FIRE with Try other numbers on:', e)
+        # 50 FIRE targets: health insurance mustn't make a change slower. Its pension-age month is worked out once per target, not
+        # for every month of every target; counted by how often the targets read the clock (a count, so a slow machine can't matter)
+        reads=pg.evaluate("""()=>{ const run=h=>{ state=normalize({birthYear:1980, gross:3000, etfMonthly:500, etfs:[{name:'A', value:20000, weight:100}],
+            targets:Array.from({length:50}, (_,i)=>({name:'f'+i, kind:'fire', spend:20000+i*100, rate:4, health:h}))}); const c=compute(); moneyByMonth(c, 720, {real:true});
+            const D=Date; let n=0; window.Date=new Proxy(D, {construct:(T,a)=>{ n++; return new T(...a); }, apply:(T,th,a)=>{ n++; return T(...a); }});
+            try{ state.targets.forEach(t=>targetStatus(t,c)); } finally{ window.Date=D; } return n; };
+          return [run('yes'), run('no')]; }""")
+        if reads[0]-reads[1]>200: fails+=1; print('50 FIRE targets with health insurance read the clock', reads[0], 'times, without it', reads[1])
         print('page errors:', errs[:3] or 'none')
         finish('targets', fails or errs, f"{N} random users: {'all match' if not fails else str(fails)+' differences'}")
 

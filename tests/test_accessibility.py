@@ -5,8 +5,13 @@ every section of the editor open.
 - every button, input, dropdown and link has a name a screen reader can announce (a placeholder that's only a number isn't one)
 - no two elements share an id, and every aria reference points to an element that exists
 - text has enough contrast against its background (4.5:1, or 3:1 for large text)
-- keyboard focus is visible on every button, field, link, section header, editable text, help you can Tab to and switch:
-  it looks different focused than not; a name has letters or digits ("×" alone isn't one)
+- keyboard focus is visible on every button, field, link, section header, editable text, help you can Tab to and switch,
+  on both views: it looks different focused than not; a name has letters or digits ("×" alone isn't one)
+- the dashboard's explanations can be reached with Tab and are read by screen readers (chart parts and history dots repeat
+  what their legend or rows say); a field's help is read with it; a row's buttons say which row ("Remove fund “Global
+  equity”"), a type dropdown is named "Type", name suggestions are a combobox, the view tabs control their panels and the
+  language buttons are pressed buttons
+- with reduced motion nothing moves (the target bars too), and the invested share's box is at least 24px wide at 0%
 Run: python tests/test_accessibility.py"""
 from playwright.sync_api import sync_playwright
 from helpers import PAGE, finish, launch
@@ -38,9 +43,24 @@ CHECK = r"""()=>{
     const fg=rgb(cs.color), bg=bgOf(e), f=fg.slice(0,3).map((x,i)=>x*fg[3]+bg[i]*(1-fg[3]));
     const L1=lum(f), L2=lum(bg), ratio=(Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);
     const size=parseFloat(cs.fontSize), bold=+cs.fontWeight>=700, large=size>=24 || (bold && size>=18.66);
-    const need= e.matches(':disabled, [disabled] *, .chart *, ::placeholder') ? 0 : large?3:4.5;
+    const need= e.matches(':disabled, [disabled] *, .chart *') ? 0 : large?3:4.5;
     if(ratio<need){ const k=e.textContent.trim().slice(0,30)+' '+ratio.toFixed(2); if(!seen.has(k)){ seen.add(k); out.push('low contrast '+ratio.toFixed(2)+': "'+e.textContent.trim().slice(0,40)+'"'); } } });
   return out; }"""
+
+SEMANTICS = r"""()=>{ const out=[], vis=e=>!!e.getClientRects().length;
+  document.querySelectorAll('.main [data-tip]:not([data-tip=""])').forEach(e=>{ if(!vis(e) || e.matches('button, .dseg, .dring, .hdot, .fn, .bar *')) return;
+    if(e.tabIndex<0 || !e.getAttribute('aria-description')) out.push('mouse-only explanation: '+(e.id||e.className||e.tagName)+' '+e.textContent.trim().slice(0,30)); });
+  document.querySelectorAll('[data-tip][aria-description]').forEach(e=>{ if(e.getAttribute('data-tip')!==e.__fixedTip && e.getAttribute('aria-description')!==e.getAttribute('data-tip')) out.push('screen readers hear an old tip: '+(e.id||e.className)); });
+  document.querySelectorAll('.editor label[data-tip] input, .editor .field > label[data-tip] + .inwrap input').forEach(i=>{ if(!i.getAttribute('aria-description')) out.push('field help not read: '+(i.id||i.className)); });
+  document.querySelectorAll('.editor .invtop').forEach(r=>{ const n=(r.querySelector('.invname')||{}).value, d=r.querySelector('.iconbtn:not(.mv)');
+    if(n && d && !d.getAttribute('aria-label').includes(n)) out.push('remove button without its row: '+d.getAttribute('aria-label'));
+    const s=r.querySelector('.cselect'); if(s && s.getAttribute('aria-label')!==L('Type','Tüüp')) out.push('type dropdown named '+s.getAttribute('aria-label')); });
+  document.querySelectorAll('.editor .hassuggest').forEach(i=>{ if(i.getAttribute('role')!=='combobox' || !i.hasAttribute('aria-expanded') || !document.getElementById(i.getAttribute('aria-controls'))) out.push('suggestions without combobox roles'); });
+  document.querySelectorAll('[role=tab]').forEach(b=>{ const p=document.getElementById(b.getAttribute('aria-controls')); if(!p || p.getAttribute('role')!=='tabpanel') out.push('tab without its panel: '+b.textContent); });
+  if([...document.querySelectorAll('.langtabs button')].some(b=>!b.hasAttribute('aria-pressed'))) out.push('language buttons are not pressed buttons');
+  const bar=document.querySelector('.tfill'); if(bar && getComputedStyle(bar).transitionDuration!=='0s') out.push('target bar moves with reduced motion');
+  const share=document.getElementById('sr-inv-pct'); if(share.offsetWidth && share.offsetWidth<24) out.push('invested share box '+share.offsetWidth+'px wide');
+  return [...new Set(out)].slice(0,8); }"""
 
 FOCUS = r"""()=>{ const out=[], still=document.createElement('style');   // no transitions, so a style is read as it ends up
   still.textContent='*,*::before,*::after{transition:none!important; animation:none!important}'; document.head.append(still);
@@ -66,11 +86,14 @@ with sync_playwright() as p:
             pg.evaluate("()=>document.querySelectorAll('details').forEach(d=>d.open=true)"); pg.wait_for_timeout(400)
             for view in ('overview', 'progress'):
                 pg.evaluate("v=>document.querySelector('.viewtabs [data-view='+v+']').click()", view); pg.wait_for_timeout(400)
-                for issue in pg.evaluate(CHECK) + (pg.evaluate(FOCUS) if not example and view == 'overview' else []):
+                for issue in pg.evaluate(CHECK) + pg.evaluate(FOCUS) + pg.evaluate(SEMANTICS):   # both views: some controls are only on Progress
                     msg = f'{lang} {"example" if example else "empty"} {view}: {issue}'
                     if msg not in problems: problems.append(msg)
+            # a tip that changes with your numbers is read as it is now (the 3rd pillar's, with a 20% tax rate and over its limit)
+            p3 = pg.evaluate("()=>{ state=normalize({gross:1000, taxRate:20, thirdPillar:500}); refreshAll(); const e=document.getElementById('out-p3'); return [e.getAttribute('aria-description'), e.getAttribute('data-tip')]; }")
+            if p3[0] != p3[1]: problems.append(f'{lang}: screen readers hear an old 3rd pillar tip: {p3[0][:50]!r}')
             pg.close()
     b.close()
 
 for m in problems[:25]: print(' ', m)
-finish('accessibility', problems, f'{len(problems)} problems' if problems else 'names, ids, contrast, focus and skip link all fine')
+finish('accessibility', problems, f'{len(problems)} problems' if problems else 'names, ids, contrast, focus, explanations and skip link all fine')
