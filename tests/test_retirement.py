@@ -26,7 +26,7 @@ def main():
         for i in range(N):
             big=i%3==0
             s=json.loads(json.dumps(base))
-            s.update(birthYear=pick(0,1940,1960,1975,1990,2000,2010,2026,2050), retireAge=pick(0,55,60,64.5,65,67,70,120,random.randint(1,120)),   # a half year from an old file rounds up
+            s.update(birthMonth=pick(0,0,1,6,7,12), birthYear=pick(0,1940,1960,1975,1990,2000,2010,2026,2050), retireAge=pick(0,55,60,64.5,65,67,70,120,random.randint(1,120)),   # a half year from an old file rounds up
                      payoutYears=pick(0,1,10,20,30,100,random.randint(0,100)), projInflation=pick(0,2.5,-2,10,random.uniform(-50,100)) ,
                      statePension=pick(0,0,500,1200,1e12 if big else 2000), enableProjReal=pick(True,False), projReturn=pick(7,0,-5,12,random.uniform(-100,100)),
                      projGrowth=pick(0,3,-10,random.uniform(-100,100)), enableProjSurplus=pick(True,False), projSurplusPct=pick(100,25,0,random.uniform(0,100)),
@@ -67,7 +67,9 @@ def main():
             dep=(st['invDeposits'] if st['invDeposits']>0 else start)+(put-start)
             ig=1+(st['projInflation'] if st['enableProjReal'] else 0)/100; w=inv*0.04; took=0; free_years=0   # 4% a year, rising with prices
             while inv>0 and dep>0 and free_years<200 and took+w*ig**free_years<=dep: took+=w*ig**free_years; free_years+=1   # whole years before what's taken out passes what was put in
-            inv_kept=invAt*0.04/12*(1 if free_years>=1 else 1-tx)   # tax-free while it lasts (what the total counts); taxed in full from the start otherwise
+            # under a year tax-free: the first year is taxed from the month what's taken out (rising smoothly with prices) passes what was put in
+            first=1 if free_years>=1 else 0 if not (inv>0 and dep>0) else dep/w if ig==1 else math.log(1+dep*(ig-1)/w)/math.log(ig)
+            inv_kept=invAt*0.04/12*(1-tx*(1-first))   # tax-free while it lasts (what the total counts)
             py=st['payoutYears'] or 20
             penPart=penAt/(py*12)*(1-payout_tax(pay_age, py, st['taxRate'] or 0, spa)/100)
             tot=(s1 if months(pay_age)>months(spa)-12 else 0)+penPart+inv_kept   # not counted when it starts a year or more after retiring
@@ -134,6 +136,16 @@ def main():
             q=pg.evaluate("""s=>{ state=normalize(s); refreshAll(); const r=retirement(compute()); return {tax:r.penTaxPct, later:r.stateLater, payAge:r.payAge}; }""",
                           {**base, 'birthYear':1990, 'retireAge':ret, 'pensionAgeYears':spa_y, 'pensionAgeMonths':spa_m, 'taxRate':22, 'payoutYears':30})
             if (q['tax']==22)!=want_tax22 or q['later']!=want_later: fails+=1; print(f'pension age {spa_y}y{spa_m}m, retiring at {ret}:', q)
+        # the investment account: no tax sentence at 0% income tax; no jump between 0.99 and 1.01 tax-free years (retired, inflation
+        # off, €100,000: 4% is €4,000 a year); what you put in is shown as you paid it in (€50,000), not in today's money
+        etf=lambda v: [{'name':'World', 'weight':100, 'value':v, 'monthly':0, 'fee':0}]
+        inv_base={**base, 'birthYear':1975, 'retireAge':65, 'enableEtfPlan':False, 'etfMonthly':0, 'investments':[], 'etfs':etf(50000), 'projReturn':8}
+        rd="s=>{ state=normalize(s); refreshAll(); const r=retirement(compute()); return [r.fromInv, document.getElementById('ret-note').textContent]; }"
+        zero=pg.evaluate(rd, {**inv_base, 'taxRate':0, 'invDeposits':1})[1]
+        lo, hi=[pg.evaluate(rd, {**inv_base, 'birthYear':1955, 'enableProjReal':False, 'etfs':etf(100000), 'invDeposits':d})[0] for d in (3960, 4040)]
+        put=pg.evaluate(rd, {**inv_base, 'invDeposits':50000})[1]
+        if 'investment account' in zero or abs(hi-lo)>2 or 'more than you put in (€50,000)' not in put:
+            fails+=1; print('investment account: at 0% tax', 'investment account' in zero, '| 0.99 vs 1.01 years', lo, hi, '|', put[put.find('investment account'):][:110])
         print('page errors:', errs[:3] or 'none')
         finish('retirement', fails or shown_bad or errs, f"{N} users: {fails} calculation differences, {shown_bad} display problems")
 

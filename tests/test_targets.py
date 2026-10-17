@@ -15,7 +15,7 @@ Run: python tests/test_targets.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, math, sys, datetime, calendar
 from helpers import FIXTURES, PAGE, finish, fixture, launch, pick, watch_errors, import_file
-from model import surplus_invested, savings, save_months, by_month, payout_tax, pension_age, payout_age
+from model import surplus_invested, savings, save_months, by_month, payout_tax, pension_age, payout_age, birth_month
 def eur(v):   # whole euros, a half away from zero
     n=int(math.floor(abs(v)+0.5)); return ('−' if v<0 and n else '')+'€{:,}'.format(n)
 def months_label(m):   # "1y 2m"
@@ -44,7 +44,7 @@ def main():
             s=json.loads(json.dumps(base)); big=k%5==0
             s.update(projReturn=pick(10,7,0,-5,15,random.uniform(-20,30)), projInflation=pick(2.5,0,5,-1,random.uniform(0,10)), projGrowth=pick(0,3,-5,random.uniform(0,10)),
                      enableProjSurplus=pick(True,False), projSurplusPct=pick(100,60,0,random.uniform(0,100)), enableProjFee=pick(True,False), projFee=pick(0,0.2,1.5), enableProjReal=pick(True,False), projYears=pick(10,20,40),
-                     expenses=pick(1600,500,4000,9000), euribor=pick(2.6,0,4), birthYear=pick(0,1958,1965,1980,1990,2000), retireAge=pick(65,60,70),   # 1958: already a pensioner
+                     expenses=pick(1600,500,4000,9000), euribor=pick(2.6,0,4), birthYear=pick(0,1958,1965,1980,1990,2000), birthMonth=pick(0,0,1,12), retireAge=pick(65,60,70),   # 1958: already a pensioner
                      enableProjNet=pick(True,False), invDeposits=pick(0,0,20000), payoutYears=pick(20,10,30))
             for a in s['accounts']: a['yield']=pick(a['yield'],0,4.5,-0.5)   # cash earns its interest after tax
             s['debts']=[{'name':'d'+str(j), 'balance':pick(5000,150000,1e6 if big else 300000), 'rtype':pick('fixed','euribor'), 'rate':pick(0,3,8,25), 'margin':pick(0.5,2), 'payment':pick(0,100,950,3000), 'asset':pick(0,200000)} for j in range(random.randint(0,3))]
@@ -74,9 +74,9 @@ def main():
             one_v, one_p = by_month(0, 1, net_i, 720, 0, stop)   # €1 more a month into investments, a flat amount
             other=c['networth']-r['start']-c['buffer']+owed[0]   # property; what was bought with a loan keeps up with prices
             prop=lambda i: other+c['debtAssets']*(infl**(i/12)-1)
-            # health insurance (FIRE): your own, €272/mo in 2026, only while you'd be below pension age (birthday taken as mid-year)
+            # health insurance (FIRE): your own, €272/mo in 2026, only while you'd be below pension age (from your birth month, July when not given)
             t=s['targets'][1]; by=st['birthYear']; spa=pension_age(st)
-            health=lambda i: 272*12 if t['health']=='yes' and (not by or today.year-by+(today.month-1-6+i)/12<spa) else 0
+            health=lambda i: 272*12 if t['health']=='yes' and (not by or today.year-by+(today.month-1-birth_month(st)+i)/12<spa) else 0
             goal=lambda i: ((t['spend'] if t['spend']>0 else c['expenses']*12)+health(i))/(t['rate']/100)
             nwT=s['targets'][0]['amount']; A2=s['targets'][2]['amount']; A3=s['targets'][3]['amount']
             first=lambda v, G: next((i for i in range(721) if v[i]>=G(i)*infl**(i/12)), math.inf)

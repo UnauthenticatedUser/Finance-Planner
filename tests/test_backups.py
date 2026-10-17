@@ -115,6 +115,10 @@ with sync_playwright() as p:
             if not same: fails.append((lang,'old file '+f.name+' changed when loaded'))
             # what a file doesn't have gets its default: FIRE targets from before v1.1.0 have no health insurance setting, so "no"
             if f.name=='backup-v1.0.0.json' and pg.evaluate("state.targets.filter(t=>t.kind==='fire').map(t=>t.health)")!=['no']: fails.append((lang,'an old FIRE target got health insurance'))
+            # files from before v1.5.0 have no month of birth: not given, so it counts as July as before; v1.5.0's keeps its own
+            # (gray like a placeholder only while it isn't given)
+            bm=pg.evaluate("[state.birthMonth, document.getElementById('bmonth').textContent, document.getElementById('bmonth').classList.contains('unset')]")
+            if bm[0]!=(3 if f.name=='backup-v1.5.0.json' else 0) or not bm[1] or bm[2]!=(bm[0]==0): fails.append((lang, f.name+': month of birth', bm))
         if errs: fails.append((lang,'page errors', errs[:2]))
         print(lang, 'export file name:', fname, '| page errors:', errs or 'none')
         ctx.close()
@@ -151,13 +155,20 @@ with sync_playwright() as p:
       return [m.taxRate, m.retireAge, m.expenses, m.targets[0].dueMon, m.history.map(e=>e.m), compute().aStateP2]; }""")
     if q!=[22, 65, 1200, '03', ['2025-06'], 0]: fails.append(('defaults, a lone deadline month, history years or a 2nd pillar at 0%', q))
     # the clock set back to a month you already saved: that month stays as it was, and a full history isn't saved over and over
+    # (its months all later than the clock, from 2030)
     pg.close(); pg=on_day(ctx.new_page(), '2026-03-15'); pg.goto(PAGE); pg.wait_for_timeout(300)
     q=pg.evaluate("""()=>{ state=normalize({accounts:[{name:'a', amount:5000, yield:0}], enableHistory:true, history:[{m:'2026-03', nw:111, assets:111, debt:0, auto:1}, {m:'2026-08', nw:222, assets:222, debt:0, auto:1}]});
-        refreshAll(); const kept=state.history[0].nw; state.history=Array.from({length:1200}, (_,i)=>({m:(1950+Math.floor(i/12))+'-'+String(i%12+1).padStart(2,'0'), nw:1, assets:1, debt:0, auto:0}));
+        refreshAll(); const kept=state.history[0].nw; state.history=Array.from({length:1200}, (_,i)=>({m:(2030+Math.floor(i/12))+'-'+String(i%12+1).padStart(2,'0'), nw:1, assets:1, debt:0, auto:0}));
         const again=[recordHistory(compute()), recordHistory(compute())];
         state=normalize({enableHistory:true, history:[{m:'2026-03', nw:0, assets:0, debt:0, auto:1}]}); refreshAll();
         const dot=document.querySelector('#hist-chart .hdot'); return [kept, again, dot ? dot.getAttribute('data-tip') : '']; }""")
     if q[0]!=111 or q[1]!=[False, False] or 'entered by you' in q[2]: fails.append(('a past month kept, no saving loop, an automatic €0 month', q))
+    # one start with the clock ahead (January 2027), then right again: this month is still recorded and follows your numbers
+    pg.close(); pg=on_day(ctx.new_page(), '2027-01-15'); pg.goto(PAGE); pg.wait_for_timeout(300)
+    pg.evaluate("()=>{ localStorage.removeItem(KEY_META); state=normalize({accounts:[{name:'a', amount:9000, yield:0}], enableHistory:true, history:[{m:'2026-09', nw:9000, assets:9000, debt:0, auto:1}]}); save(); refreshAll(); }")
+    pg.close(); pg=on_day(ctx.new_page(), '2026-10-17'); pg.goto(PAGE); pg.wait_for_timeout(300)
+    q=pg.evaluate("()=>{ state.accounts[0].amount=12345; save(); refreshAll(); return state.history.map(e=>e.m+':'+e.nw); }")
+    if q!=['2026-09:9000', '2026-10:12345', '2027-01:9000']: fails.append(('after one start with the clock ahead, this month is recorded and follows your numbers', q))
     # Reset, then only monthly saving entered, then Reset again: Undo brings back that saving; Reset on an empty tool offers no Undo
     pg.close(); pg=ctx.new_page(); pg.goto(PAGE); pg.wait_for_timeout(300)
     q=pg.evaluate("""()=>{ localStorage.clear(); backup=null; state=normalize({gross:3000}); refreshAll(); document.getElementById('resetBtn').click();
@@ -165,6 +176,18 @@ with sync_playwright() as p:
         const kept=[state.etfMonthly, state.thirdPillar]; localStorage.clear(); backup=null; state=blankState(state); refreshAll(); document.getElementById('resetBtn').click();
         return [kept, !!backup, getComputedStyle(document.getElementById('revertBtn')).display]; }""")
     if q!=[[300, 100], False, 'none']: fails.append(('Undo after Reset: saving lost, or an empty Undo offered', q))
+    # a fresh tool stays a fresh tool after switching language (its two accounts keep the names it started with): the example is still offered
+    q=pg.evaluate("()=>{ localStorage.clear(); backup=null; state=blankState(state); refreshAll(); document.querySelector('.langtabs [data-lang=et]').click(); const r=[hasOwnData(), document.getElementById('exampleBar').hidden]; document.querySelector('.langtabs [data-lang=en]').click(); return r; }")
+    if q!=[False, False]: fails.append(('a fresh tool after a language switch counted as your data (yours, example offer hidden)', q))
+    # a set-up with no amounts (retirement age, return, fund splits) is your data too: Reset keeps it for Undo, and a display
+    # click on the blank tool (30 years) followed by another Reset doesn't replace that copy
+    q=pg.evaluate("""()=>{ localStorage.clear(); backup=null; state=normalize({retireAge:60, projReturn:6, etfs:[{name:'A', weight:70}, {name:'B', weight:30}]}); save(); refreshAll(); const before=JSON.stringify(state);
+        document.getElementById('resetBtn').click(); [...document.querySelectorAll('#yrbtns button')].find(b=>b.dataset.yr==='30').click(); document.getElementById('resetBtn').click();
+        document.getElementById('revertBtn').click(); return JSON.stringify(state)===before; }""")
+    if not q: fails.append(('Reset and Undo lost a set-up with no amounts', q))
+    # notes whose cleaning makes them longer ("&" becomes five characters) are cut to the limit, never emptied
+    q=pg.evaluate("()=>{ const n=normalize({text:{goalsHTML:'R&D '.repeat(1000)+'&'.repeat(16000)}}).text.goalsHTML.length; return [n>0, n<=NOTES_MAX]; }")
+    if q!=[True, True]: fails.append(('notes with many "&" cut to the limit (kept, within it)', q))
     # notes cut to the limit when loaded stay editable (closing tags added by the cleaning used to push them over it)
     q=pg.evaluate("""()=>{ state=normalize({text:{goalsHTML:'<b>'+'x'.repeat(NOTES_MAX-2)+'</b>'}}); refreshAll(); const n=document.getElementById('goalsList');
         n.focus(); getSelection().selectAllChildren(n); getSelection().collapseToEnd(); document.execCommand('delete'); return [state.text.goalsHTML.length<=NOTES_MAX, n.innerHTML===state.text.goalsHTML]; }""")

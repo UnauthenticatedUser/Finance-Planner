@@ -50,11 +50,13 @@ CHECK = r"""()=>{
 SEMANTICS = r"""()=>{ const out=[], vis=e=>!!e.getClientRects().length;
   document.querySelectorAll('.main [data-tip]:not([data-tip=""])').forEach(e=>{ if(!vis(e) || e.matches('button, .dseg, .dring, .hdot, .fn, .bar *')) return;
     if(e.tabIndex<0 || !e.getAttribute('aria-description')) out.push('mouse-only explanation: '+(e.id||e.className||e.tagName)+' '+e.textContent.trim().slice(0,30)); });
+  document.querySelectorAll('.main .chip[data-tip], .topbar button[data-tip]').forEach(e=>{ if(vis(e) && !e.getAttribute('aria-description')) out.push('a button\'s explanation not read: '+(e.id||e.textContent.trim())); });
   document.querySelectorAll('[data-tip][aria-description]').forEach(e=>{ if(e.getAttribute('data-tip')!==e.__fixedTip && e.getAttribute('aria-description')!==e.getAttribute('data-tip')) out.push('screen readers hear an old tip: '+(e.id||e.className)); });
   document.querySelectorAll('.editor label[data-tip] input, .editor .field > label[data-tip] + .inwrap input').forEach(i=>{ if(!i.getAttribute('aria-description')) out.push('field help not read: '+(i.id||i.className)); });
   document.querySelectorAll('.editor .invtop').forEach(r=>{ const n=(r.querySelector('.invname')||{}).value, d=r.querySelector('.iconbtn:not(.mv)');
     if(n && d && !d.getAttribute('aria-label').includes(n)) out.push('remove button without its row: '+d.getAttribute('aria-label'));
-    const s=r.querySelector('.cselect'); if(s && s.getAttribute('aria-label')!==L('Type','Tüüp')) out.push('type dropdown named '+s.getAttribute('aria-label')); });
+    const s=r.querySelector('.cselect'), nm=s && (s.getAttribute('aria-labelledby')||'').split(' ').map(id=>(document.getElementById(id)||{}).textContent).join(' ');
+    if(s && nm!==L('Type','Tüüp')+' '+s.textContent) out.push('type dropdown named '+nm); });   // "Type" and the choice it shows
   document.querySelectorAll('.editor .hassuggest').forEach(i=>{ if(i.getAttribute('role')!=='combobox' || !i.hasAttribute('aria-expanded') || !document.getElementById(i.getAttribute('aria-controls'))) out.push('suggestions without combobox roles'); });
   document.querySelectorAll('[role=tab]').forEach(b=>{ const p=document.getElementById(b.getAttribute('aria-controls')); if(!p || p.getAttribute('role')!=='tabpanel') out.push('tab without its panel: '+b.textContent); });
   if([...document.querySelectorAll('.langtabs button')].some(b=>!b.hasAttribute('aria-pressed'))) out.push('language buttons are not pressed buttons');
@@ -91,7 +93,7 @@ with sync_playwright() as p:
                     if msg not in problems: problems.append(msg)
             # a tip that changes with your numbers is read as it is now (the 3rd pillar's, with a 20% tax rate and over its limit)
             p3 = pg.evaluate("()=>{ state=normalize({gross:1000, taxRate:20, thirdPillar:500}); refreshAll(); const e=document.getElementById('out-p3'); return [e.getAttribute('aria-description'), e.getAttribute('data-tip')]; }")
-            if p3[0] != p3[1]: problems.append(f'{lang}: screen readers hear an old 3rd pillar tip: {p3[0][:50]!r}')
+            if not p3[0] or p3[0] != p3[1] or '20%' not in p3[0]: problems.append(f'{lang}: screen readers hear an old or no 3rd pillar tip: {str(p3[0])[:50]!r}')
             pg.close()
     b.close()
 

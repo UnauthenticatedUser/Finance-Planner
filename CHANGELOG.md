@@ -2,6 +2,20 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.5.0] – 2026-10-17
+
+A month of birth for exact pension-age timing, the official rule for the €776 in the year you reach pension age, and fixes from a fifth independent review (of v1.4.0).
+
+- **Month of birth.** An optional dropdown beside the year of birth (Settings › Retirement). It makes the month you reach pension age exact: unemployment insurance, the pensioners' tax-free amount, and when saving stops and payouts start. Left empty, the tool counts as if you were born in July, as before, so saved data and backups keep their numbers.
+- **The €776 in the year you reach pension age.** Your state pension takes its share of the pensioners' tax-free amount only for the months it's paid; until it starts, the full €776 is your pay's (Tax and Customs Board, TSD example 4). The pension took its share for the whole year, overstating that year's income tax (by €171 in the official example, about €1,000 in others).
+- **Investment withdrawals in the year the tax starts.** When what you put in runs out within the first year, that year is taxed only from then on, so the income no longer jumps at exactly one year. The card says in months when the tax starts, says nothing about tax at a 0% rate, and shows what you put in as you paid it in, not in today's money.
+- **Reset and Import keep a set-up without amounts.** A retirement age, return or fund split with no amounts entered wasn't counted as your data, so Reset or Import discarded it with no Undo (new in v1.4.0).
+- **History after one start with the clock ahead.** Opening the tool once with your computer's clock months ahead stopped your history until that month really came (new in v1.4.0). Missing months are added again, and this month follows your numbers; a month saved before a later one still stays as it was.
+- **Upgrading from v1.3.1** no longer opens Settings › Projection › Advanced by itself: the old 0% deposit increase still shows as "1 changed", but only another change opens it.
+- The yearly breakdown with your own net pay: no deduction below €0 ("−−€1") or more than a euro off; the difference to your net pay takes the rounding. "0.8 of it in the II pillar" only when you're in it. Notes full of "&" from a file are cut to the limit, no longer emptied.
+- **Keyboard and screen readers:** the target type is read with its choice; a target's buttons follow its name, and unnamed rows and history months say which one; the chips, Reset, Undo and the budget's expense breakdown are read aloud; Escape and then ArrowDown opens name suggestions again; the keyboard stays in place after "Back to dashboard" from the surplus link, a history month change, Undo in the note and Undo in the top bar; the ☰ menu closes as soon as the keyboard leaves it.
+- **Help texts:** tapping into a field in a list row (a loan payment, a fund fee, an interest rate, a deadline) no longer shows its help over the next field; help goes away when its field scrolls out of sight; an Undo note kept across a language switch changes language too.
+
 ## [1.4.0] – 2026-10-17
 
 Fixes from four independent reviews (every point checked before changing anything), and three rules brought closer to how they really work.
@@ -19,7 +33,7 @@ Fixes from four independent reviews (every point checked before changing anythin
 - **Keyboard and screen readers:** the dashboard's explanations can be reached with Tab and are read aloud; a field's help is read with it; buttons in a row say which row; the keyboard stays in place after ✎, a new type, a picked suggestion or a removed row; dropdowns close when you click elsewhere (also in Safari) and stay open when you press their own scroll bar; the ☰ menu closes when you Tab out; "+ Add" on a full list looks off and says why; the ✎ buttons show a clear focus ring.
 - **Phones:** tapping a field no longer covers the next one with its help, and help shown under a field moves with the page.
 - **Help above a field** sits right next to it. After a tooltip near the screen's right edge, the next one shown above a field could float up to 100px over it.
-- Faster with many FIRE targets, and Your path and the cards no longer work out the same forecasts twice.
+- Faster with many FIRE targets, and Your path and the cards no longer work out the same forecasts twice. FIRE's health insurance now ends in the month you reach pension age, counted in whole months (in a few cases it ran a month longer).
 - Reduced motion also stops the target bars; the invested share's box is easier to tap at 0%; two Estonian labels end with "…" on narrow phones; switching language keeps an Undo note.
 
 ## [1.3.1] – 2026-10-17
@@ -253,6 +267,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.5.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.5.0
 [1.4.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.4.0
 [1.3.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.3.1
 [1.3.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.3.0

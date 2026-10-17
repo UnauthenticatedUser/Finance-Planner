@@ -14,7 +14,7 @@ place on the page is missing fails too.
 Run: python tests/test_calculations.py [number of users]"""
 from playwright.sync_api import sync_playwright
 import json, random, sys, datetime
-from helpers import PAGE, finish, launch, watch_errors
+from helpers import PAGE, finish, launch, on_day, watch_errors
 from model import state_pension, pensioner as of_pension_age, unemp_months
 PY={'week':52,'month':12,'quarter':4,'year':1}
 def R(a,b,z=0.25): return 0 if random.random()<z else round(random.uniform(a,b))
@@ -33,19 +33,22 @@ def user():
     s['p3funds']=[{'name':'G%d'%i,'value':R(0,30000),'share':R(0,100),'fee':round(random.uniform(0,1),2)} for i in range(random.randint(0,2))]
     s['euribor']=round(random.uniform(-0.5,4),2)
     s['birthYear']=random.choice([0]*6+[1950,1958,1961,1962,1964,1990]); s['statePension']=random.choice([0,500,700,900])   # some are of pension age
+    s['birthMonth']=random.choice([0]*4+list(range(1,13)))   # often not given (July)
     s['pensionAgeYears']=random.choice([0,0,0,62,66,67]); s['pensionAgeMonths']=random.choice([0,0,8])   # an own pension age: an earlier one doesn't bring the pensioner tax rules
     return s
 def model(s):
     g=s['gross']; T=s['taxRate']/100; U=s['unemployment']/100; E=s['basicExemption']
     pensioner=of_pension_age(s, datetime.date.today().year)
-    U*=unemp_months(s, datetime.date.today().year)/12   # the year you reach pension age: until that month, spread over the year
+    um=unemp_months(s, datetime.date.today().year); U*=um/12   # the year you reach pension age: until that month, spread over the year
+    pen_months=13-um if um else 12   # that year the state pension is paid from that month on, and takes its part of the €776 only then
+    pen_E=lambda p: (776*12-min(p, 776)*pen_months)/12   # a pensioner's pay: what the pension leaves of €776 a month, over the year
     joined=s['enableP2'] and s['p2rate']>0
     p2r=s['p2rate'] if joined else 0
     if not g and not s['autoNet'] and s['manualNet']>0:   # your own net pay and no gross: the gross that leaves that net
-        k=1-p2r/100-U; n=s['manualNet']; E0=max(0, 776-(s['statePension'] or 860)) if pensioner else E
+        k=1-p2r/100-U; n=s['manualNet']; E0=pen_E(s['statePension'] or 860) if pensioner else E
         g=n/k if n<=E0 else (n-E0*T)/(k*(1-T))
     if pensioner:   # a working pensioner: the exemption is what the state pension leaves of €776
-        E=max(0, 776-state_pension(s, 0))   # your own state pension, else the average (today's pay doesn't show what was earned)
+        E=pen_E(state_pension(s, 0))   # your own state pension, else the average (today's pay doesn't show what was earned)
     p2sr=s['p2state'] if joined else 0
     inc=[x for x in s['incomes'] if x['freq']!='once']; per_month=lambda x: x['amount']*PY[x['freq']]/12   # a one-time payment is money you already have
     own=lambda x: x['tax'] in ('custom','biz'); rate_of=lambda x: (20+p2r if x['tax']=='biz' else min(100,x['rate']))/100   # a business account: 20% + your 2nd pillar rate
@@ -136,6 +139,8 @@ RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementBy
   const eu=s=>s===null || /[BTMk]/.test(s) ? NaN : (/^[−-]/.test(s.trim())?-1:1)*+s.replace(/[^\\d]/g,''), v=id=>eu(txt(id));
   // the net pay difference row: shown when it isn't €0, within a euro of rounding of the real difference (it takes the rounding the €0 rows can't)
   const adj=document.getElementById('row-y-ownnet').style.display==='none' ? 0 : eu(txt('out-y-ownnet')); if(Math.abs(adj-c.ownNetAdj)>=1.5 || adj===0 && document.getElementById('row-y-ownnet').style.display!=='none') out.push('net pay difference row: '+adj+' for '+c.ownNetAdj);
+  // each deduction row: never below €0, within a euro of its exact value
+  [['out-y-p2',c.aP2],['out-y-unemp',c.aUnemp],['out-y-tax',c.aTax],['out-y-custtax',c.aCustTax]].forEach(([id,x])=>{ const d=-v(id); if(!isNaN(d) && (d<0 || Math.abs(d-x)>=1)) out.push('breakdown: '+id+' shows '+txt(id)+' for '+x.toFixed(2)); });
   const g=v('out-y-base')+v('out-y-bonus')+[...document.querySelectorAll('#y-other-rows .v')].reduce((a,e)=>a+eu(e.textContent),0);
   if(!isNaN(g) && g!==v('out-y-gross')) out.push('breakdown: the gross rows add up to '+g+', the total shows '+txt('out-y-gross'));
   const th=v('out-y-gross')+v('out-y-p2')+v('out-y-unemp')+v('out-y-tax')+(document.getElementById('row-y-custtax').style.display==='none' ? 0 : v('out-y-custtax'))+(document.getElementById('row-y-ownnet').style.display==='none' ? 0 : v('out-y-ownnet'));
@@ -178,9 +183,15 @@ def main():
         r=pg.evaluate("s=>{ state=normalize(s); refreshAll(); }", {'gross':2787.72, 'enableP2':False, 'bonus':1438.34, 'autoNet':False, 'manualNet':2891.43, 'birthYear':1960, 'expenses':1000,
                       'incomes':[{'name':'y', 'amount':190.51, 'freq':'year', 'tax':'free', 'rate':0}]}); rec=pg.evaluate(RECON)
         if rec: fails+=1; print('breakdown with an empty hidden row:', rec[:3])
+        # the pensioner tax year with an own pension age of years and 6+ months, in whole months: born 1960 (July) with 66y8m reaches it
+        # in March 2027, so the pensioner rules start on 1 January 2027, not in 2026 (66.67 years as a decimal used to land in 2026)
+        for day, want in (('2026-12-31', False), ('2027-01-01', True)):
+            q=on_day(b.new_page(), day); q.goto(PAGE); q.wait_for_timeout(200)
+            got=q.evaluate("()=>{ state=normalize({birthYear:1960, pensionAgeYears:66, pensionAgeMonths:8, gross:2000}); return pensionerNow(); }"); q.close()
+            if got!=want: fails+=1; print('pensioner on', day, 'with 66y8m, born 1960:', got)
         # your own net pay: the deductions' total is made of three rounded figures, so it can be 2 more than income tax alone
         # rounded down (it takes both euros), or €1 when every deduction is €0 (the difference to your net pay takes it)
-        for g, n in ((1533.30, 1279.77), (510.53, 959.07)):
+        for g, n in ((1533.30, 1279.77), (510.53, 959.07), (0.51, 0.21)):
             pg.evaluate("s=>{ state=normalize(s); refreshAll(); }", {'gross':g, 'enableP2':False, 'unemployment':0, 'autoNet':False, 'manualNet':n}); rec=pg.evaluate(RECON)
             if rec: fails+=1; print(f'breakdown with your own net pay {n}:', rec[:3])
         rtt=pg.evaluate("[roundToTotal([0, 0, 13165.912, 0], 13167), roundToTotal([291.912, 220.8], 514), roundToTotal([5.4, 0], 2), roundToTotal([0, 0], 1)]")
@@ -191,6 +202,9 @@ def main():
         edge=pg.evaluate("""()=>{ const out=[], y=new Date().getFullYear(), go=s=>{ state=normalize(s); refreshAll(); return compute(); }, tip=sel=>document.querySelector(sel).getAttribute('data-tip')||'';
           let c=go({gross:2000, birthYear:y-66, pensionAgeYears:66, enableP2:false});   // 66 is later than any general age, so July of this year
           if(c.uMonths!==7 || Math.abs(c.aUnemp-2000*12*0.016*7/12)>0.005 || !/until pension age/.test(document.getElementById('row-y-unemp').textContent)) out.push('unemployment insurance until July: '+c.uMonths+' months, '+c.aUnemp+' '+document.getElementById('row-y-unemp').textContent);
+          c=go({gross:2000, birthYear:y-66, birthMonth:2, pensionAgeYears:66, enableP2:false}); if(c.uMonths!==2 || !/until your state pension starts/.test(tip('#tile-net'))) out.push('unemployment insurance with a February birthday: '+c.uMonths+' months, '+tip('#tile-net'));   // the month of birth, when given, replaces July
+          const p08=r=>{ go({gross:3000, enableP2:true, p2rate:r, birthYear:1990}); return /0\.8 of it in the II pillar/.test(document.getElementById('ret-note').textContent); };
+          if(p08(0) || !p08(2)) out.push('the I pillar note says "0.8 of it in the II pillar" only when in it: rate 0 '+p08(0)+', rate 2 '+p08(2));
           c=go({gross:2000, birthYear:y-67}); if(c.uMonths!==0 || document.getElementById('row-y-unemp').style.display!=='none') out.push('no unemployment insurance after pension age: '+c.uMonths);
           go({debts:[{name:'d', balance:96000, payment:100, rate:1}], accounts:[{name:'a', amount:100, yield:0}]}); if(!tip('#alloc-svg .dring').includes('96,000%')) out.push('debt ring: '+tip('#alloc-svg .dring'));
           go({debts:[{name:'d', balance:1, payment:1, rate:1}], accounts:[{name:'a', amount:140000, yield:0}]}); if(!tip('#alloc-svg .dring').includes('<1%')) out.push('debt ring: '+tip('#alloc-svg .dring'));

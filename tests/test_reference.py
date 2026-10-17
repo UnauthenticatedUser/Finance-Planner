@@ -7,7 +7,8 @@ rules: 22% income tax, the EUR 700 basic exemption, 1.6% unemployment insurance 
 Update these in January, together with the yearly rule check.
 Run: python tests/test_reference.py"""
 from playwright.sync_api import sync_playwright
-from helpers import PAGE, finish, launch, shown, watch_errors
+import datetime
+from helpers import PAGE, TODAY, finish, launch, shown, watch_errors
 
 TSD = 'https://www.emta.ee/node/330/main_chapter/13293/pdf'   # Tax and Customs Board, "Deklaratsiooni TSD esitamine", updated 19.01.2026
 P3 = 'https://www.pensionikeskus.ee/en/iii-pillar/contributions/questions-and-answers-about-the-iii-pillar-tax-refund/'
@@ -17,6 +18,11 @@ RATES = 'https://www.emta.ee/en/private-client/taxes-and-payment/declaration-inc
 WORKING = 'https://emta.ee/eraklient/maksud-ja-tasumine/maksusoodustused/maksuvaba-tulu-vanaduspensionieas'   # updated 01.09.2026
 AGE = 'https://sotsiaalkindlustusamet.ee/en/pension-and-benefits/applying-pension/retirement-age'   # updated 05.10.2026
 CALC = 'https://sotsiaalkindlustusamet.ee/en/pension-and-benefits/pension-amount/pension-calculation'   # updated 06.04.2026
+INVACC = 'https://emta.ee/eraklient/maksud-ja-tasumine/maksustatavad-tulud/vaartpaberid-ja-investeerimiskonto'   # the rule only: no worked figures are published
+TSD4 = 'https://emta.ee/en/business-client/taxes-and-payment/income-and-social-taxes/submission-declaration-form-tsd/naide-4-tootaja-kes-jouab-vanaduspensioniikka-kalendriaastal'   # TSD example 4
+YEAR = (datetime.date.fromisoformat(TODAY) if TODAY else datetime.date.today()).year   # the examples' year moved to the test's
+INV = {'birthYear': YEAR - 70, 'retireAge': 65, 'enableProjReal': False, 'enableEtfPlan': False, 'etfMonthly': 0, 'investments': [],
+       'etfs': [{'name': 'World', 'weight': 100, 'value': 100000, 'monthly': 0, 'fee': 0}]}   # retired, €100,000 in one fund
 AVERAGE = "Social Ministry, explanatory memo to the regulation on the 2026 provisional average, 07.10.2025"
 FICHE = 'https://economy-finance.ec.europa.eu/document/download/67de7ae2-37bd-482a-a691-1cbc525b0733_en?filename=2024-ageing-report-country-fiche-Estonia.pdf'
 
@@ -41,6 +47,20 @@ CASES = [
      '"you can gain up to 22% x 3,060 = €673.20 in total."'),
     ('3rd pillar refund limit capped at €6,000', {'gross': 5000, 'thirdPillar': 600}, 'p3Limit', 6000, P3,
      '"If 15% of gross income is more than 6,000 euros, then 6,000 euros is tax-free."'),
+
+    # TSD example 4: Maarja reaches pension age on 1 February (here this year: born in February, an own pension age of 66 so the
+    # general one doesn't decide the month), earns €2,500, isn't in the II pillar, and her €800 pension starts in February.
+    ('reaching pension age in February: the year\'s unemployment insurance', {'birthYear': YEAR - 66, 'birthMonth': 2, 'pensionAgeYears': 66, 'gross': 2500, 'enableP2': False, 'statePension': 800}, 'aUnemp', 80, TSD4,
+     '40 euros (2,500 × 1.6%) in January and February, "not withheld from March": 2 × 40'),
+    ('reaching pension age in February: the year\'s income tax on pay', {'birthYear': YEAR - 66, 'birthMonth': 2, 'pensionAgeYears': 66, 'gross': 2500, 'enableP2': False, 'statePension': 800}, 'aTax', 6411.68, TSD4,
+     'January "((2500 – 40 – 776 ) × 22%)" = 370.48; from March "2500 × 22%" = 550; the €776 is the pay\'s only until the pension takes it in February, so February is (2500 – 40) × 22%: 370.48 + 541.20 + 10 × 550'),
+
+    # The investment account: withdrawals are taxed once they pass what was put in. No authority publishes worked figures, so this is
+    # the quoted rule on round ones: retired, €100,000 invested, 4% a year (€4,000, €333.33 a month), inflation off.
+    ('investment account: €10,000 put in lasts 2.5 years', {**INV, 'invDeposits': 10000}, 'invFreeYears', 2.5, INVACC,
+     '"Maksustatav kasu … tekib, kui investeerimiskontolt tehtud väljamakse ületab varasemalt tehtud sissemakset": 10,000 / 4,000 a year'),
+    ('investment account: €2,000 put in, the first year\'s tax a month', {**INV, 'invDeposits': 2000}, 'invTax', 36.67, INVACC,
+     'the same rule: €2,000 covers 6 months of €333.33, the other 6 are taxed 22%: 6 × 333.33 × 22% / 12'),
 
     # The pensioners' tax-free amount: the state pension is taxed only above €776 a month.
     ('state pension €820: taxed part', {'birthYear': 1990, 'statePension': 820}, 'stateTaxable', 44, PENSIONER,
@@ -86,8 +106,8 @@ CASES = [
 ]
 
 READ = """s=>{ state=normalize(s); refreshAll(); const c=compute(), r=retirement(c);
-  const out={net:c.net, taxRefund:c.taxRefund, p3Limit:c.p3Limit, spa:statePensionAge()};
-  if(r){ out.stateTaxable=r.stateGross-r.exemption; out.stateTax=r.stateTax; out.stateToday=r.stateToday; }
+  const out={net:c.net, taxRefund:c.taxRefund, p3Limit:c.p3Limit, spa:statePensionAge(), aTax:c.aTax, aUnemp:c.aUnemp};
+  if(r){ out.stateTaxable=r.stateGross-r.exemption; out.stateTax=r.stateTax; out.stateToday=r.stateToday; out.invFreeYears=r.invFreeYears; out.invTax=r.invTax; }
   out.unit=iPillarUnit(c.aSal);
   [59,60,65,66].forEach(a=>out['payout@'+a]=payoutTaxPct(a));
   return out; }"""

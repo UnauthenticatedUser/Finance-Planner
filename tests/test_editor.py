@@ -130,6 +130,12 @@ with sync_playwright() as p:
         pg.wait_for_timeout(400)
         if pg.evaluate(PILL): problems.append(f'phone ({how}): back pill still showing at the card')
         if how != 'top' and not pg.evaluate(ONSCREEN): problems.append(f'phone ({how}): card not on screen')
+    # "Back to dashboard" after the surplus "Change" link returns the keyboard to that link
+    pg.evaluate("window.scrollTo(0,0)"); pg.click('#tile-surplus'); pg.wait_for_timeout(400); pg.focus('#sur-change'); pg.keyboard.press('Enter'); pg.wait_for_timeout(900)
+    back = None
+    if pg.evaluate(PILL): pg.focus('#backpill'); pg.keyboard.press('Enter'); pg.wait_for_timeout(900); back = pg.evaluate("document.activeElement.id")
+    if back != 'sur-change': problems.append(f'phone: focus after Back to dashboard from the surplus Change link: {back}')
+    pg.click('#tile-surplus'); pg.wait_for_timeout(300)   # closed again
     # scrolled into the editor yourself: "Back to top" takes you up and goes away; the pencil's pill says "Back to dashboard"
     LABEL = "()=>{ const p=document.getElementById('backpill'); return p.hidden ? null : [...p.children].find(c=>!c.hidden).textContent; }"
     pg.evaluate("window.scrollTo(0,0)"); pg.wait_for_timeout(200)
@@ -143,7 +149,7 @@ with sync_playwright() as p:
     pg.click('#backpill'); pg.wait_for_timeout(600)
     # an Undo note while the pill shows: the pill sits above it, not under it
     pg.evaluate("document.querySelector('.cardedit[data-edit^=\"savings\"]').click()"); pg.wait_for_timeout(500)
-    pg.evaluate("undoToast('Holiday', ()=>{})"); pg.wait_for_timeout(400)
+    pg.evaluate("undoToast(()=>'Holiday', ()=>{})"); pg.wait_for_timeout(400)
     gap = pg.evaluate("()=>document.querySelector('.toast').getBoundingClientRect().top - document.getElementById('backpill').getBoundingClientRect().bottom")
     if not gap >= 4: problems.append(f'phone: back pill overlaps the Undo note ({gap}px)')
     # cash rows: the rate and interest never split across lines
@@ -242,7 +248,7 @@ with sync_playwright() as p:
     open3 = pg3.evaluate("document.querySelector('#tgt-rows .cselect.ttype').getAttribute('aria-expanded')")
     if [open1, open2, open3] != ['true', 'false', 'false']: problems.append(f'dropdown: open after pressing its box {open1}, after a press outside {open2}, unfocused {open3}')
     pg3.evaluate("()=>{ state.incomes=[{name:'', amount:500, freq:'month', tax:'salary', rate:0}]; save(); refreshAll(); }"); pg3.wait_for_timeout(200)
-    where = lambda: pg3.evaluate("()=>{ const a=document.activeElement; return (a.closest('[id]')||{}).id+' '+a.tagName+'.'+a.className; }")
+    where = lambda: pg3.evaluate("()=>{ const a=document.activeElement; return (a.parentElement.closest('[id]')||{}).id+' '+a.tagName+'.'+a.className; }")   # the list it's in (a dropdown has an id of its own)
     pg3.focus('[data-edit="property:debts"]'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(100)
     in_debts = lambda: pg3.evaluate("()=>{ const a=document.activeElement, h=document.querySelector('[data-part=debts]'); return a.closest('.editor') && a.tagName!=='SUMMARY' && a.getClientRects().length && h.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING ? 'debts part' : a.tagName+'.'+a.className; }")
     w1 = in_debts()   # the part's first control
@@ -256,8 +262,10 @@ with sync_playwright() as p:
     if w1 != 'debts part' or 'tgt-rows' not in w2 or 'income-rows' not in w3 or 'etf-rows' not in w4 or menus:
         problems.append(f'focus after ✎ {w1}, a new type {w2}, a suggestion {w3}, a removed row {w4}; suggestion lists open: {menus}')
     pg3.click('.langtabs [data-lang=et]'); pg3.wait_for_timeout(150)
-    if pg3.evaluate("document.querySelector('.toast').hidden"): problems.append('switching language closed the Undo note')
+    if pg3.evaluate("document.querySelector('.toast').hidden") or 'Võta tagasi' not in pg3.evaluate("document.querySelector('.toast').textContent"): problems.append('switching language closed the Undo note, or left it in English')
     pg3.click('.langtabs [data-lang=en]'); pg3.wait_for_timeout(150)
+    pg3.focus('.toast button'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(200); undone = where()   # Undo with the keyboard: on to the row that came back
+    if 'etf-rows' not in undone: problems.append(f'focus after Undo in the note: {undone}')
     full = pg3.evaluate("()=>{ state.targets=Array.from({length:listMax('targets')}, (_,i)=>({name:'t'+i, kind:'cash', amount:1})); refreshAll(); const b=document.getElementById('addTarget'); b.focus(); return [b.getAttribute('aria-disabled'), document.activeElement===b, (b.getAttribute('aria-description')||'').length>0]; }")
     if full != ['true', True, True]: problems.append(f'"+ Add" at the limit: {full}')
     # a field tapped on a touch screen doesn't show its label's help over the field below; one reached with Tab sits next to its
@@ -265,12 +273,12 @@ with sync_playwright() as p:
     # scroll can leave the sticky editor where it is, as in WebKit)
     tp = pg3.evaluate("""async ()=>{ const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip'), ed=document.querySelector('.editor'); document.dispatchEvent(new PointerEvent('pointerdown', {pointerType:'touch', bubbles:true}));
         f.focus({focusVisible:true}); const tapped=getComputedStyle(tip).display; document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true}));
-        f.blur(); tip.style.left=(innerWidth-120)+'px'; f.scrollIntoView({block:'end'}); await new Promise(r=>setTimeout(r, 100));   // the last tip near the right edge, the field low: its tip goes above it
+        f.blur(); tip.style.left=(innerWidth-120)+'px'; f.scrollIntoView({block:'end'}); ed.scrollBy(0, 30); await new Promise(r=>setTimeout(r, 100));   // the last tip near the right edge, the field low: its tip goes above it
         f.focus({focusVisible:true}); const a0=f.getBoundingClientRect().top;
         // next to its field: just below it, or just above it when there's no room below (where it sits can flip as it moves)
         const gap=()=>{ const t=tip.getBoundingClientRect(), r=f.getBoundingClientRect(); return Math.round(Math.min(Math.abs(t.top-r.bottom), Math.abs(r.top-t.bottom))); }, g0=gap();
         const scrolled=new Promise(r=>addEventListener('scroll', ()=>requestAnimationFrame(()=>r()), {once:true, capture:true}));
-        ed.scrollBy(0, ed.scrollTop>=60 ? -60 : 60); await Promise.race([scrolled, new Promise(r=>setTimeout(r, 1000))]);
+        ed.scrollBy(0, 60); await Promise.race([scrolled, new Promise(r=>setTimeout(r, 1000))]);   // the field moves up, staying in sight (out of sight, its tip goes)
         return [tapped, getComputedStyle(tip).display, g0, gap(), Math.round(f.getBoundingClientRect().top-a0)]; }""")
     if tp[0] != 'none' or tp[1] == 'none' or not tp[4] or tp[2] > 14 or tp[3] > 14: problems.append(f'field help: tapped {tp[0]}, tabbed {tp[1]}, {tp[2]}px from its field, {tp[3]}px after the field moved {tp[4]}px')
     # every loan fixed-rate: ✎ skips the hidden Euribor field and goes to the first control shown
@@ -280,7 +288,42 @@ with sync_playwright() as p:
     pg3.fill('#income-rows .invname', ''); pg3.keyboard.type('r'); pg3.keyboard.press('ArrowDown'); pg3.keyboard.press('ArrowDown'); pg3.keyboard.type('e')
     ad = pg3.evaluate("()=>{ const i=document.querySelector('#income-rows .invname'), id=i.getAttribute('aria-activedescendant'), m=document.getElementById(i.getAttribute('aria-controls')); return [m.hidden ? 'shut' : 'open', !id || document.getElementById(id).classList.contains('act')]; }")
     pg3.keyboard.press('Escape')
+    # the month of birth, picked with the keyboard beside the year: Not given → January → February
+    pg3.evaluate("()=>{ state.birthYear=1961; state.birthMonth=0; save(); refreshAll(); }"); pg3.focus('#bmonth'); pg3.keyboard.press('Enter'); pg3.keyboard.press('ArrowDown'); pg3.keyboard.press('ArrowDown'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(100)
+    bm = pg3.evaluate("[state.birthMonth, document.getElementById('bmonth').textContent, document.activeElement.id]")
+    if bm != [2, 'Feb', 'bmonth']: problems.append(f'month of birth picked with the keyboard (value, shown, focus): {bm}')
     if w5 != 'debts part' or ad != ['open', True]: problems.append(f'focus after ✎ with only fixed-rate loans {w5}; typing after an arrow pick (list, points at the highlighted one) {ad}')
+    # a tooltip whose field scrolls out of the editor panel goes, instead of staying at the edge
+    gone = pg3.evaluate("""async ()=>{ const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip'), ed=document.querySelector('.editor');
+        f.blur(); document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true})); f.scrollIntoView({block:'center'}); f.focus({focusVisible:true}); const shown=getComputedStyle(tip).display;
+        const away=new Promise(r=>addEventListener('scroll', ()=>requestAnimationFrame(()=>r()), {once:true, capture:true})); ed.scrollTop=f.getBoundingClientRect().top-ed.getBoundingClientRect().top>ed.clientHeight/2 ? 0 : ed.scrollHeight;
+        await Promise.race([away, new Promise(r=>setTimeout(r, 1000))]); const r=f.getBoundingClientRect(), b=ed.getBoundingClientRect();
+        return [shown, getComputedStyle(tip).display, r.bottom>b.top && r.top<b.bottom]; }""")
+    if gone != ['block', 'none', False]: problems.append(f'tooltip after its field left the editor panel (before, after, field in sight): {gone}')
+    # the target type dropdown is read with its value; a target's buttons follow its name, unnamed ones say which row
+    acc = pg3.evaluate("""()=>{ state.targets=[{name:'', kind:'cash', amount:1}, {name:'', kind:'cash', amount:2}]; save(); refreshAll();
+        const s=document.querySelector('#tgt-rows .cselect.ttype'), nm=(s.getAttribute('aria-labelledby')||'').split(' ').map(id=>(document.getElementById(id)||{}).textContent).join(' ');
+        const dels=()=>[...document.querySelectorAll('#tgt-rows .iconbtn:not(.mv)')].map(b=>b.getAttribute('aria-label')), before=dels();
+        const i=document.querySelector('#tgt-rows .invsub input[type=text]'); i.value='Gamma'; i.dispatchEvent(new Event('input', {bubbles:true}));
+        return [nm==='Type '+s.textContent, before, dels()[0]]; }""")
+    if acc != [True, ['Remove target 1', 'Remove target 2'], 'Remove target “Gamma”']: problems.append(f'target type name with its value, unnamed and renamed buttons: {acc}')
+    # name suggestions closed with Escape open again with ArrowDown
+    pg3.evaluate("()=>{ state.incomes=[{name:'', amount:500, freq:'month', tax:'salary', rate:0}]; save(); refreshAll(); }")
+    pg3.focus('#income-rows .invname'); pg3.keyboard.press('Escape'); pg3.keyboard.press('ArrowDown')
+    reopened = pg3.evaluate("document.querySelector('#income-rows .invname').getAttribute('aria-expanded')"); pg3.keyboard.press('Escape')
+    if reopened != 'true': problems.append(f'name suggestions after Escape, then ArrowDown: aria-expanded {reopened}')
+    # a history month changed with the keyboard moves in the list, and the keyboard with it
+    pg3.evaluate("()=>{ state.enableHistory=false; state.history=[{m:'2026-05', nw:1000}, {m:'2026-07', nw:2000}, {m:'2026-08', nw:2500}]; save(); refreshAll(); }")
+    pg3.focus('#hist-rows .hmon >> nth=0'); pg3.keyboard.press('Enter'); pg3.keyboard.press('ArrowUp'); pg3.keyboard.press('ArrowUp'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(200)
+    hm = pg3.evaluate("[state.history.map(e=>e.m).join(','), document.activeElement.className, document.activeElement.textContent]")
+    if hm != ['2026-05,2026-06,2026-07', 'cselect hmon', 'Jun']: problems.append(f'history month changed with the keyboard (months, focus): {hm}')
+    # the budget's "Expenses" with categories: its breakdown is read too
+    el_ = pg3.evaluate("()=>{ state.enableExpenseCats=true; state.expenseItems=[{name:'Rent', amount:600, freq:'month'}]; save(); refreshAll(); const l=document.getElementById('bd-exp-label'); return [(l.getAttribute('aria-description')||'').startsWith('Per month'), l.tabIndex]; }")
+    if el_ != [True, 0]: problems.append(f'budget Expenses breakdown for screen readers and Tab: {el_}')
+    # the top bar's Undo, used with the keyboard, hands the focus to Reset beside it (Undo itself goes)
+    pg3.evaluate("()=>{ state.gross=3000; save(); refreshAll(); }"); pg3.focus('#resetBtn'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(200)
+    pg3.focus('#revertBtn'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(200)
+    if pg3.evaluate("document.activeElement.id") != 'resetBtn': problems.append('focus after the top bar\'s Undo: '+pg3.evaluate("document.activeElement.id||document.activeElement.tagName"))
     pg3.close()
     # the compact top bar: its ☰ menu closes when Tab leaves it, and an action in it leaves the focus on ☰
     pg4 = b.new_page(viewport={'width': 400, 'height': 800}); watch_errors(pg4, errs, n=150); pg4.goto(PAGE); pg4.wait_for_timeout(300)
@@ -290,6 +333,20 @@ with sync_playwright() as p:
     after = pg4.evaluate("document.activeElement.id")
     if left or after != 'moreBtn': problems.append(f'☰ menu: open after Tab left it {left}, focus after an action in it {after!r}')
     pg4.close()
+    # a touch screen: tapping into a list-row field (its label with the help wraps it) shows no help over the next row, while
+    # tapping the label's words still does
+    ctx5 = b.new_context(viewport={'width': 400, 'height': 800}, has_touch=True, reduced_motion='reduce'); pg5 = ctx5.new_page(); watch_errors(pg5, errs, n=150); pg5.goto(PAGE); pg5.wait_for_timeout(300)
+    pg5.evaluate("()=>{ state=normalize({debts:[{name:'Car', balance:5000, rtype:'fixed', rate:5, payment:200}]}); save(); refreshAll(); document.querySelectorAll('.editor details').forEach(d=>d.open=true); }"); pg5.wait_for_timeout(200)
+    pay = pg5.locator('#debt-rows label[data-tip^="What you pay"]'); pay.scroll_into_view_if_needed()
+    tip_shown = lambda: pg5.evaluate("getComputedStyle(document.getElementById('tip')).display") != 'none'
+    pay.locator('input').tap(); pg5.wait_for_timeout(200); on_field = tip_shown()
+    pg5.evaluate("document.activeElement.blur()"); pay.locator('.lt').tap(); pg5.wait_for_timeout(200); on_label = tip_shown()
+    if on_field or not on_label: problems.append(f'phone help in a list row: shown after tapping into the field {on_field}, after tapping its label {on_label}')
+    # "Advanced" opens by itself when something in it is changed, but not for the 0% deposit increase everyone upgrading has saved
+    adv = pg5.evaluate("""()=>[{projGrowth:0}, {projGrowth:0, enableProjFee:true}].map(s=>{ state=normalize({gross:3000, ...s}); document.querySelectorAll('details.adv').forEach(d=>{ d.open=false; d._seen=false; }); refreshAll();
+        const d=document.querySelector('details.adv[data-adv="projection"]'); return [d.open, d.querySelector('.advtag').textContent.trim()]; })""")
+    if adv != [[False, '· 1 changed'], [True, '· 2 changed']]: problems.append(f'Advanced with an old 0% deposit increase (open, badge), then with a fee too: {adv}')
+    ctx5.close()
     if errs: problems.append(f'phone and desktop: page errors {errs[:2]}')
     b.close()
 

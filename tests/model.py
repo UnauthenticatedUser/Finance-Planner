@@ -20,13 +20,19 @@ def retire_age(s):
     return math.floor((s.get('retireAge') or 0) + 0.5) or 65
 
 
+def birth_month(s):
+    """Your birth month, 0 = January; not given (0 in the data): July, the middle of the year."""
+    m = s.get('birthMonth') or 0
+    return m - 1 if 1 <= m <= 12 else 6
+
+
 def save_months(s, now, month=None):
-    """Months of saving left: you retire in the middle (July) of the year you reach your retirement age, counted from this
-    month (0-11); none once you're past it; without a year of birth deposits go on."""
+    """Months of saving left: you retire in your birth month (July when not given) of the year you reach your retirement
+    age, counted from this month (0-11); none once you're past it; without a year of birth deposits go on."""
     by = s.get('birthYear') or 0
     if not (1000 <= by <= now): return math.inf
     if month is None: month = datetime.date.today().month - 1
-    return max(0, (by + retire_age(s) - now) * 12 + 6 - month)
+    return max(0, (by + retire_age(s) - now) * 12 + birth_month(s) - month)
 
 
 def cash_rate(s):
@@ -108,11 +114,11 @@ def pension_age(s):
 
 
 def reach_month(s):
-    """The year and month (1-12) you reach the general pension age (an earlier own age doesn't count), the birthday taken as
-    1 July: born 1962 with 66 years 8 months, that's March 2029. None without a year of birth."""
+    """The year and month (1-12) you reach the general pension age (an earlier own age doesn't count), from your birth month
+    (July when not given): born 1962 with 66 years 8 months, that's March 2029. None without a year of birth."""
     by = s.get('birthYear') or 0
     if not by: return None
-    total = by * 12 + 6 + months(max(pension_age(s), auto_pension_age(s)))   # months since January of year 0
+    total = by * 12 + birth_month(s) + months(max(pension_age(s), auto_pension_age(s)))   # months since January of year 0
     return total // 12, total % 12 + 1
 
 
@@ -135,9 +141,9 @@ def months(age):
 
 
 def age_now(s, today=None):
-    """Your age today, your birthday taken as mid-year (1 July): born 1990, on 16 October 2026 that's 36 years 3 months."""
+    """Your age today, from your birth month (July when not given): born 1990, on 16 October 2026 that's 36 years 3 months."""
     by = s.get('birthYear') or 0; today = today or datetime.date.today()
-    return today.year - by + (today.month - 1 - 6) / 12 if by else 0
+    return today.year - by + (today.month - 1 - birth_month(s)) / 12 if by else 0
 
 
 def payout_age(s, today=None):

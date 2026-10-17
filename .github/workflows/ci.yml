@@ -69,8 +69,10 @@ jobs:
         env:
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
+        shell: bash   # -e and pipefail: a failed git ls-remote stops the job instead of looking like "main has moved on"
         run: |
           tip=$(git ls-remote "https://github.com/$REPO" refs/heads/main | cut -f1)
+          if [ -z "$tip" ]; then echo "Couldn't ask GitHub which commit is newest on main, so nothing was published."; exit 1; fi
           if [ "$tip" = "$SHA" ]; then echo "deploy=yes" >> "$GITHUB_OUTPUT"; else echo "main has moved on to $tip, whose own run publishes it, so $SHA isn't published."; fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.newest.outputs.deploy == 'yes'

@@ -56,7 +56,7 @@ def main():
             s.update(projReturn=pick(7, 0, -5, 15, random.uniform(-20, 30)), projInflation=pick(2.5, 0, 6), projGrowth=pick(0, 3, -5),
                      enableProjSurplus=pick(True, False), projSurplusPct=pick(100, 60, 0, random.uniform(0, 100)), enableProjFee=pick(True, False), projFee=pick(0, 0.5),
                      enableProjReal=pick(True, False), expenses=pick(1600, 500, 4000, 9000), euribor=pick(2.6, 0), enableDebtTargets=pick(True, False),
-                     enableProjCustom=pick(False, False, True), projStart=pick(0, 50000), projMonthly=pick(0, 800), birthYear=pick(None, 1958, 1975, 1990, 2005), gross=pick(3800, 8000, 15000),   # 1958: already a pensioner
+                     enableProjCustom=pick(False, False, True), projStart=pick(0, 50000), projMonthly=pick(0, 800), birthYear=pick(None, 1958, 1975, 1990, 2005), birthMonth=pick(0, 0, 3, 11), gross=pick(3800, 8000, 15000),   # 1958: already a pensioner
                      enableProjNet=pick(True, False), invDeposits=pick(0, 0, 30000), payoutYears=pick(20, 10))   # higher pay: a surplus left, so paid-off loans get invested too
             for a in s['accounts']: a['yield'] = pick(a['yield'], 0, 4.5, -0.5)   # cash earns its interest after tax
             s['debts'] = [{'name': 'd' + str(j), 'balance': pick(5000, 150000, 300000), 'rtype': pick('fixed', 'euribor'), 'rate': pick(0, 3, 8, 25), 'margin': pick(0.5, 2),
