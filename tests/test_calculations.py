@@ -203,7 +203,7 @@ def main():
           let c=go({gross:2000, birthYear:y-66, pensionAgeYears:66, enableP2:false});   // 66 is later than any general age, so July of this year
           if(c.uMonths!==7 || Math.abs(c.aUnemp-2000*12*0.016*7/12)>0.005 || !/until pension age/.test(document.getElementById('row-y-unemp').textContent)) out.push('unemployment insurance until July: '+c.uMonths+' months, '+c.aUnemp+' '+document.getElementById('row-y-unemp').textContent);
           c=go({gross:2000, birthYear:y-66, birthMonth:2, pensionAgeYears:66, enableP2:false}); if(c.uMonths!==2 || !/until your state pension starts/.test(tip('#tile-net'))) out.push('unemployment insurance with a February birthday: '+c.uMonths+' months, '+tip('#tile-net'));   // the month of birth, when given, replaces July
-          const p08=r=>{ go({gross:3000, enableP2:true, p2rate:r, birthYear:1990}); return /0\.8 of it in the II pillar/.test(document.getElementById('ret-note').textContent); };
+          const p08=r=>{ go({gross:3000, enableP2:true, p2rate:r, birthYear:1990}); return /0\\.8 of it in the II pillar/.test(document.getElementById('ret-note').textContent); };
           if(p08(0) || !p08(2)) out.push('the I pillar note says "0.8 of it in the II pillar" only when in it: rate 0 '+p08(0)+', rate 2 '+p08(2));
           c=go({gross:2000, birthYear:y-67}); if(c.uMonths!==0 || document.getElementById('row-y-unemp').style.display!=='none') out.push('no unemployment insurance after pension age: '+c.uMonths);
           go({debts:[{name:'d', balance:96000, payment:100, rate:1}], accounts:[{name:'a', amount:100, yield:0}]}); if(!tip('#alloc-svg .dring').includes('96,000%')) out.push('debt ring: '+tip('#alloc-svg .dring'));

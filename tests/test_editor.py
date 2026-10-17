@@ -296,7 +296,8 @@ with sync_playwright() as p:
     # a tooltip whose field scrolls out of the editor panel goes, instead of staying at the edge
     gone = pg3.evaluate("""async ()=>{ const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip'), ed=document.querySelector('.editor');
         f.blur(); document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true})); f.scrollIntoView({block:'center'}); f.focus({focusVisible:true}); const shown=getComputedStyle(tip).display;
-        const away=new Promise(r=>addEventListener('scroll', ()=>requestAnimationFrame(()=>r()), {once:true, capture:true})); ed.scrollTop=f.getBoundingClientRect().top-ed.getBoundingClientRect().top>ed.clientHeight/2 ? 0 : ed.scrollHeight;
+        const away=new Promise(r=>addEventListener('scroll', ()=>requestAnimationFrame(()=>r()), {once:true, capture:true})); const r0=f.getBoundingClientRect(), b0=ed.getBoundingClientRect(), up=r0.bottom-b0.top+20, down=b0.bottom-r0.top+20;   // just far enough to take the field out of the panel, whichever way there's room
+        ed.scrollTop= ed.scrollTop+up<=ed.scrollHeight-ed.clientHeight ? ed.scrollTop+up : ed.scrollTop-down;
         await Promise.race([away, new Promise(r=>setTimeout(r, 1000))]); const r=f.getBoundingClientRect(), b=ed.getBoundingClientRect();
         return [shown, getComputedStyle(tip).display, r.bottom>b.top && r.top<b.bottom]; }""")
     if gone != ['block', 'none', False]: problems.append(f'tooltip after its field left the editor panel (before, after, field in sight): {gone}')
