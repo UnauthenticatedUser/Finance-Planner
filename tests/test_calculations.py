@@ -5,10 +5,10 @@ Hundreds of random users are run through the tool and through an independent Pyt
 and a business account's 2nd pillar part (into your fund, not tax), 3rd pillar tax refund (none on business account
 income), one-time income left out, funds split from a total by their target shares, and for
 working pensioners unemployment insurance only until the month they reach pension age and only what the state pension
-leaves of the EUR 776 tax-free amount; a loan with nothing left to pay takes no payment; your own
-net pay with no gross gives the gross it comes from, and your own net pay is what the yearly figures use). The
+leaves of the EUR 776 tax-free amount; a loan with nothing left to pay takes no payment; a net pay typed in is kept and
+gives the gross it comes from, with the settings of the moment). The
 two must agree to the cent, and every headline figure on screen must show the computed value: also the pay summary, the
-donut's tooltips (the legend's percentages), the net pay difference row only when there is one, the 3rd pillar refund at
+donut's tooltips (the legend's percentages), the 3rd pillar refund at
 your tax rate, and no red "−€0", "10.0 months" or "0.0 months", including the edge cases that cause them; a figure whose
 place on the page is missing fails too.
 Run: python tests/test_calculations.py [number of users]"""
@@ -19,7 +19,7 @@ from model import state_pension, pensioner as of_pension_age, unemp_months, birt
 PY={'week':52,'month':12,'quarter':4,'year':1}
 def R(a,b,z=0.25): return 0 if random.random()<z else round(random.uniform(a,b))
 def user():
-    s={'gross':R(0,9000,0.1),'autoNet':random.random()<.8,'manualNet':R(500,6000),'bonus':R(0,10000,.5),'expenses':R(0,5000,.1),'thirdPillar':R(0,800,.4),
+    s={'gross':R(0,9000,0.1),'autoNet':random.random()>=.2,'manualNet':R(500,6000),'bonus':R(0,10000,.5),'expenses':R(0,5000,.1),'thirdPillar':R(0,800,.4),
        'etfMonthly':R(0,2500,.3),'p2rate':random.choice([2,4,6]),'enableP2':random.random()<.85,'p2state':random.choice([4,4,0,5]),'taxRate':random.choice([22,22,22,20,24]),'unemployment':random.choice([1.6,1.6,0,2]),'basicExemption':random.choice([700,700,0,654]),
        'cashOnHand':R(0,3000,.5),'creditLimit':R(0,5000,.5),'enableEtfPlan':random.random()<.6,'enableEtfAutoSplit':random.random()<.3,'etfTotal':R(0,80000),'enableExpenseCats':random.random()<.3,'projReturn':random.choice([0,4,7,8,10]),'projYears':random.choice([5,10,20,40])}
     s['accounts']=[{'name':'A%d'%i,'amount':R(0,40000),'yield':round(random.uniform(0,4),2)} for i in range(random.randint(0,3))]
@@ -45,11 +45,10 @@ def model(s):
     pen_E=lambda p: (776*12-min(p, 776)*pen_months)/12   # a pensioner's pay: what the pension leaves of €776 a month, over the year
     joined=s['enableP2'] and s['p2rate']>0
     p2r=s['p2rate'] if joined else 0
-    if not g and not s['autoNet'] and s['manualNet']>0:   # your own net pay and no gross: the gross that leaves that net
-        k=1-p2r/100-U; n=s['manualNet']; E0=pen_E(s['statePension'] or 860) if pensioner else E
-        g=n/k if n<=E0 else (n-E0*T)/(k*(1-T))
     if pensioner:   # a working pensioner: the exemption is what the state pension leaves of €776
         E=pen_E(state_pension(s, 0))   # your own state pension, else the average (today's pay doesn't show what was earned)
+    if not s['autoNet']:   # a net pay typed in is kept: the gross is the one that leaves it with these settings
+        k=1-p2r/100-U; n=s['manualNet']; g=n/k if n<=E else (n-E*T)/(k*(1-T))
     p2sr=s['p2state'] if joined else 0
     inc=[x for x in s['incomes'] if x['freq']!='once']; per_month=lambda x: x['amount']*PY[x['freq']]/12   # a one-time payment is money you already have
     own=lambda x: x['tax'] in ('custom','biz'); rate_of=lambda x: (20+p2r if x['tax']=='biz' else min(100,x['rate']))/100   # a business account: 20% + your 2nd pillar rate
@@ -60,7 +59,7 @@ def model(s):
     mCT=sum(per_month(x)*rate_of(x) for x in mon if own(x)); yCT=sum(x['amount']*rate_of(x) for x in yr if own(x))
     def net_of(x): a=x*p2r/100; b=x*U; return x-a-b-max(0,x-a-b-E)*T
     gS=g+mSal
-    net=(net_of(g) if s['autoNet'] else s['manualNet']) + (net_of(gS)-net_of(g)) + mFree + (mC-mCT)
+    net=net_of(g) + (net_of(gS)-net_of(g)) + mFree + (mC-mCT)
     exp= sum(x['amount']*PY[x['freq']]/12 for x in s['expenseItems']) if (s['enableExpenseCats'] and s['expenseItems']) else s['expenses']
     biz=lambda x: x['tax']=='biz'; mB=sum(per_month(x)*p2r/100 for x in mon if biz(x)); yB=sum(x['amount']*p2r/100 for x in yr if biz(x))   # a business account's 2nd pillar part: into your fund
     p2=gS*p2r/100+mB; p2s=gS*p2sr/100; t3=s['thirdPillar']
@@ -85,8 +84,8 @@ def model(s):
     year_extra=(aSal-aP2s-aU-aTax)-12*net_of(gS)
     surplus=(net-exp-dM-(invested-p2))*12 + year_extra + yFree + (yC-yCT) + refund
     return {'net':net,'expenses':exp,'p2':p2,'p2s':p2s,'penMonthly':t3+(aSal*(p2r+p2sr)/100+mB*12+yB)/12,'invested':invested,'networth':assets-debt,'assets':assets,'debt':debt,'taxRefund':refund,'aGross':aGross,
-            'aNet':aGross-aP2-aU-aTax-aCT+refund+(0 if s['autoNet'] else 12*(s['manualNet']-net_of(g))),'surplus':surplus,'buffer':buffer,'pension':pension,'savings':invested/(net+p2)*100 if net+p2>0 else 0,'p3Limit':p3Limit,
-            'debtInterestYr':sum(d['balance']*rate(d)/100 for d in s['debts']), 'etfVals':etf_vals}
+            'aNet':aGross-aP2-aU-aTax-aCT+refund,'surplus':surplus,'buffer':buffer,'pension':pension,'savings':invested/(net+p2)*100 if net+p2>0 else 0,'p3Limit':p3Limit,
+            'debtInterestYr':sum(d['balance']*rate(d)/100 for d in s['debts']), 'etfVals':etf_vals, 'gross':g, 'salaryNet':net_of(g)}
 RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementById(id); return e?e.textContent:null};
   const chk=(lbl,shown,expect)=>{ if(shown===null) out.push(lbl+': not on the page'); else if(shown!==expect) out.push(lbl+': shows '+shown+' expected '+expect); };   // a renamed id fails too
   chk('hero net worth', txt('out-networth'), eur(c.networth));
@@ -110,7 +109,7 @@ RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementBy
   rows('#debt-list .dterms', i=>{ const d=c.debtList[i]; return num(d.rate)+'%'+(+d.payment ? ' · '+eur(+d.payment)+'/mo' : ''); });
   rows('#cash-accounts .a-gain', i=>{ const a=state.accounts[i], y=+a.yield||0, amt=+a.amount||0; return y>0 && amt>0 && Math.round(amt*y/100) ? '+'+eurS(amt*y/100)+'/yr' : ''; });   // under 50 cents a year: nothing
   { const p=[...document.querySelectorAll('#etf-legend .ecalc')].map(e=>(e.textContent.match(/(\\d+)%$/)||[])[1]).filter(Boolean).map(Number);
-    if(p.length>1 && p.reduce((a,b)=>a+b,0)!==100) out.push('fund shares add up to '+p.reduce((a,b)=>a+b,0)); }
+    const sum=p.reduce((a,b)=>a+b,0); if(p.length>1 && sum && sum!==100) out.push('fund shares add up to '+sum); }   // all 0% (every target at 0, nothing to split) is what they are
   c.debtList.forEach((d,i)=>{ const b=+d.balance||0, P=+d.payment||0, po=payoff(b, d.rate, P), shown=!!document.querySelectorAll('#debt-list .drange')[i].textContent;
     const when=e=>{ const q=payoff(b, debtRate(d, e), P); return q && q.months!==Infinity ? q.months : -1; }, e0=state.euribor||0;   // a range only when ±1% gives two different dates
     const want=d.rtype==='euribor' && b>0 && !!po && po.months!==Infinity && monthYear(when(e0-1))!==monthYear(when(e0+1)) ;
@@ -138,13 +137,11 @@ RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementBy
   // the yearly breakdown and the budget legend add up to the totals they show, to the euro (each total is rounded once and its
   // rows to match), and no row in the breakdown says "−€0"
   const eu=s=>s===null || /[BTMk]/.test(s) ? NaN : (/^[−-]/.test(s.trim())?-1:1)*+s.replace(/[^\\d]/g,''), v=id=>eu(txt(id));
-  // the net pay difference row: shown when it isn't €0, within a euro of rounding of the real difference (it takes the rounding the €0 rows can't)
-  const adj=document.getElementById('row-y-ownnet').style.display==='none' ? 0 : eu(txt('out-y-ownnet')); if(Math.abs(adj-c.ownNetAdj)>=1.5 || adj===0 && document.getElementById('row-y-ownnet').style.display!=='none') out.push('net pay difference row: '+adj+' for '+c.ownNetAdj);
   // each deduction row: never below €0, within a euro of its exact value
   [['out-y-p2',c.aP2],['out-y-unemp',c.aUnemp],['out-y-tax',c.aTax],['out-y-custtax',c.aCustTax]].forEach(([id,x])=>{ const d=-v(id); if(/[−-]\\s*[−-]/.test(txt(id)||'') || !isNaN(d) && (d<0 || Math.abs(d-x)>=1)) out.push('breakdown: '+id+' shows '+txt(id)+' for '+x.toFixed(2)); });   // "−−€1" is a row below €0
   const g=v('out-y-base')+v('out-y-bonus')+[...document.querySelectorAll('#y-other-rows .v')].reduce((a,e)=>a+eu(e.textContent),0);
   if(!isNaN(g) && g!==v('out-y-gross')) out.push('breakdown: the gross rows add up to '+g+', the total shows '+txt('out-y-gross'));
-  const th=v('out-y-gross')+v('out-y-p2')+v('out-y-unemp')+v('out-y-tax')+(document.getElementById('row-y-custtax').style.display==='none' ? 0 : v('out-y-custtax'))+(document.getElementById('row-y-ownnet').style.display==='none' ? 0 : v('out-y-ownnet'));
+  const th=v('out-y-gross')+v('out-y-p2')+v('out-y-unemp')+v('out-y-tax')+(document.getElementById('row-y-custtax').style.display==='none' ? 0 : v('out-y-custtax'));
   if(!isNaN(th) && th!==v('out-y-takehome')) out.push('breakdown: gross less deductions is '+th+', take-home shows '+txt('out-y-takehome'));
   if(c.onP3 && !isNaN(th) && v('out-y-takehome')+v('out-y-refund')!==v('out-y-netbenefit')) out.push('breakdown: take-home plus the refund is not the net shown');
   const bl=['bd-exp','bd-debt','bd-inv','bd-left'].map(v).reduce((a,b)=>a+b,0); if(!isNaN(bl) && c.net>0 && bl!==v('donut-center')) out.push('budget: the amounts add up to '+bl+', take-home shows '+txt('donut-center'));
@@ -158,9 +155,11 @@ def main():
         b=launch(p); pg=b.new_page(viewport={'width':1300,'height':900}, reduced_motion='reduce'); errs=watch_errors(pg, n=150)
         pg.goto(PAGE); pg.wait_for_timeout(500)
         for i in range(N):
-            s=user(); m=model(s)
-            r=pg.evaluate("s=>{ state=normalize(JSON.parse(s)); save(); refreshAll(); const c=compute(); return {net:c.net,expenses:c.expenses,p2:c.p2,p2s:c.p2s,penMonthly:c.penMonthly,invested:c.invested,networth:c.networth,assets:c.assets,debt:c.debt,taxRefund:c.taxRefund,aGross:c.aGross,aNet:c.aNet,surplus:c.surplus,buffer:c.buffer,pension:c.pension,savings:c.savings,p3Limit:c.p3Limit,debtInterestYr:c.debtInterestYr,etfVals:c.etfVals}}", json.dumps(s))
+            s=user()
+            r=pg.evaluate("s=>{ state=normalize(JSON.parse(s)); save(); refreshAll(); const c=compute(); return {gross:c.gross, salaryNet:c.estNet, net:c.net,expenses:c.expenses,p2:c.p2,p2s:c.p2s,penMonthly:c.penMonthly,invested:c.invested,networth:c.networth,assets:c.assets,debt:c.debt,taxRefund:c.taxRefund,aGross:c.aGross,aNet:c.aNet,surplus:c.surplus,buffer:c.buffer,pension:c.pension,savings:c.savings,p3Limit:c.p3Limit,debtInterestYr:c.debtInterestYr,etfVals:c.etfVals}}", json.dumps(s))
+            m=model(s)
             diffs=[f"{k}: tool {r[k]:.4f} vs model {m[k]:.4f}" for k in m if k!='etfVals' and abs(r[k]-m[k])>max(0.01, abs(m[k])*1e-9)]
+            if not s['autoNet'] and abs(r['salaryNet']-s['manualNet'])>0.005: diffs.append(f"net {s['manualNet']} typed, but the tool's salary net is {r['salaryNet']:.4f}")
             if len(r['etfVals'])!=len(m['etfVals']) or any(abs(a-b)>0.005 for a,b in zip(r['etfVals'],m['etfVals'])): diffs.append(f"fund values {r['etfVals']} vs {m['etfVals']}")
             rec=pg.evaluate(RECON)
             checked+=1
@@ -170,7 +169,7 @@ def main():
         # edges the random users rarely reach: 9.97 months of cash, a leftover of −€0.40, a loan with nothing owned, a small history near €0
         none={'accounts':[],'cashOnHand':0,'etfs':[],'investments':[],'physAssets':[],'p2funds':[],'p3funds':[],'debts':[],'enableExpenseCats':False,'enableEtfAutoSplit':False}
         loan=[{'name':'d','balance':5000,'rtype':'fixed','rate':5,'margin':0,'payment':100,'asset':0}]
-        for name, extra, js, want in (('breakdown with cents', {**none, 'gross':5356.53, 'bonus':1823.30, 'incomes':[]}, '', None),
+        for name, extra, js, want in (('breakdown with cents', {**none, 'gross':5356.53, 'autoNet':True, 'bonus':1823.30, 'incomes':[]}, '', None),   # the gross typed, not a net
                                       ('cash buffer', {**none, 'accounts':[{'name':'a','amount':9970,'yield':0}], 'expenses':1000}, '', ('buffer-months', '≈ 10 months of expenses')),
                                       ('tiny cash buffer', {**none, 'accounts':[{'name':'a','amount':10,'yield':0}], 'expenses':1000}, '', ('buffer-months', '')),
                                       ('leftover', {'enableExpenseCats':False}, 'state.expenses+=(compute().surplusLeft+0.4)/12;', ('sur-left', '+€0')),   # one spending total, which the line changes
@@ -181,7 +180,7 @@ def main():
             if rec or (want and r!=want[1]): fails+=1; print(name, rec[:3], r, want)
         if 'with no assets entered' not in pg.evaluate("document.querySelector('#alloc-svg .dring').getAttribute('data-tip')"): fails+=1; print('debt ring tooltip without assets')
         # a row worth nothing (here the hidden tax on other income) never takes the euro of rounding the shown rows need
-        r=pg.evaluate("s=>{ state=normalize(s); refreshAll(); }", {'gross':2787.72, 'enableP2':False, 'bonus':1438.34, 'autoNet':False, 'manualNet':2891.43, 'birthYear':1960, 'expenses':1000,
+        r=pg.evaluate("s=>{ state=normalize(s); refreshAll(); }", {'gross':2787.72, 'enableP2':False, 'bonus':1438.34, 'birthYear':1960, 'expenses':1000,
                       'incomes':[{'name':'y', 'amount':190.51, 'freq':'year', 'tax':'free', 'rate':0}]}); rec=pg.evaluate(RECON)
         if rec: fails+=1; print('breakdown with an empty hidden row:', rec[:3])
         # an early pension (own pension age 63) is paid all year when you reach the general age (65, July 2026), so it takes the
@@ -195,12 +194,10 @@ def main():
             q=on_day(b.new_page(), day); q.goto(PAGE); q.wait_for_timeout(200)
             got=q.evaluate("()=>{ state=normalize({birthYear:1960, pensionAgeYears:66, pensionAgeMonths:8, gross:2000}); return pensionerNow(); }"); q.close()
             if got!=want: fails+=1; print('pensioner on', day, 'with 66y8m, born 1960:', got)
-        # your own net pay: the deductions' total is made of three rounded figures, so it can be 2 more than income tax alone
-        # rounded down (it takes both euros), or €1 when every deduction is €0 (the difference to your net pay takes it)
-        # (and a tiny salary with the default unemployment insurance, where a row showed "−−€1")
-        for g, n, u in ((1533.30, 1279.77, 0), (510.53, 959.07, 0), (0.51, 0.21, 1.6)):
-            pg.evaluate("s=>{ state=normalize(s); refreshAll(); }", {'gross':g, 'enableP2':False, 'unemployment':u, 'autoNet':False, 'manualNet':n}); rec=pg.evaluate(RECON)
-            if rec: fails+=1; print(f'breakdown with your own net pay {n}:', rec[:3])
+        # small salaries whose deductions round awkwardly, and a tiny one with the default unemployment insurance ("−−€1" once)
+        for g, u in ((1533.30, 0), (510.53, 0), (0.51, 1.6)):
+            pg.evaluate("s=>{ state=normalize(s); refreshAll(); }", {'gross':g, 'enableP2':False, 'unemployment':u}); rec=pg.evaluate(RECON)
+            if rec: fails+=1; print(f'breakdown of a {g} salary:', rec[:3])
         rtt=pg.evaluate("[roundToTotal([0, 0, 13165.912, 0], 13167), roundToTotal([291.912, 220.8], 514), roundToTotal([5.4, 0], 2), roundToTotal([0, 0], 1)]")
         if rtt!=[[0, 0, 13167, 0], [293, 221], [2, 0], [0, 0]]: fails+=1; print('rounding to a total with a gap bigger than its rows:', rtt)
         # the wording of edge cases: unemployment insurance the year you reach pension age (until then) and after it (no row); the
@@ -213,6 +210,7 @@ def main():
           const p08=r=>{ go({gross:3000, enableP2:true, p2rate:r, birthYear:1990}); return /0\\.8 of it in the II pillar/.test(document.getElementById('ret-note').textContent); };
           if(p08(0) || !p08(2)) out.push('the I pillar note says "0.8 of it in the II pillar" only when in it: rate 0 '+p08(0)+', rate 2 '+p08(2));
           c=go({gross:2000, birthYear:y-66, birthMonth:12, pensionAgeYears:66, enableP2:false}); if(c.uMonths!==12 || !/all year, as you reach it in December/.test(tip('#tile-net'))) out.push('a December pension age: '+c.uMonths+', '+tip('#tile-net'));
+          LANG='et'; refreshAll(); if(!/jõuad pensioniikka detsembris, ja /.test(tip('#tile-net'))) out.push('a December pension age in Estonian: '+tip('#tile-net')); LANG='en';
           c=go({gross:2000, birthYear:y-67}); if(c.uMonths!==0 || document.getElementById('row-y-unemp').style.display!=='none') out.push('no unemployment insurance after pension age: '+c.uMonths);
           go({debts:[{name:'d', balance:96000, payment:100, rate:1}], accounts:[{name:'a', amount:100, yield:0}]}); if(!tip('#alloc-svg .dring').includes('96,000%')) out.push('debt ring: '+tip('#alloc-svg .dring'));
           go({debts:[{name:'d', balance:1, payment:1, rate:1}], accounts:[{name:'a', amount:140000, yield:0}]}); if(!tip('#alloc-svg .dring').includes('<1%')) out.push('debt ring: '+tip('#alloc-svg .dring'));

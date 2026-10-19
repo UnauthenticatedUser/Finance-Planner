@@ -176,6 +176,16 @@ def main():
         pg.focus('.pctrl .inflchip'); pg.keyboard.press('Enter'); pg.wait_for_timeout(200)
         if not pg.evaluate("document.querySelector('#path-chart .phov').hidden"): fails += 1; print('the hover box stayed open after the chart redrew')
         pg.keyboard.press('Enter'); pg.mouse.move(5, 5)
+        # a target's dot and row light up while the pointer is at its month anywhere on the chart, not only on the dot, and go out when it leaves
+        span = pg.evaluate("()=>{ const was=pathSpan; state=normalize({gross:4000, birthYear:1990, expenses:1500, accounts:[{name:'A', amount:20000, yield:0}], targets:[{name:'', kind:'networth', amount:100000}]}); pathSpan='30'; refreshAll(); return was; }")
+        dot = pg.locator('#path-svg .pdot-ms').first.bounding_box(); box = pg.locator('#path-svg svg').bounding_box()
+        lit = lambda: sorted(pg.evaluate("[...document.querySelectorAll('#path-card .on')].map(e=>e.tagName.toLowerCase())"))
+        pg.mouse.move(dot['x'] + dot['width'] / 2, box['y'] + 10); pg.wait_for_timeout(100); above = lit()
+        pg.mouse.move(box['x'] + box['width'] - 20, box['y'] + 10); pg.wait_for_timeout(100); away = lit()
+        pg.mouse.move(dot['x'] + dot['width'] / 2, box['y'] + 10); pg.wait_for_timeout(100); pg.mouse.move(5, 5); pg.wait_for_timeout(100); left = lit()
+        pg.locator('#path-list .row').first.hover(); pg.mouse.down(); pg.mouse.up(); pg.wait_for_timeout(100); pressed = lit(); pg.mouse.move(5, 5)   # pressing its row keeps it lit
+        if above != ['circle', 'div'] or away or left or pressed != ['circle', 'div']: fails += 1; print('a target lit up (above its dot, far from it, after leaving the chart, its row pressed):', above, away, left, pressed)
+        pg.evaluate("a=>{ state=normalize(a[0]); pathSpan=a[1]; refreshAll(); }", [s, span])
         # a long name wraps, its date stays on one line; the note only names the kinds of dots there are
         s2 = json.loads(json.dumps(s)); s2['targets'] = [{'name': 'Net worth goal before we move to the countryside house, someday soon', 'kind': 'networth', 'amount': 150000}]
         s2.update(enableDebtTargets=False, birthYear=None)

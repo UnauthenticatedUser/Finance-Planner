@@ -20,6 +20,7 @@ the compact ☰ menu closes when Tab leaves it. An Estonian default title stays 
 it closes stays, a full list's "+ Add" can still be reached, switching language keeps an Undo note, and a field's help shows
 with Tab (moving with the page) but not after a tap.
 Run: python tests/test_editor.py"""
+import re
 from playwright.sync_api import sync_playwright
 from helpers import BROWSER, PAGE, finish, launch, watch_errors, fixture
 
@@ -293,16 +294,21 @@ with sync_playwright() as p:
     bm = pg3.evaluate("[state.birthMonth, document.getElementById('bmonth').textContent, document.activeElement.id]")
     if bm != [2, 'Feb', 'bmonth']: problems.append(f'month of birth picked with the keyboard (value, shown, focus): {bm}')
     if w5 != 'debts part' or ad != ['open', True]: problems.append(f'focus after ✎ with only fixed-rate loans {w5}; typing after an arrow pick (list, points at the highlighted one) {ad}')
-    # a tooltip whose field goes out of sight goes too, instead of staying at the edge of the screen: the field is moved off the
-    # screen directly (a transform) and a scroll event sent, so it doesn't depend on how far a page can scroll in each browser
-    # (following the field on a real scroll is checked above)
-    pg6 = b.new_page(viewport={'width': 390, 'height': 844}, reduced_motion='reduce'); watch_errors(pg6, errs, n=150); pg6.goto(PAGE); pg6.wait_for_timeout(300)
-    gone = pg6.evaluate("""()=>{ document.querySelectorAll('.editor details').forEach(d=>d.open=true); const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip');
+    # a tooltip whose field goes out of sight goes too, instead of staying at the edge of the screen. On a phone the field is moved
+    # off the screen directly (a transform) and a scroll event sent, so it doesn't depend on how far the page can scroll in each
+    # browser; on a wide screen the editor panel itself is scrolled (a real scroll in its own box) until the field is just above the
+    # panel, still inside the window, so only the panel's own edge hides it (following the field on a real scroll is checked above)
+    gone = []
+    for w, h, wide in ((390, 844, False), (1280, 800, True)):
+        pg6 = b.new_page(viewport={'width': w, 'height': h}, reduced_motion='reduce'); watch_errors(pg6, errs, n=150); pg6.goto(PAGE); pg6.wait_for_timeout(300)
+        gone.append(pg6.evaluate("""async wide=>{ document.querySelectorAll('.editor details').forEach(d=>d.open=true); const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip');
         f.scrollIntoView({block:'center'}); document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true})); f.focus({focusVisible:true}); const shown=getComputedStyle(tip).display;
         window.dispatchEvent(new Event('scroll')); const still=getComputedStyle(tip).display;   // in sight: it stays
-        f.style.transform='translateY(-3000px)'; window.dispatchEvent(new Event('scroll')); const out=[shown, still, getComputedStyle(tip).display, Math.round(f.getBoundingClientRect().bottom)];
-        f.style.transform=''; return out; }""")
-    pg6.close()
+        const p=f.closest('.editor'), top=p.getBoundingClientRect().top;
+        if(wide){ p.scrollTop+=f.getBoundingClientRect().bottom-top+4; await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); }
+        else { f.style.transform='translateY(-3000px)'; window.dispatchEvent(new Event('scroll')); }
+        const q=f.getBoundingClientRect(), out=[shown, still, getComputedStyle(tip).display, wide ? q.bottom>0 && q.bottom<=top : q.bottom<0]; f.style.transform=''; return out; }""", wide))
+        pg6.close()
     # the narrowest phones: "Not given (July)" and its Estonian fit beside the year
     pg7 = b.new_page(viewport={'width': 320, 'height': 700}); watch_errors(pg7, errs, n=150); pg7.goto(PAGE); pg7.wait_for_timeout(300)
     cut = []
@@ -311,7 +317,7 @@ with sync_playwright() as p:
         if pg7.evaluate("()=>{ const s=document.getElementById('bmonth'); return s.scrollWidth>s.clientWidth; }"): cut.append(lang)
     pg7.close()
     if cut: problems.append(f'"Not given (July)" cut off at 320px in: {cut}')
-    if gone[:3] != ['block', 'block', 'none'] or gone[3] >= 0: problems.append(f'tooltip with its field in sight, then off the screen (before, in sight, off, field bottom): {gone}')
+    if gone != [['block', 'block', 'none', True]]*2: problems.append(f'tooltip with its field in sight, then off the screen on a phone and below the editor panel on a wide screen (before, in sight, after, field placed right): {gone}')
     # the target type dropdown is read with its value; a target's buttons follow its name, unnamed ones say which row
     acc = pg3.evaluate("""()=>{ state.targets=[{name:'', kind:'cash', amount:1}, {name:'', kind:'cash', amount:2}]; save(); refreshAll();
         const s=document.querySelector('#tgt-rows .cselect.ttype'), nm=(s.getAttribute('aria-labelledby')||'').split(' ').map(id=>(document.getElementById(id)||{}).textContent).join(' ');
@@ -337,15 +343,42 @@ with sync_playwright() as p:
     pg3.focus('#revertBtn'); pg3.keyboard.press('Enter'); pg3.wait_for_timeout(200)
     if pg3.evaluate("document.activeElement.id") != 'resetBtn': problems.append('focus after the top bar\'s Undo: '+pg3.evaluate("document.activeElement.id||document.activeElement.tagName"))
     pg3.close()
-    # the compact top bar: its ☰ menu closes when Tab leaves it, and an action in it leaves the focus on ☰
+    # the compact top bar: its ☰ menu closes when Tab or Shift+Tab leaves it, and an action in it leaves the focus on ☰
     pg4 = b.new_page(viewport={'width': 400, 'height': 800}); watch_errors(pg4, errs, n=150); pg4.goto(PAGE); pg4.wait_for_timeout(300)
     pg4.click('#moreBtn'); pg4.focus('#tbMenu .langtabs [data-lang=en]'); pg4.keyboard.press('Tab'); pg4.keyboard.press('Tab'); pg4.wait_for_timeout(50)
     left = pg4.evaluate("document.querySelector('.topbar').classList.contains('menu-open') && !document.getElementById('tbMenu').contains(document.activeElement)")
     pg4.click('#moreBtn'); pg4.focus('#tbMenu [data-lang=et]'); pg4.keyboard.press('Enter'); pg4.wait_for_timeout(200)
     after = pg4.evaluate("document.activeElement.id")
+    pg4.click('#moreBtn'); pg4.focus('#exportBtn'); pg4.keyboard.press('Shift+Tab'); pg4.keyboard.press('Shift+Tab'); pg4.wait_for_timeout(50)   # backwards past ☰ too
+    back = pg4.evaluate("document.querySelector('.topbar').classList.contains('menu-open')")
     pg4.click('#moreBtn'); pg4.focus('#tbMenu [data-lang=en]'); pg4.click('#moreBtn'); pg4.wait_for_timeout(100)   # with the keyboard in it, ☰ still closes it
     shut = not pg4.evaluate("document.querySelector('.topbar').classList.contains('menu-open')")
-    if left or after != 'moreBtn' or not shut: problems.append(f'☰ menu: open after Tab left it {left}, focus after an action in it {after!r}, closed by ☰ with the keyboard in it {shut}')
+    if left or back or after != 'moreBtn' or not shut: problems.append(f'☰ menu: open after Tab left it {left}, open after Shift+Tab left it past ☰ {back}, focus after an action in it {after!r}, closed by ☰ with the keyboard in it {shut}')
+    # gross and net pay: type either and the other follows, to the cent with two decimals; the one you typed is kept when a setting
+    # changes; going into the worked-out box selects it, so typing replaces it (a phone puts the cursor after the cents), and a
+    # keystroke that's refused there changes nothing
+    PAY="()=>[document.querySelector('[data-key=gross]').value, document.getElementById('netInput').value, state.autoNet, state.manualNet, state.gross]"
+    pg4.evaluate("()=>{ state=normalize({birthYear:1990}); save(); refreshAll(); }"); pg4.wait_for_timeout(100)
+    pg4.evaluate("()=>{ const g=document.querySelector('[data-key=gross]'); g.focus(); g.value='3000.37'; g.dispatchEvent(new Event('input')); g.blur(); }"); pg4.wait_for_timeout(600)   # the digits' animation ends
+    fromgross = pg4.evaluate(PAY)
+    pg4.focus('#netInput'); pg4.wait_for_timeout(50)
+    sel = pg4.evaluate("()=>{ const e=document.getElementById('netInput'); return [e.selectionStart, e.selectionEnd, e.value.length]; }")
+    pg4.keyboard.press('End'); pg4.keyboard.type('5'); pg4.wait_for_timeout(100); refused = pg4.evaluate(PAY)   # no room after the cents
+    pg4.evaluate("()=>document.getElementById('netInput').select()"); pg4.keyboard.type('2000.50'); pg4.wait_for_timeout(100)
+    pg4.keyboard.press('Tab'); pg4.wait_for_timeout(600); typed = pg4.evaluate(PAY)
+    pg4.evaluate("()=>{ state.p2rate=6; save(); renderCalc(); }"); pg4.wait_for_timeout(600)
+    later = pg4.evaluate("()=>[document.getElementById('netInput').value, rndTo(compute().estNet, 2), document.querySelector('[data-key=gross]').value]")
+    pg4.focus('[data-key=gross]'); pg4.wait_for_timeout(50); pg4.keyboard.type('4000'); pg4.keyboard.press('Tab'); pg4.wait_for_timeout(600); regross = pg4.evaluate(PAY)   # replaces the worked-out gross
+    # a first key typed before the box's select-all happens (a fast typist, a slow phone) isn't then selected and typed over
+    fast = pg4.evaluate("""async ()=>{ state.autoNet=true; state.gross=3000; renderCalc(); const e=document.getElementById('netInput'); e.blur(); e.focus();
+        e.value='2'; e.dispatchEvent(new Event('input')); await new Promise(r=>setTimeout(r, 30)); const out=[e.selectionStart, e.selectionEnd, state.manualNet]; return out; }""")
+    shown = pg4.evaluate("()=>{ const e=document.createElement('input'); document.body.append(e); const out=[1650.5, 3000, 2410.04].map(v=>{ showPay(e, v); return e._shown; }); e.remove(); return out; }")
+    ok = (fromgross[1] == pg4.evaluate("()=>{ state.autoNet=true; state.gross=3000.37; state.p2rate=2; const n=rndTo(compute().estNet, 2); return n.toFixed(2); }") and fromgross[2] is True
+          and sel == [0, sel[2], sel[2]] and refused == fromgross
+          and typed[1] == '2000.50' and typed[2] is False and typed[3] == 2000.5 and re.fullmatch(r'\d+\.\d\d', typed[0])
+          and typed[4] == 3000.37 and later[:2] == ['2000.50', 2000.5] and later[2] != typed[0]
+          and fast == [1, 1, 2] and regross[0] == '4000' and regross[2] is True and regross[4] == 4000 and re.fullmatch(r'\d+\.\d\d', regross[1]) and shown == ['1650.50', '3000', '2410.04'])
+    if not ok: problems.append(f'gross and net pay (from a gross; selected on entry; a refused key; a typed net; after a 6% 2nd pillar; a fast first key; the gross typed again; shown): {fromgross} {sel} {refused} {typed} {later} {fast} {regross} {shown}')
     pg4.close()
     # a touch screen: tapping into a list-row field (its label with the help wraps it) shows no help over the next row, while
     # tapping the label's words still does

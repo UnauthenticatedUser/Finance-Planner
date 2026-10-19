@@ -2,6 +2,15 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.5.2] – 2026-10-19
+
+Fixes from a focused review of v1.5.1, three of them for changes v1.5.1 made, and gross or net pay typed in either box.
+
+- **History with a wrong clock.** A clock that was ahead more than once, or across a month end, stopped your history again (new in v1.5.1). A missing month is now added whenever every later month is at most a year after it, and never into a full list. A clock set far back (1970, 2000) still adds nothing; one a few months behind can add a month that didn't happen, which you can delete under History. Undo after Reset or Import no longer stops this month following your numbers, and the example's history shows this month again (both new in v1.5.1).
+- ☰'s menu closes when Shift+Tab leaves it past ☰ (new in v1.5.1). Just under a year tax-free, Retirement names the small tax at the end of that year, which the total counts. A missing comma in the Estonian December note.
+- **Gross or net pay, either one.** Type your gross or your net income and the other is worked out and filled in, to the cent. The "Estimate from gross / Enter my own" switch is gone: with your own net pay and a gross both filled in, the two were used as unrelated numbers, so the yearly figures didn't add up. The one you typed is kept when you change a setting later, and saved data and backups that used "Enter my own" keep their net pay.
+- On Your path, hovering a month lights up the targets the box lists for it, not only when the pointer is on the dot itself.
+
 ## [1.5.1] – 2026-10-17
 
 Fixes from a final review of v1.5.0, two of them for changes v1.5.0 made.
@@ -277,6 +286,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.5.2]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.5.2
 [1.5.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.5.1
 [1.5.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.5.0
 [1.4.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.4.0

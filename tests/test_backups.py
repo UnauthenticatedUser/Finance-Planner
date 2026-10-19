@@ -7,7 +7,8 @@ wrong clock costs no history; a file of exactly 5 MB is read and one byte more r
 with only some of a backup's parts is refused; Reset, a display click, Import, Undo brings your data back; on load,
 deadline years the editor can't show are cleared, years and ages are whole, an emptied card title gets its name back and
 history keeps its newest 1,200 good months; this month's snapshot follows you down to €0 and a full history drops its
-oldest month; an old FIRE target gets no health insurance; someone
+oldest month; history under a wrong clock follows the owner's rule, row by row (HISTORY_RULE), and Undo and the example
+leave the month recorded last as it should be; an old FIRE target gets no health insurance; someone
 who entered only their net pay gets the backup reminder too; and every backup format from v1.0.0 on
 (tests/fixtures/backup-*.json) still loads with every value kept.
 Run: python tests/test_backups.py"""
@@ -144,16 +145,27 @@ with sync_playwright() as p:
         state.history=Array.from({length:1200}, (_,i)=>({m:(1800+Math.floor(i/12))+'-'+String(i%12+1).padStart(2,'0'), nw:1, assets:1, debt:0, auto:0})); state.accounts[0].amount=5; refreshAll();
         return [a, z, state.history.length, state.history[0].m, state.history.at(-1).m===thisMonth()]; }""")
     if h!=[1000, 0, 1200, '1800-02', True]: fails.append(('history snapshot and limit', h))
-    # the backup reminder: someone who entered only their net pay is reminded too (7 days after starting, never exported)
+    # the backup reminder: someone who typed in only their net pay is reminded too (7 days after starting, never exported)
     pg.evaluate("""()=>{ localStorage.clear(); state=normalize({gross:0, autoNet:false, manualNet:2000, accounts:[], etfs:[], text:{}}); save();
         writeJSON(KEY_META, {firstData:Date.now()-8*DAY}); }"""); pg.reload(); pg.wait_for_timeout(400)
     if pg.evaluate("document.getElementById('exportNotice').hidden"): fails.append(('no backup reminder for someone with only their net pay',))
+    # a net pay typed with "Enter my own" before v1.5.2 is still the pay kept: saved data opened again (only a net, no gross), an old
+    # backup imported (a net and a different gross: the net was the income in use), and an old Undo copy
+    NET="()=>[rndTo(compute().estNet, 2), (s=>s.autoNet===false && s.manualNet===2500)(JSON.parse(localStorage.getItem(KEY)))]"
+    pg.evaluate("()=>{ localStorage.clear(); localStorage.setItem(KEY, JSON.stringify({gross:0, autoNet:false, manualNet:2500, expenses:1000})); }"); pg.reload(); pg.wait_for_timeout(300)
+    opened=pg.evaluate(NET); pg.reload(); pg.wait_for_timeout(300); again=pg.evaluate(NET)
+    old=os.path.join(tempfile.mkdtemp(),'old-own-net.json'); json.dump({**json.loads((FIXTURES/'backup-v1.5.0.json').read_text(encoding='utf-8')), 'autoNet':False, 'manualNet':2500, 'gross':6000}, open(old,'w'))
+    import_file(pg, old); imported=pg.evaluate(NET)
+    pg.evaluate("()=>{ localStorage.clear(); localStorage.setItem(KEY, JSON.stringify({gross:1000})); localStorage.setItem(KEY_BACKUP, JSON.stringify({gross:0, autoNet:false, manualNet:2500})); }"); pg.reload(); pg.wait_for_timeout(300)
+    pg.evaluate("()=>document.getElementById('revertBtn').click()"); pg.wait_for_timeout(100); undone=pg.evaluate(NET)
+    if [opened, again, imported, undone]!=[[2500, True]]*4: fails.append(('an old "Enter my own" net pay (opened, opened again, imported, Undo: net, still the net kept)', opened, again, imported, undone))
     # what a file holds that isn't a number gets the default, not 0 (no income tax); a deadline month picked before its year stays;
-    # history months need a real year; a 2nd pillar at 0% is "Not joined", so the state adds nothing either
+    # history months need a real year; a 2nd pillar at 0% is "Not joined", so the state adds nothing either, and the state pension
+    # estimate counts your pay in full, as for anyone not in the 2nd pillar (in it, 0.8 of it)
     q=pg.evaluate("""()=>{ const m=normalize({taxRate:null, retireAge:'abc', expenses:'1200', targets:[{kind:'cash', amount:1, dueMon:'03', dueYear:''}],
         history:[{m:'0001-01', nw:1}, {m:'2025-06', nw:2}]}); state=normalize({gross:3000, enableP2:true, p2rate:0}); refreshAll();
-      return [m.taxRate, m.retireAge, m.expenses, m.targets[0].dueMon, m.history.map(e=>e.m), compute().aStateP2]; }""")
-    if q!=[22, 65, 1200, '03', ['2025-06'], 0]: fails.append(('defaults, a lone deadline month, history years or a 2nd pillar at 0%', q))
+      const unit=iPillarUnit(36000); state.enableP2=false; return [m.taxRate, m.retireAge, m.expenses, m.targets[0].dueMon, m.history.map(e=>e.m), compute().aStateP2, unit===iPillarUnit(36000)]; }""")
+    if q!=[22, 65, 1200, '03', ['2025-06'], 0, True]: fails.append(('defaults, a lone deadline month, history years or a 2nd pillar at 0%', q))
     # the clock set back to a month you already saved: that month stays as it was, and a full history isn't saved over and over
     # (its months all later than the clock, from 2030)
     pg.close(); pg=on_day(ctx.new_page(), '2026-03-15'); pg.goto(PAGE); pg.wait_for_timeout(300)
@@ -176,6 +188,71 @@ with sync_playwright() as p:
         pg.close(); pg=on_day(ctx.new_page(), day); pg.goto(PAGE); pg.wait_for_timeout(200)
         q=pg.evaluate("h=>{ localStorage.removeItem(KEY_META); state=normalize({accounts:[{name:'a', amount:1234, yield:0}], history:h}); const n=state.history.length, first=state.history[0].m; recordHistory(compute()); return [state.history.length===n, state.history[0].m===first, state.history.some(e=>e.m===thisMonth())]; }", hist)
         if q!=[True, True, False]: fails.append((f'history with the clock set back to {day} (same length, same oldest, no month added)', q))
+    # The history rule as a table (the owner's choice, October 2026: better a month that didn't happen, which you can delete, than a
+    # real month never recorded). Each row: saved months ("m:nw", "!" typed by you), the month recorded last, then starts on a
+    # clock's month with your numbers then ("-" first: KEY_META lost before it), and the history after. The page's clock is set
+    # for each start; one recordHistory() per start ends as a real start plus an edit would.
+    S=('2026-08:800', '2026-09:900')
+    HISTORY_RULE=[
+        ('one start ahead, then right: Oct and Nov recorded, January follows once it really comes', S, '2026-09',
+         ('2027-01:1500', '2026-10:2000', '2026-11:2200', '2027-01:2400'), ['2026-08:800', '2026-09:900', '2026-10:2000', '2026-11:2200', '2027-01:2400']),
+        ('ahead once, then two starts this month: it follows your numbers on both', S, '2026-09',
+         ('2027-01:1500', '2026-10:2000', '2026-10:2100'), ['2026-08:800', '2026-09:900', '2026-10:2100', '2027-01:1500']),
+        ('ahead twice (January, then March): still recorded', S, '2026-09',
+         ('2027-01:1500', '2027-03:1600', '2026-10:2000', '2026-11:2200'), ['2026-08:800', '2026-09:900', '2026-10:2000', '2026-11:2200', '2027-01:1500', '2027-03:1600']),
+        ('ahead across a month end, KEY_META lost after: still recorded', S, '2026-09',
+         ('2027-01:1500', '2027-02:1500', '-2026-10:2000'), ['2026-08:800', '2026-09:900', '2026-10:2000', '2027-01:1500', '2027-02:1500']),
+        ('ahead exactly a year: this month still recorded', S, '2026-09',
+         ('2027-10:1500', '2026-10:2000'), ['2026-08:800', '2026-09:900', '2026-10:2000', '2027-10:1500']),
+        ('ahead 13 months: October lost, November recorded (the accepted limit)', S, '2026-09',
+         ('2027-11:1500', '2026-10:2000', '2026-11:2200'), ['2026-08:800', '2026-09:900', '2026-11:2200', '2027-11:1500']),
+        ('behind to a saved month: it stays, and this month follows again after', S+('2026-10:1000',), '2026-10',
+         ('2026-09:1500', '2026-10:2000'), ['2026-08:800', '2026-09:900', '2026-10:2000']),
+        ('behind into a gap: filled (the accepted cost)', ('2026-08:800', '2026-10:1000'), '2026-10',
+         ('2026-09:1500', '2026-10:2000'), ['2026-08:800', '2026-09:1500', '2026-10:2000']),
+        ('13 months behind: nothing; a year behind: that month added (the accepted cost)', S+('2026-10:1000',), '2026-10',
+         ('2025-09:1400', '2025-10:1500', '2026-10:2000'), ['2025-10:1500', '2026-08:800', '2026-09:900', '2026-10:2000']),
+        ('behind into a gap with a stale later month: filled, and this month still follows once the clock is right', ('2026-08:800', '2026-10:1000', '2027-01:1500'), '2026-10',
+         ('2026-09:1500', '2026-10:2000'), ['2026-08:800', '2026-09:1500', '2026-10:2000', '2027-01:1500']),
+        ('1970, 2000 and 1899: nothing added', S+('2026-10:1000',), '2026-10',
+         ('1970-01:1', '2000-01:1', '1899-12:1', '2026-10:2000'), ['2026-08:800', '2026-09:900', '2026-10:2000']),
+        ('a month you typed in yourself is never overwritten', S+('2026-10:1000!',), '2026-10',
+         ('2026-10:2000',), ['2026-08:800', '2026-09:900', '2026-10:1000']),
+    ]
+    for what, saved, last, starts, want in HISTORY_RULE:
+        got=pg.evaluate("""([saved, last, starts])=>{ const Real=Date;
+            try{ localStorage.removeItem(KEY_META); if(last) writeJSON(KEY_META, {lastRec:last});
+              state=normalize({accounts:[{name:'a', amount:1, yield:0}], enableHistory:true, history:saved.map(x=>{ const [m,v]=x.split(':'); return {m, nw:parseInt(v), assets:parseInt(v), debt:0, auto:v.endsWith('!') ? 0 : 1}; })});
+              for(const x of starts){ if(x[0]==='-') localStorage.removeItem(KEY_META); const [m,v]=x.replace(/^-/,'').split(':'), at=new Real(+m.slice(0,4), +m.slice(5)-1, 15, 12).getTime();
+                window.Date=class extends Real{ constructor(...a){ if(a.length) super(...a); else super(at); } static now(){ return at; } };
+                state.accounts[0].amount=+v; recordHistory(compute()); }
+              return state.history.map(e=>e.m+':'+e.nw); } finally{ window.Date=Real; } }""", [list(saved), last, list(starts)])
+        if got!=want: fails.append((f'history rule: {what}', got))
+    # the same table through real starts: before each start the numbers are saved, then the page loads on that day (its clock set
+    # from the first moment) and records as it would for anyone opening it, so what happens at load is checked too
+    SEED="""([saved, last])=>{ localStorage.setItem(KEY, JSON.stringify({...normalize({accounts:[{name:'a', amount:1, yield:0}], enableHistory:true}),
+        history:saved.map(x=>{ const [m,v]=x.split(':'); return {m, nw:parseInt(v), assets:parseInt(v), debt:0, auto:v.endsWith('!') ? 0 : 1}; })}));
+        localStorage.removeItem(KEY_META); if(last) localStorage.setItem(KEY_META, JSON.stringify({lastRec:last})); }"""
+    NEXT="""([v, drop])=>{ const s=JSON.parse(localStorage.getItem(KEY)); s.accounts[0].amount=v; localStorage.setItem(KEY, JSON.stringify(s)); if(drop) localStorage.removeItem(KEY_META); }"""
+    for what, saved, last, starts, want in HISTORY_RULE:
+        pg.close(); pg=ctx.new_page(); pg.goto(PAGE); pg.wait_for_timeout(150); pg.evaluate(SEED, [list(saved), last])   # any day: only to write the data
+        for x in starts:
+            m, v = x.lstrip('-').split(':')
+            pg.evaluate(NEXT, [int(v), x.startswith('-')]); pg.close()
+            pg=on_day(ctx.new_page(), m+'-15'); pg.goto(PAGE); pg.wait_for_timeout(150)
+        got=pg.evaluate("()=>state.history.map(e=>e.m+':'+e.nw)")
+        if got!=want: fails.append((f'history rule through real starts: {what}', got))
+    # Reset, then the page opened again, then Undo: the month recorded last from before the Reset comes back with the copy (it's
+    # kept between visits), so this month still follows your numbers though a later month is saved
+    pg.close(); pg=ctx.new_page(); pg.goto(PAGE); pg.wait_for_timeout(150)
+    pg.evaluate("""()=>{ const tm=thisMonth(), d=new Date(), H=(m,v)=>({m, nw:v, assets:v, debt:0, auto:1});
+        localStorage.clear(); localStorage.setItem(KEY, JSON.stringify(normalize({accounts:[{name:'a', amount:1234, yield:0}], history:[H(tm, 1234), H(ym(new Date(d.getFullYear(), d.getMonth()+3, 1)), 1500)]})));
+        localStorage.setItem(KEY_META, JSON.stringify({lastRec:tm})); }"""); pg.reload(); pg.wait_for_timeout(200)
+    pg.click('#resetBtn'); pg.wait_for_timeout(100); pg.reload(); pg.wait_for_timeout(200)
+    pg.evaluate("()=>document.getElementById('revertBtn').click()"); pg.wait_for_timeout(100)
+    pg.evaluate("()=>{ state.accounts[0].amount=3333; save(); renderCalc(); }")
+    q=pg.evaluate("()=>[readJSON(KEY_META).lastRec===thisMonth(), state.history.find(e=>e.m===thisMonth()).nw]")
+    if q!=[True, 3333]: fails.append(('Reset, the page opened again, Undo (month recorded last is this month, this month follows)', q))
     # Reset, then only monthly saving entered, then Reset again: Undo brings back that saving; Reset on an empty tool offers no Undo
     pg.close(); pg=ctx.new_page(); pg.goto(PAGE); pg.wait_for_timeout(300)
     q=pg.evaluate("""()=>{ localStorage.clear(); backup=null; state=normalize({gross:3000}); refreshAll(); document.getElementById('resetBtn').click();
@@ -188,14 +265,23 @@ with sync_playwright() as p:
         const before=state.history.filter(e=>e.m<thisMonth()).map(e=>e.m+':'+e.nw).join(); document.getElementById('resetBtn').click(); showExample(true); showExample(false); document.getElementById('revertBtn').click();
         return state.history.filter(e=>e.m<thisMonth()).map(e=>e.m+':'+e.nw).join()===before; }""")
     if not q: fails.append(('Reset, the example, Undo: a past history month changed', q))
-    # each part of that on its own: showing the example leaves the month recorded last alone, and after Undo it's the newest
-    # month of the data that came back
-    # (recording off for your data, so the month recorded last stays August; the example and the blank tool do record)
+    # each part of that on its own: showing the example leaves the month recorded last alone, and after Undo it's the one from
+    # before the Reset
+    # (recording off for your data, so the month recorded last stays August; the blank tool does record)
     q=pg.evaluate("""()=>{ localStorage.clear(); backup=null; writeJSON(KEY_META, {lastRec:'2026-08'}); state=normalize({accounts:[{name:'a', amount:1234, yield:0}], enableHistory:false, history:[{m:'2026-08', nw:800, assets:800, debt:0, auto:1}]}); save(); refreshAll();
         const meta=()=>readJSON(KEY_META).lastRec||null; showExample(true); const inEx=meta(); showExample(false);
         document.getElementById('resetBtn').click(); state.accounts[0].amount=50; save(); refreshAll(); const blank=meta(); document.getElementById('revertBtn').click();
         return [inEx, blank===thisMonth(), meta()]; }""")
     if q!=['2026-08', True, '2026-08']: fails.append(('the month recorded last (in the example, the blank tool recorded this month, after Undo)', q))
+    # Undo doesn't make a stale later month (one start with the clock ahead) the month recorded last, so this month keeps following
+    # your numbers; and the example's history ends with this month, recorded only in memory
+    q=pg.evaluate("""()=>{ const tm=thisMonth(), d=new Date(), fut=ym(new Date(d.getFullYear(), d.getMonth()+3, 1)), H=(m,v)=>({m, nw:v, assets:v, debt:0, auto:1});
+        localStorage.clear(); backup=null; state=normalize({accounts:[{name:'a', amount:1234, yield:0}], history:[H(tm, 1234), H(fut, 1500)]}); save(); writeJSON(KEY_META, {lastRec:tm}); refreshAll();
+        document.getElementById('resetBtn').click(); document.getElementById('revertBtn').click(); state.accounts[0].amount=3333; save(); refreshAll();
+        const undo=[readJSON(KEY_META).lastRec===tm, state.history.find(e=>e.m===tm).nw];
+        showExample(true); const ex=[state.history[state.history.length-1].m===tm, state.history.length]; showExample(false);
+        return [...undo, ...ex, readJSON(KEY_META).lastRec===tm]; }""")
+    if q!=[True, 3333, True, 12, True]: fails.append(('after Reset and Undo with a later month saved (month recorded last, this month follows), the example (ends this month, 12 months), month recorded last kept', q))
     # an emptied retirement age or payout period is the default the tool uses (65, 20 years), not your data
     q=pg.evaluate("()=>{ state=blankState(state); state.retireAge=0; state.payoutYears=0; return hasOwnData(); }")
     if q: fails.append(('an emptied retirement age and payout period counted as your data', q))

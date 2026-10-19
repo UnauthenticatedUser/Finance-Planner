@@ -13,7 +13,7 @@ body:
     attributes:
       label: Version
       description: Shown at the bottom right of the page.
-      placeholder: v1.5.1
+      placeholder: v1.5.2
     validations:
       required: true
   - type: dropdown

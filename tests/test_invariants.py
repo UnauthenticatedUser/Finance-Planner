@@ -55,7 +55,7 @@ def main(N=300, seed=3):
             r=pg.evaluate(JS, s)
             if r:
                 fails+=1
-                if fails<=15: print(i, r[:3], {k:s[k] for k in ('birthYear','retireAge','enableProjNet','enableProjCustom','gross','autoNet')})
+                if fails<=15: print(i, r[:3], {k:s[k] for k in ('birthYear','retireAge','enableProjNet','enableProjCustom','gross')})
         print('page errors:', errs[:3] or 'none'); b.close()
     finish('invariants', fails or errs, f'{N} random users: {"all consistent" if not fails else str(fails)+" with problems"}')
 
