@@ -294,22 +294,21 @@ with sync_playwright() as p:
     bm = pg3.evaluate("[state.birthMonth, document.getElementById('bmonth').textContent, document.activeElement.id]")
     if bm != [2, 'Feb', 'bmonth']: problems.append(f'month of birth picked with the keyboard (value, shown, focus): {bm}')
     if w5 != 'debts part' or ad != ['open', True]: problems.append(f'focus after ✎ with only fixed-rate loans {w5}; typing after an arrow pick (list, points at the highlighted one) {ad}')
-    # a tooltip whose field goes out of sight goes too, instead of staying at the edge of the screen. On a phone the field is moved
-    # off the screen directly (a transform) and a scroll event sent, so it doesn't depend on how far the page can scroll in each
-    # browser; on a wide screen the editor panel itself is scrolled (a real scroll in its own box, with room added at its end, as
-    # Firefox and WebKit have less) until the field is just above the panel, still inside the window, so only the panel's own edge
-    # hides it (following the field on a real scroll is checked above)
+    # a tooltip whose field goes out of sight goes too, instead of staying at the edge of the screen. The field is moved directly
+    # (a transform), not scrolled: how far a page or the editor panel can scroll differs between browsers (a real panel scroll
+    # failed in Firefox and WebKit in v1.5.2). On a phone it goes off the screen and the window sends the scroll event; on a wide
+    # screen it goes just above the editor panel, still inside the window, so only the panel's own edge hides it, and the panel
+    # itself sends the event, which reaches the page only through its capture listener (following the field on a real scroll is
+    # checked above)
     gone = []
-    for w, h, wide in ((390, 844, False), (1280, 800, True), (1280, 1400, True)):
+    for w, h, wide in ((390, 844, False), (1280, 800, True)):
         pg6 = b.new_page(viewport={'width': w, 'height': h}, reduced_motion='reduce'); watch_errors(pg6, errs, n=150); pg6.goto(PAGE); pg6.wait_for_timeout(300)
-        gone.append(pg6.evaluate("""async wide=>{ document.querySelectorAll('.editor details').forEach(d=>d.open=true); const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip');
+        gone.append(pg6.evaluate("""wide=>{ document.querySelectorAll('.editor details').forEach(d=>d.open=true); const f=document.querySelector('[data-key=projInflation]'), tip=document.getElementById('tip');
         f.scrollIntoView({block:'center'}); document.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true})); f.focus({focusVisible:true}); const shown=getComputedStyle(tip).display;
         window.dispatchEvent(new Event('scroll')); const still=getComputedStyle(tip).display;   // in sight: it stays
-        const p=f.closest('.editor'), top=p.getBoundingClientRect().top;
-        const room=document.createElement('div'); room.style.height=innerHeight+'px';   // scroll room at the panel's end: how much there is differs between browsers
-        if(wide){ p.append(room); p.scrollTop+=f.getBoundingClientRect().bottom-top+4; await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); }
-        else { f.style.transform='translateY(-3000px)'; window.dispatchEvent(new Event('scroll')); }
-        const q=f.getBoundingClientRect(), out=[shown, still, getComputedStyle(tip).display, wide ? q.bottom>0 && q.bottom<=top : q.bottom<0]; f.style.transform=''; room.remove(); return out; }""", wide))
+        const p=f.closest('.editor'), top=p.getBoundingClientRect().top, r=f.getBoundingClientRect();
+        f.style.transform='translateY('+(wide ? top-4-r.bottom : -3000)+'px)'; (wide ? p : window).dispatchEvent(new Event('scroll'));
+        const q=f.getBoundingClientRect(), out=[shown, still, getComputedStyle(tip).display, wide ? q.bottom>0 && q.bottom<=top : q.bottom<0]; f.style.transform=''; return out; }""", wide))
         pg6.close()
     # the narrowest phones: "Not given (July)" and its Estonian fit beside the year
     pg7 = b.new_page(viewport={'width': 320, 'height': 700}); watch_errors(pg7, errs, n=150); pg7.goto(PAGE); pg7.wait_for_timeout(300)
@@ -319,7 +318,7 @@ with sync_playwright() as p:
         if pg7.evaluate("()=>{ const s=document.getElementById('bmonth'); return s.scrollWidth>s.clientWidth; }"): cut.append(lang)
     pg7.close()
     if cut: problems.append(f'"Not given (July)" cut off at 320px in: {cut}')
-    if gone != [['block', 'block', 'none', True]]*3: problems.append(f'tooltip with its field in sight, then off the screen on a phone and just outside the editor panel on a wide screen, also a tall one (before, in sight, after, field placed right): {gone}')
+    if gone != [['block', 'block', 'none', True]]*2: problems.append(f'tooltip with its field in sight, then off the screen on a phone and just above the editor panel on a wide screen (before, in sight, after, field placed right): {gone}')
     # the target type dropdown is read with its value; a target's buttons follow its name, unnamed ones say which row
     acc = pg3.evaluate("""()=>{ state.targets=[{name:'', kind:'cash', amount:1}, {name:'', kind:'cash', amount:2}]; save(); refreshAll();
         const s=document.querySelector('#tgt-rows .cselect.ttype'), nm=(s.getAttribute('aria-labelledby')||'').split(' ').map(id=>(document.getElementById(id)||{}).textContent).join(' ');

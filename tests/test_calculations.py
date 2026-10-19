@@ -85,7 +85,7 @@ def model(s):
     surplus=(net-exp-dM-(invested-p2))*12 + year_extra + yFree + (yC-yCT) + refund
     return {'net':net,'expenses':exp,'p2':p2,'p2s':p2s,'penMonthly':t3+(aSal*(p2r+p2sr)/100+mB*12+yB)/12,'invested':invested,'networth':assets-debt,'assets':assets,'debt':debt,'taxRefund':refund,'aGross':aGross,
             'aNet':aGross-aP2-aU-aTax-aCT+refund,'surplus':surplus,'buffer':buffer,'pension':pension,'savings':invested/(net+p2)*100 if net+p2>0 else 0,'p3Limit':p3Limit,
-            'debtInterestYr':sum(d['balance']*rate(d)/100 for d in s['debts']), 'etfVals':etf_vals, 'gross':g, 'salaryNet':net_of(g)}
+            'debtInterestYr':sum(d['balance']*rate(d)/100 for d in s['debts']), 'etfVals':etf_vals, 'gross':g, 'estNet':net_of(g)}
 RECON="""()=>{ const c=compute(), out=[], txt=id=>{const e=document.getElementById(id); return e?e.textContent:null};
   const chk=(lbl,shown,expect)=>{ if(shown===null) out.push(lbl+': not on the page'); else if(shown!==expect) out.push(lbl+': shows '+shown+' expected '+expect); };   // a renamed id fails too
   chk('hero net worth', txt('out-networth'), eur(c.networth));
@@ -156,10 +156,10 @@ def main():
         pg.goto(PAGE); pg.wait_for_timeout(500)
         for i in range(N):
             s=user()
-            r=pg.evaluate("s=>{ state=normalize(JSON.parse(s)); save(); refreshAll(); const c=compute(); return {gross:c.gross, salaryNet:c.estNet, net:c.net,expenses:c.expenses,p2:c.p2,p2s:c.p2s,penMonthly:c.penMonthly,invested:c.invested,networth:c.networth,assets:c.assets,debt:c.debt,taxRefund:c.taxRefund,aGross:c.aGross,aNet:c.aNet,surplus:c.surplus,buffer:c.buffer,pension:c.pension,savings:c.savings,p3Limit:c.p3Limit,debtInterestYr:c.debtInterestYr,etfVals:c.etfVals}}", json.dumps(s))
+            r=pg.evaluate("s=>{ state=normalize(JSON.parse(s)); save(); refreshAll(); const c=compute(); return {gross:c.gross, estNet:c.estNet, net:c.net,expenses:c.expenses,p2:c.p2,p2s:c.p2s,penMonthly:c.penMonthly,invested:c.invested,networth:c.networth,assets:c.assets,debt:c.debt,taxRefund:c.taxRefund,aGross:c.aGross,aNet:c.aNet,surplus:c.surplus,buffer:c.buffer,pension:c.pension,savings:c.savings,p3Limit:c.p3Limit,debtInterestYr:c.debtInterestYr,etfVals:c.etfVals}}", json.dumps(s))
             m=model(s)
             diffs=[f"{k}: tool {r[k]:.4f} vs model {m[k]:.4f}" for k in m if k!='etfVals' and abs(r[k]-m[k])>max(0.01, abs(m[k])*1e-9)]
-            if not s['autoNet'] and abs(r['salaryNet']-s['manualNet'])>0.005: diffs.append(f"net {s['manualNet']} typed, but the tool's salary net is {r['salaryNet']:.4f}")
+            if not s['autoNet'] and abs(r['estNet']-s['manualNet'])>0.005: diffs.append(f"net {s['manualNet']} typed, but the tool's salary net is {r['estNet']:.4f}")
             if len(r['etfVals'])!=len(m['etfVals']) or any(abs(a-b)>0.005 for a,b in zip(r['etfVals'],m['etfVals'])): diffs.append(f"fund values {r['etfVals']} vs {m['etfVals']}")
             rec=pg.evaluate(RECON)
             checked+=1
