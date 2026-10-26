@@ -2,6 +2,10 @@
 
 All notable changes to Estonian Finance Planner are listed here, newest first. Versions follow [semantic versioning](https://semver.org): the last number is for fixes, the middle one for new features, the first one for changes that break something. Saved data and backups from v1.0.0 on keep loading in every later version.
 
+## [1.5.3] – 2026-10-26
+
+- **Year of birth:** an age typed there by mistake (50, say) used to be taken as no year of birth, without a word. Once you leave the field it now says it looks like an age and gives the year it means as an example; any other number too short to be a year asks for the full year. Retirement says to check your year of birth instead of asking you to add one.
+
 ## [1.5.2] – 2026-10-19
 
 Fixes from a focused review of v1.5.1, three of them for changes v1.5.1 made, and gross or net pay typed in either box.
@@ -286,6 +290,7 @@ First public release.
 - Works on phones and wide screens, and offline as a single downloaded file.
 - Automated tests check the calculations against independent models on every change, and the online version is only published when they all pass.
 
+[1.5.3]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.5.3
 [1.5.2]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.5.2
 [1.5.1]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.5.1
 [1.5.0]: https://github.com/UnauthenticatedUser/Finance-Planner/releases/tag/v1.5.0

@@ -31,7 +31,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-AF/js3YVsT4XguhqR0lrm5HvAnRxs3syELIaFO4iA2k='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JdYKCqNlQkNwZBKYTi9iN/WZConOmcz1r5DovBJIWHA=' 'sha256-+7KRjb9zya6hEkvCPcuVRZESMvzaHJGqQCMSgCBVoJQ='; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">   <!-- privacy, enforced: the page may load nothing and send nothing; only its own scripts (allowed by SHA-256 fingerprint: after editing a script, run tools/update_csp.py), styles and built-in font run -->
 <meta name="referrer" content="no-referrer">   <!-- links out (source code, license) don't tell the other site which page you came from -->
 <meta name="color-scheme" content="dark">   <!-- the page is already dark: stops browser auto-dark modes (and the darkreader-lock line, the Dark Reader extension) from recoloring it -->
 <meta name="darkreader-lock">
@@ -909,7 +909,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
         <div class="row"><span class="k" data-tip="Your investments at retirement, taking 4% a year: a common rule of thumb for withdrawals that should last. After tax: what you take out is tax-free until it adds up to more than you put in, and taxed as income after that.">Investments (4% a year)</span><span class="v" id="ret-inv"></span></div>
         <details class="drop howto"><summary>How it's worked out</summary><div class="note" id="ret-note"></div></details>
       </div>
-      <div class="legend" id="ret-empty"><span>Add your year of birth under Settings › Retirement to see what you'd live on when you retire.</span></div>
+      <div class="legend" id="ret-empty"><span id="ret-empty-msg">Add your year of birth under Settings › Retirement to see what you'd live on when you retire.</span></div>
     </div>
     <div class="card" id="history-card">
       <div class="hd">
@@ -1175,7 +1175,7 @@ try{ const u=JSON.parse(localStorage.getItem('strategy_ui_v1'))||{}, h=document.
       </div>
     </details>
   </div>
-  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.5.2</span></footer>
+  <footer class="sitefoot"><span><span class="sitefoot-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Private: nothing you enter ever leaves this browser.</span><a href="https://github.com/UnauthenticatedUser/Finance-Planner" target="_blank" rel="noopener">Source code</a><a href="https://github.com/UnauthenticatedUser/Finance-Planner/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a><span class="sitefoot-ver">v1.5.3</span></footer>
   </div>
 
 </div>
@@ -2307,6 +2307,8 @@ function renderCalc(){
     if(row && row._nw) row._nw.value=fieldNum(state.history[state.history.length-1].nw); else if(rec) buildHistRows(); }
   renderPath(c); renderHistory(); renderTargets(c);
   { const r=retirement(c); showHide('ret-body', !!r); showHide('ret-empty', !r); if(!r) set('ret-tag','');
+    set('ret-empty-msg', state.birthYear>0 ? L('Check your year of birth under Settings › Retirement: it takes the year you were born, like 1985, to show what you\'d live on when you retire.','Kontrolli oma sünniaastat jaotises Seaded › Pension: et näha, kui suur oleks sinu sissetulek pensionil, on vaja sinu sünniaastat (näiteks 1985).')
+                                           : t('Add your year of birth under Settings › Retirement to see what you\'d live on when you retire.'));   // a typed age or future year isn't a year of birth
     if(r){ set('ret-tag', r.m>0 ? L('in '+r.year+' · age '+r.age, r.year+'. aastal · '+r.age+'-aastaselt') : L('now · age '+r.ageNow, 'praegu · '+r.ageNow+'-aastaselt'));   // already past retirement age: from today's savings
       set('ret-total', '≈ '+eur(r.total)+L(' a month',' kuus'));
       // the comparison with today's spending only shows in today's money (future euros would flatter it)
@@ -2382,8 +2384,12 @@ function syncWarnings(c){
               : r<0 ? L('A negative return means your money shrinks every year.','Negatiivne tootlus tähendab, et sinu raha väheneb igal aastal.') : '');
   const ip=inflPct();
   w('w-infl', ip<0 ? L('Prices falling every year makes amounts in today\'s money grow very fast. Over the long run, prices in the euro area have mostly risen about 2–3% a year.','Kui hinnad igal aastal langevad, kasvavad summad tänases rahas väga kiiresti. Euroalal on hinnad pikas plaanis enamasti tõusnud umbes 2–3% aastas.') : ip>10 ? L(num(ip)+'% inflation every year is unusually high. Over the long run it has mostly been around 2–3% a year in the euro area.',num(ip)+'% inflatsioon igal aastal on ebatavaliselt kõrge. Euroalal on see pikas plaanis olnud enamasti umbes 2–3% aastas.') : '');
-  const now=new Date().getFullYear(), by=state.birthYear||0, age=now-by;   // a year still being typed (under 4 digits) isn't checked yet
-  w('w-birth', by<1000 ? '' : by>now ? L('That year is in the future. Is it right?','See aasta on tulevikus. Kas see on õige?')
+  // a year still being typed (under 4 digits) isn't checked until you leave the field; then an age typed by mistake (up to 120)
+  // gets the year it means as an example
+  const now=new Date().getFullYear(), by=state.birthYear||0, age=now-by, typing=document.activeElement===document.querySelector('[data-key=birthYear]');
+  w('w-birth', by<1000 ? (!by || typing ? '' : by<=120 ? L('That looks like an age. Type the year you were born instead, for example '+(now-by)+'.','See paistab olevat vanus. Sisesta selle asemel oma sünniaasta, näiteks '+(now-by)+'.')
+                                                     : L('Type the full year you were born, for example 1985.','Sisesta sünniaasta täies pikkuses, näiteks 1985.'))
+              : by>now ? L('That year is in the future. Is it right?','See aasta on tulevikus. Kas see on õige?')
               : (age<16 || age>100) ? L('That would make you '+age+'. Is the year right?','Siis oleksid '+age+'-aastane. Kas aasta on õige?') : '');
   const noFee=(n, id)=> w(id, !n || state.enableProjFee ? '' : L(n===1 ? 'One fund has no yearly fee entered, so the projection counts it as 0%.' : n+' funds have no yearly fee entered, so the projection counts them as 0%.',
                                                                   n===1 ? 'Ühel fondil pole aastatasu sisestatud, seega arvestab prognoos seda 0%-ga.' : n+' fondil pole aastatasu sisestatud, seega arvestab prognoos neid 0%-ga.'));
@@ -2710,6 +2716,8 @@ document.querySelectorAll('[data-key]').forEach(el=>{
     save(); renderCalc();
   });
 });
+// Leaving the year of birth checks what was typed (see syncWarnings: an unfinished year isn't flagged while you type)
+document.querySelector('[data-key=birthYear]').addEventListener('blur', ()=>renderCalc());
 // Gross or net pay: type either and the other follows; the one you typed is kept when settings change (autoNet: the gross;
 // otherwise manualNet, the net). The other box shows a worked-out figure (_shown): going into it selects it, so typing replaces it
 // (a phone puts the cursor after its cents, where no digit fits), and a keystroke that leaves it as it was changes nothing.

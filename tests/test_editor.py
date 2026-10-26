@@ -380,6 +380,20 @@ with sync_playwright() as p:
           and typed[4] == 3000.37 and later[:2] == ['2000.50', 2000.5] and later[2] != typed[0]
           and fast == [1, 1, 2] and regross[0] == '4000' and regross[2] is True and regross[4] == 4000 and re.fullmatch(r'\d+\.\d\d', regross[1]) and shown == ['1650.50', '3000', '2410.04'])
     if not ok: problems.append(f'gross and net pay (from a gross; selected on entry; a refused key; a typed net; after a 6% 2nd pillar; a fast first key; the gross typed again; shown): {fromgross} {sel} {refused} {typed} {later} {fast} {regross} {shown}')
+    # the year of birth: nothing while a year is being typed; left at an age (50) it says so, with the year it means; any other
+    # number under 1000 asks for the full year; a future year is questioned; and Retirement asks to check the year, not to add one
+    pg4.evaluate("()=>document.querySelector('.langtabs [data-lang=en]').click()")
+    born = pg4.evaluate("""async ()=>{ state=normalize({gross:3000}); save(); refreshAll(); const f=document.querySelector('[data-key=birthYear]'), y=new Date().getFullYear(), out=[];
+        for(let d=f.closest('details'); d; d=d.parentElement.closest('details')) d.open=true;   // a closed section's field can't take the keyboard
+        const look=()=>{ const w=document.getElementById('w-birth'); return [w.hidden ? '' : w.textContent, document.getElementById('ret-empty-msg').textContent.split(':')[0].split(' under')[0]]; };
+        const type=async (v, leave)=>{ f.focus(); f.value=v; f.dispatchEvent(new Event('input')); if(leave) f.blur(); await new Promise(r=>setTimeout(r, 500)); out.push(look()); };   // the digits' animation ends
+        for(const [v, leave] of [['50', false], ['50', true], ['500', true], ['1976', true], [String(y+5), true], ['', true]]) await type(v, leave);
+        return [y, out]; }""")
+    y, seen = born
+    want = [['', 'Check your year of birth'], [f'That looks like an age. Type the year you were born instead, for example {y-50}.', 'Check your year of birth'],
+            ['Type the full year you were born, for example 1985.', 'Check your year of birth'], ['', 'Check your year of birth'],
+            ['That year is in the future. Is it right?', 'Check your year of birth'], ['', 'Add your year of birth']]
+    if seen != want: problems.append(f'year of birth warnings (while typing 50, left at 50, 500, 1976, a future year, empty): {seen}')
     pg4.close()
     # a touch screen: tapping into a list-row field (its label with the help wraps it) shows no help over the next row, while
     # tapping the label's words still does
